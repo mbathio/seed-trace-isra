@@ -17,7 +17,7 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import AuthLayout from "./layouts/AuthLayout";
 
 // Pages
-import Dashboard from "./pages/Dashboard";
+import { Dashboard } from "./pages/Dashboard";
 import Login from "./pages/auth/Login";
 import SeedLots from "./pages/seeds/SeedLots";
 import SeedLotDetail from "./pages/seeds/SeedLotDetail";
