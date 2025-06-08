@@ -1,4 +1,3 @@
-// backend/src/middleware/queryParser.ts - NOUVEAU
 import { Request, Response, NextFunction } from "express";
 
 export interface ParsedQuery {
@@ -8,23 +7,32 @@ export interface ParsedQuery {
   [key: string]: any;
 }
 
+// Étendre le type Request AVANT la fonction
+declare global {
+  namespace Express {
+    interface Request {
+      parsedQuery: ParsedQuery; // ✅ Enlever le ? pour indiquer qu'il sera toujours défini
+    }
+  }
+}
+
 export function parseQueryParams(
   req: Request,
   res: Response,
   next: NextFunction
 ): void {
   try {
-    // Parser les paramètres de pagination
+    // ✅ Initialiser req.parsedQuery directement
     req.parsedQuery = {
       page: parseInt(req.query.page as string) || 1,
-      pageSize: Math.min(parseInt(req.query.pageSize as string) || 10, 100), // Limiter à 100
+      pageSize: Math.min(parseInt(req.query.pageSize as string) || 10, 100),
       search: (req.query.search as string) || undefined,
     };
 
-    // Ajouter d'autres paramètres en les parsant si nécessaire
+    // Ajouter d'autres paramètres
     Object.keys(req.query).forEach((key) => {
       if (!["page", "pageSize", "search"].includes(key)) {
-        req.parsedQuery[key] = req.query[key];
+        req.parsedQuery![key] = req.query[key]; // ✅ Utiliser ! pour indiquer qu'il est défini
       }
     });
 
@@ -35,14 +43,5 @@ export function parseQueryParams(
       message: "Paramètres de requête invalides",
       data: null,
     });
-  }
-}
-
-// Étendre le type Request pour inclure parsedQuery
-declare global {
-  namespace Express {
-    interface Request {
-      parsedQuery?: ParsedQuery;
-    }
   }
 }

@@ -2,15 +2,17 @@
 import React from "react";
 import { useApiQuery } from "../hooks/useApi";
 import { StatsCard } from "../components/charts/StatsCard";
-import { ProductionChart } from "../components/charts/ProductionChart";
+// ✅ Enlever les imports inutilisés
+// import { ProductionChart } from "../components/charts/ProductionChart";
 import { DashboardStats } from "../types/entities";
 import {
   Sprout,
   Users,
   FlaskConical,
   Tractor,
-  TrendingUp,
-  CheckCircle,
+  // ✅ Enlever les imports inutilisés
+  // TrendingUp,
+  // CheckCircle,
 } from "lucide-react";
 
 const Dashboard: React.FC = () => {
@@ -55,7 +57,12 @@ const Dashboard: React.FC = () => {
         />
       </div>
 
-      {/* More dashboard content... */}
+      {/* ✅ Optionnel: Utiliser ProductionChart si nécessaire */}
+      {/* {stats && (
+        <div className="mt-8">
+          <ProductionChart data={mockData} />
+        </div>
+      )} */}
     </div>
   );
 };

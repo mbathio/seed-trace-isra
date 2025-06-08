@@ -13,31 +13,54 @@ interface StatusBadgeProps extends Omit<BadgeProps, "variant"> {
     | "quality";
 }
 
-const statusMaps = {
+// Définir les types de configuration de statut
+type StatusConfig = {
+  variant: "outline" | "default" | "secondary" | "destructive";
+  label: string;
+};
+
+type StatusMap = Record<string, StatusConfig>;
+
+// Mapping des statuts avec typage strict
+const statusMaps: Record<string, StatusMap> = {
   lot: {
-    PENDING: { variant: "outline" as const, label: "En attente" },
-    CERTIFIED: { variant: "default" as const, label: "Certifié" },
-    REJECTED: { variant: "destructive" as const, label: "Rejeté" },
-    IN_STOCK: { variant: "secondary" as const, label: "En stock" },
-    ACTIVE: { variant: "default" as const, label: "Actif" },
-    DISTRIBUTED: { variant: "secondary" as const, label: "Distribué" },
-    SOLD: { variant: "outline" as const, label: "Vendu" },
+    PENDING: { variant: "outline", label: "En attente" },
+    CERTIFIED: { variant: "default", label: "Certifié" },
+    REJECTED: { variant: "destructive", label: "Rejeté" },
+    IN_STOCK: { variant: "secondary", label: "En stock" },
+    ACTIVE: { variant: "default", label: "Actif" },
+    DISTRIBUTED: { variant: "secondary", label: "Distribué" },
+    SOLD: { variant: "outline", label: "Vendu" },
   },
   production: {
-    PLANNED: { variant: "outline" as const, label: "Planifiée" },
-    IN_PROGRESS: { variant: "default" as const, label: "En cours" },
-    COMPLETED: { variant: "secondary" as const, label: "Terminée" },
-    CANCELLED: { variant: "destructive" as const, label: "Annulée" },
+    PLANNED: { variant: "outline", label: "Planifiée" },
+    IN_PROGRESS: { variant: "default", label: "En cours" },
+    COMPLETED: { variant: "secondary", label: "Terminée" },
+    CANCELLED: { variant: "destructive", label: "Annulée" },
   },
   multiplier: {
-    ACTIVE: { variant: "default" as const, label: "Actif" },
-    INACTIVE: { variant: "secondary" as const, label: "Inactif" },
+    ACTIVE: { variant: "default", label: "Actif" },
+    INACTIVE: { variant: "secondary", label: "Inactif" },
   },
   quality: {
-    PASS: { variant: "default" as const, label: "Réussi" },
-    FAIL: { variant: "destructive" as const, label: "Échec" },
+    PASS: { variant: "default", label: "Réussi" },
+    FAIL: { variant: "destructive", label: "Échec" },
   },
-  // Autres mappings...
+  user: {
+    ACTIVE: { variant: "default", label: "Actif" },
+    INACTIVE: { variant: "secondary", label: "Inactif" },
+  },
+  parcel: {
+    AVAILABLE: { variant: "default", label: "Disponible" },
+    IN_USE: { variant: "secondary", label: "En cours" },
+    RESTING: { variant: "outline", label: "En repos" },
+  },
+  contract: {
+    DRAFT: { variant: "outline", label: "Brouillon" },
+    ACTIVE: { variant: "default", label: "Actif" },
+    COMPLETED: { variant: "secondary", label: "Terminé" },
+    CANCELLED: { variant: "destructive", label: "Annulé" },
+  },
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
@@ -45,9 +68,12 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   type = "lot",
   ...props
 }) => {
+  // Obtenir le mapping pour le type spécifié avec fallback sécurisé
   const statusMap = statusMaps[type] || statusMaps.lot;
-  const config = statusMap[status] || {
-    variant: "outline" as const,
+
+  // Obtenir la configuration du statut avec fallback sécurisé
+  const config: StatusConfig = statusMap[status] || {
+    variant: "outline",
     label: status,
   };
 
