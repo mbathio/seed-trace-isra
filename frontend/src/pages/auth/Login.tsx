@@ -1,6 +1,6 @@
-// frontend/src/pages/auth/Login.tsx
+// frontend/src/pages/auth/Login.tsx - CORRECTION REDIRECTIONS
 import React, { useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, Navigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
@@ -32,6 +32,7 @@ interface ErrorResponse {
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, isAuthenticated } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,9 +43,11 @@ const Login: React.FC = () => {
     formState: { errors },
   } = useForm<LoginForm>();
 
-  // Redirect if already authenticated
+  // ✅ CORRECTION: Redirect if already authenticated
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    // Get the intended destination from location state, or default to dashboard
+    const from = (location.state as any)?.from?.pathname || "/dashboard";
+    return <Navigate to={from} replace />;
   }
 
   const onSubmit = async (data: LoginForm) => {
@@ -52,7 +55,10 @@ const Login: React.FC = () => {
       setIsLoading(true);
       await login(data.email, data.password);
       toast.success("Connexion réussie !");
-      navigate("/");
+
+      // ✅ CORRECTION: Redirect to intended page or dashboard
+      const from = (location.state as any)?.from?.pathname || "/dashboard";
+      navigate(from, { replace: true });
     } catch (error: unknown) {
       console.error("Login error:", error);
       const errorResponse = error as ErrorResponse;
@@ -106,9 +112,9 @@ const Login: React.FC = () => {
                 {...register("password", {
                   required: "Le mot de passe est requis",
                   minLength: {
-                    value: 6,
+                    value: 5, // ✅ CORRECTION: Ajusté pour correspondre aux comptes de test
                     message:
-                      "Le mot de passe doit contenir au moins 6 caractères",
+                      "Le mot de passe doit contenir au moins 5 caractères",
                   },
                 })}
                 className={errors.password ? "border-red-500 pr-10" : "pr-10"}
@@ -138,21 +144,52 @@ const Login: React.FC = () => {
           </Button>
         </form>
 
-        {/* Demo credentials */}
+        {/* ✅ AMÉLIORATION: Demo credentials avec boutons de connexion rapide */}
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm font-medium text-gray-700 mb-2">
+          <p className="text-sm font-medium text-gray-700 mb-3">
             Comptes de démonstration :
           </p>
-          <div className="text-xs text-gray-600 space-y-1">
-            <p>
-              <strong>Admin :</strong> admin@isra.sn / 12345
-            </p>
-            <p>
-              <strong>Chercheur :</strong> adiop@isra.sn / 12345
-            </p>
-            <p>
-              <strong>Technicien :</strong> fsy@isra.sn / 12345
-            </p>
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full justify-start text-xs"
+              onClick={() => {
+                handleSubmit(() =>
+                  onSubmit({ email: "admin@isra.sn", password: "12345" })
+                )();
+              }}
+            >
+              <strong className="mr-2">Admin :</strong> admin@isra.sn / 12345
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full justify-start text-xs"
+              onClick={() => {
+                handleSubmit(() =>
+                  onSubmit({ email: "adiop@isra.sn", password: "12345" })
+                )();
+              }}
+            >
+              <strong className="mr-2">Chercheur :</strong> adiop@isra.sn /
+              12345
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full justify-start text-xs"
+              onClick={() => {
+                handleSubmit(() =>
+                  onSubmit({ email: "fsy@isra.sn", password: "12345" })
+                )();
+              }}
+            >
+              <strong className="mr-2">Technicien :</strong> fsy@isra.sn / 12345
+            </Button>
           </div>
         </div>
       </CardContent>

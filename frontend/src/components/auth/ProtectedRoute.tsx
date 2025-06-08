@@ -1,6 +1,6 @@
-// frontend/src/components/auth/ProtectedRoute.tsx
+// frontend/src/components/auth/ProtectedRoute.tsx - CORRECTION
 import React, { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 
@@ -14,6 +14,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredRole,
 }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const location = useLocation();
 
   // Show loading spinner while checking authentication
   if (isLoading) {
@@ -21,15 +22,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Chargement...</p>
+          <p className="text-muted-foreground">
+            Vérification de l'authentification...
+          </p>
         </div>
       </div>
     );
   }
 
-  // Redirect to login if not authenticated
+  // ✅ CORRECTION: Redirect to login with state to remember intended location
   if (!isAuthenticated) {
-    return <Navigate to="/auth/login" replace />;
+    return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
   // Check role if required
@@ -43,6 +46,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           <p className="text-muted-foreground">
             Vous n'avez pas les permissions nécessaires pour accéder à cette
             page.
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Rôle requis: {requiredRole} - Votre rôle: {user?.role}
           </p>
         </div>
       </div>

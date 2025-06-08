@@ -1,4 +1,4 @@
-// frontend/src/components/layout/Header.tsx
+// frontend/src/components/layout/Header.tsx - CORRECTION BREADCRUMBS
 import React from "react";
 import { SidebarTrigger } from "../ui/sidebar";
 import { Separator } from "../ui/separator";
@@ -21,8 +21,10 @@ const Header: React.FC = () => {
   const getBreadcrumbs = () => {
     const pathSegments = location.pathname.split("/").filter(Boolean);
 
+    // ✅ CORRECTION: Mapping amélioré pour toutes les routes
     const breadcrumbMap: Record<string, string> = {
       "": "Tableau de bord",
+      dashboard: "Tableau de bord",
       seeds: "Lots de semences",
       varieties: "Variétés",
       multipliers: "Multiplicateurs",
@@ -32,19 +34,36 @@ const Header: React.FC = () => {
       users: "Utilisateurs",
       settings: "Paramètres",
       create: "Créer",
+      edit: "Modifier",
     };
 
-    if (pathSegments.length === 0) {
-      return [{ label: "Tableau de bord", href: "/" }];
+    // ✅ CORRECTION: Gestion spéciale pour la route racine et dashboard
+    if (
+      pathSegments.length === 0 ||
+      (pathSegments.length === 1 && pathSegments[0] === "dashboard")
+    ) {
+      return [{ label: "Tableau de bord", href: "/dashboard" }];
     }
 
     const breadcrumbs = pathSegments.map((segment, index) => {
       const href = "/" + pathSegments.slice(0, index + 1).join("/");
-      const label = breadcrumbMap[segment] || segment;
+
+      // ✅ CORRECTION: Gestion spéciale pour les IDs (segments qui ressemblent à des IDs)
+      let label;
+      if (segment.match(/^[A-Z0-9-]+$/i) && index > 0) {
+        // C'est probablement un ID, utiliser le segment précédent + "Détail"
+        const previousSegment = pathSegments[index - 1];
+        const entityName = breadcrumbMap[previousSegment] || previousSegment;
+        label = `${entityName} - ${segment}`;
+      } else {
+        label = breadcrumbMap[segment] || segment;
+      }
+
       return { label, href };
     });
 
-    return [{ label: "Tableau de bord", href: "/" }, ...breadcrumbs];
+    // ✅ CORRECTION: Toujours commencer par le tableau de bord
+    return [{ label: "Tableau de bord", href: "/dashboard" }, ...breadcrumbs];
   };
 
   const breadcrumbs = getBreadcrumbs();
