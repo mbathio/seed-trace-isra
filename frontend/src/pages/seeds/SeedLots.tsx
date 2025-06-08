@@ -2,24 +2,14 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import {
-  Plus,
-  Search,
-  Filter,
-  Download,
-  Eye,
-  Edit,
-  QrCode,
-} from "lucide-react";
+import { Plus, Download, Eye, QrCode } from "lucide-react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
 import {
   Table,
@@ -73,7 +63,13 @@ const SeedLots: React.FC = () => {
   });
 
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { variant: any; label: string }> = {
+    const statusMap: Record<
+      string,
+      {
+        variant: "default" | "secondary" | "destructive" | "outline";
+        label: string;
+      }
+    > = {
       pending: { variant: "secondary", label: "En attente" },
       certified: { variant: "default", label: "Certifié" },
       rejected: { variant: "destructive", label: "Rejeté" },

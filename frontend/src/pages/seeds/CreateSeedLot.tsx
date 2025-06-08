@@ -13,7 +13,6 @@ import {
 } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
 import {
   Select,
@@ -36,10 +35,11 @@ import { api } from "../../services/api";
 import { SEED_LEVELS } from "../../constants";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { seedLotValidationSchema } from "../../utils/validators";
+import { Variety, Multiplier, SeedLot } from "../../types/entities";
 
 interface CreateSeedLotForm {
   varietyId: number;
-  level: string;
+  level: "GO" | "G1" | "G2" | "G3" | "G4" | "R1" | "R2";
   quantity: number;
   productionDate: string;
   expiryDate?: string;
@@ -48,6 +48,19 @@ interface CreateSeedLotForm {
   parentLotId?: string;
   notes?: string;
   batchNumber?: string;
+}
+
+interface CreateSeedLotResponse {
+  data: SeedLot;
+}
+
+interface ErrorResponse {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
 }
 
 const CreateSeedLot: React.FC = () => {
@@ -63,7 +76,7 @@ const CreateSeedLot: React.FC = () => {
   });
 
   // Fetch varieties
-  const { data: varieties } = useQuery({
+  const { data: varieties } = useQuery<Variety[]>({
     queryKey: ["varieties"],
     queryFn: async () => {
       const response = await api.get("/varieties");
@@ -72,7 +85,7 @@ const CreateSeedLot: React.FC = () => {
   });
 
   // Fetch multipliers
-  const { data: multipliers } = useQuery({
+  const { data: multipliers } = useQuery<Multiplier[]>({
     queryKey: ["multipliers"],
     queryFn: async () => {
       const response = await api.get("/multipliers");
@@ -81,7 +94,7 @@ const CreateSeedLot: React.FC = () => {
   });
 
   // Fetch parent lots for genealogy
-  const { data: parentLots } = useQuery({
+  const { data: parentLots } = useQuery<SeedLot[]>({
     queryKey: ["parent-lots", form.watch("level")],
     queryFn: async () => {
       const currentLevel = form.getValues("level");
@@ -102,7 +115,11 @@ const CreateSeedLot: React.FC = () => {
     enabled: !!form.watch("level"),
   });
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<
+    CreateSeedLotResponse,
+    Error,
+    CreateSeedLotForm
+  >({
     mutationFn: async (data: CreateSeedLotForm) => {
       const response = await api.post("/seeds", data);
       return response.data;
@@ -111,11 +128,14 @@ const CreateSeedLot: React.FC = () => {
       toast.success("Lot de semences créé avec succès !");
       navigate(`/seeds/${data.data.id}`);
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error("Create error:", error);
-      toast.error(
-        error.response?.data?.message || "Erreur lors de la création du lot"
-      );
+      const errorResponse = error as ErrorResponse;
+      const errorMessage =
+        errorResponse?.response?.data?.message ||
+        errorResponse?.message ||
+        "Erreur lors de la création du lot";
+      toast.error(errorMessage);
     },
   });
 
@@ -178,7 +198,7 @@ const CreateSeedLot: React.FC = () => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {varieties?.map((variety: any) => (
+                          {varieties?.map((variety) => (
                             <SelectItem
                               key={variety.id}
                               value={variety.id.toString()}
@@ -319,7 +339,7 @@ const CreateSeedLot: React.FC = () => {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="">Aucun parent</SelectItem>
-                          {parentLots?.map((lot: any) => (
+                          {parentLots?.map((lot) => (
                             <SelectItem key={lot.id} value={lot.id}>
                               {lot.id} - {lot.variety.name}
                             </SelectItem>
@@ -364,7 +384,7 @@ const CreateSeedLot: React.FC = () => {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="">Aucun multiplicateur</SelectItem>
-                          {multipliers?.map((multiplier: any) => (
+                          {multipliers?.map((multiplier) => (
                             <SelectItem
                               key={multiplier.id}
                               value={multiplier.id.toString()}

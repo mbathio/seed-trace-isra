@@ -3,12 +3,11 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
-  Seedling,
+  Sprout,
   Users,
   FlaskConical,
   Tractor,
   TrendingUp,
-  TrendingDown,
   Plus,
   Activity,
 } from "lucide-react";
@@ -72,7 +71,7 @@ const Dashboard: React.FC = () => {
     {
       title: "Lots de semences",
       value: formatNumber(stats?.overview.totalSeedLots || 0),
-      icon: Seedling,
+      icon: Sprout,
       color: "text-green-600",
       description: `${stats?.overview.activeSeedLots || 0} actifs`,
     },
@@ -273,7 +272,7 @@ const Dashboard: React.FC = () => {
             </Button>
             <Button asChild variant="outline" className="w-full justify-start">
               <Link to="/varieties/create">
-                <Seedling className="h-4 w-4 mr-2" />
+                <Sprout className="h-4 w-4 mr-2" />
                 Ajouter variété
               </Link>
             </Button>

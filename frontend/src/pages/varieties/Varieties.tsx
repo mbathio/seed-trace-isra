@@ -2,11 +2,10 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Plus, Search, Filter, Download, Eye, Edit, Leaf } from "lucide-react";
+import { Plus, Download, Eye, Edit, Leaf } from "lucide-react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
@@ -64,7 +63,13 @@ const Varieties: React.FC = () => {
   });
 
   const getCropTypeBadge = (cropType: string) => {
-    const typeMap: Record<string, { variant: any; label: string }> = {
+    const typeMap: Record<
+      string,
+      {
+        variant: "default" | "secondary" | "destructive" | "outline";
+        label: string;
+      }
+    > = {
       RICE: { variant: "default", label: "Riz" },
       MAIZE: { variant: "secondary", label: "Maïs" },
       PEANUT: { variant: "outline", label: "Arachide" },

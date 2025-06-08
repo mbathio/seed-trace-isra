@@ -44,6 +44,15 @@ import { api } from "../../services/api";
 import { SeedLot } from "../../types/entities";
 import { formatDate, formatNumber } from "../../utils/formatters";
 
+interface LabelProps {
+  className?: string;
+  children: React.ReactNode;
+}
+
+const Label: React.FC<LabelProps> = ({ className = "", children }) => (
+  <span className={`text-sm font-medium ${className}`}>{children}</span>
+);
+
 const SeedLotDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -62,7 +71,13 @@ const SeedLotDetail: React.FC = () => {
   });
 
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { variant: any; label: string }> = {
+    const statusMap: Record<
+      string,
+      {
+        variant: "default" | "secondary" | "destructive" | "outline";
+        label: string;
+      }
+    > = {
       pending: { variant: "secondary", label: "En attente" },
       certified: { variant: "default", label: "Certifié" },
       rejected: { variant: "destructive", label: "Rejeté" },
@@ -500,11 +515,5 @@ const SeedLotDetail: React.FC = () => {
     </div>
   );
 };
-
-// Helper component for labels
-const Label: React.FC<{ className?: string; children: React.ReactNode }> = ({
-  className = "",
-  children,
-}) => <span className={`text-sm font-medium ${className}`}>{children}</span>;
 
 export default SeedLotDetail;

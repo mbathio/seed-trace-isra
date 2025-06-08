@@ -17,7 +17,7 @@ import {
 import {
   Home,
   Leaf,
-  Seedling,
+  Sprout,
   Users,
   FlaskConical,
   Tractor,
@@ -50,7 +50,7 @@ const AppSidebar: React.FC = () => {
         {
           title: "Lots de semences",
           url: "/seeds",
-          icon: Seedling,
+          icon: Sprout,
         },
         {
           title: "Variétés",

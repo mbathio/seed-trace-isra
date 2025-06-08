@@ -21,6 +21,15 @@ interface LoginForm {
   password: string;
 }
 
+interface ErrorResponse {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
@@ -44,12 +53,14 @@ const Login: React.FC = () => {
       await login(data.email, data.password);
       toast.success("Connexion réussie !");
       navigate("/");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Login error:", error);
-      toast.error(
-        error.response?.data?.message ||
-          "Erreur de connexion. Vérifiez vos identifiants."
-      );
+      const errorResponse = error as ErrorResponse;
+      const errorMessage =
+        errorResponse?.response?.data?.message ||
+        errorResponse?.message ||
+        "Erreur de connexion. Vérifiez vos identifiants.";
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

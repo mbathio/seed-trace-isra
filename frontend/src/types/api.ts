@@ -1,3 +1,4 @@
+// frontend/src/types/api.ts
 export interface ApiResponse<T = any> {
   success: boolean;
   message: string;
@@ -27,4 +28,5 @@ export interface FilterParams {
   multiplierId?: number;
   startDate?: string;
   endDate?: string;
+  cropType?: string; // Propriété manquante ajoutée
 }
