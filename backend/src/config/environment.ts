@@ -17,12 +17,12 @@ export const config = {
   },
 
   jwt: {
-    // ✅ CORRECTION: Secret JWT plus robuste avec validation
+    // ✅ CORRECTION: Assurer le typage correct
     secret:
       process.env.JWT_SECRET ||
       "isra-seeds-super-secret-key-change-in-production-please-make-it-very-long-and-secure",
-    accessTokenExpiry: process.env.JWT_ACCESS_EXPIRY || "15m",
-    refreshTokenExpiry: process.env.JWT_REFRESH_EXPIRY || "7d",
+    accessTokenExpiry: (process.env.JWT_ACCESS_EXPIRY || "15m") as string,
+    refreshTokenExpiry: (process.env.JWT_REFRESH_EXPIRY || "7d") as string,
   },
 
   client: {

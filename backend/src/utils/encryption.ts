@@ -22,34 +22,21 @@ export class EncryptionService {
       throw new Error("JWT_SECRET doit être une chaîne de caractères valide");
     }
 
-    // ✅ SOLUTION FINALE: Typage explicite des options
+    // Préparer le payload commun
     const tokenPayload = {
       userId: payload.userId,
       email: payload.email,
       role: payload.role,
     };
 
-    // ✅ CORRECTION: Typage explicite avec assertion de type
-    const accessTokenOptions: jwt.SignOptions = {
-      expiresIn: config.jwt.accessTokenExpiry as string,
-    };
+    // ✅ CORRECTION FINALE: Type assertion appropriée pour StringValue
+    const accessToken = jwt.sign(tokenPayload, secret, {
+      expiresIn: config.jwt.accessTokenExpiry as jwt.StringValue,
+    });
 
-    const refreshTokenOptions: jwt.SignOptions = {
-      expiresIn: config.jwt.refreshTokenExpiry as string,
-    };
-
-    // ✅ CORRECTION: Cast du secret pour éviter les conflits de surcharge
-    const accessToken = jwt.sign(
-      tokenPayload,
-      secret as jwt.Secret,
-      accessTokenOptions
-    );
-
-    const refreshToken = jwt.sign(
-      { userId: payload.userId },
-      secret as jwt.Secret,
-      refreshTokenOptions
-    );
+    const refreshToken = jwt.sign({ userId: payload.userId }, secret, {
+      expiresIn: config.jwt.refreshTokenExpiry as jwt.StringValue,
+    });
 
     return { accessToken, refreshToken };
   }
@@ -62,8 +49,7 @@ export class EncryptionService {
     }
 
     try {
-      // ✅ CORRECTION: Cast du secret et du résultat
-      const decoded = jwt.verify(token, secret as jwt.Secret) as any;
+      const decoded = jwt.verify(token, secret) as any;
 
       if (!decoded.userId) {
         throw new Error("Token invalide: userId manquant");
