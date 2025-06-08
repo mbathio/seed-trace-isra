@@ -18,7 +18,7 @@ export const seedLotValidationSchema = yup.object({
       "is-after-production",
       "La date d'expiration doit être après la production",
       function (value) {
-        if (!value) return true; // Si pas de date d'expiration, c'est valide
+        if (!value) return true;
         const { productionDate } = this.parent;
         if (!productionDate) return true;
         return new Date(value) > new Date(productionDate);
@@ -92,4 +92,34 @@ export const varietyValidationSchema = yup.object({
     .number()
     .min(1900, "Année trop ancienne")
     .max(new Date().getFullYear(), "Année future non autorisée"),
+});
+
+export const multiplierValidationSchema = yup.object({
+  name: yup.string().required("Nom requis").min(2, "Nom trop court"),
+  address: yup.string().required("Adresse requise"),
+  latitude: yup
+    .number()
+    .min(-90, "Latitude invalide")
+    .max(90, "Latitude invalide")
+    .required("Latitude requise"),
+  longitude: yup
+    .number()
+    .min(-180, "Longitude invalide")
+    .max(180, "Longitude invalide")
+    .required("Longitude requise"),
+  yearsExperience: yup
+    .number()
+    .min(0, "Expérience ne peut pas être négative")
+    .required("Années d'expérience requises"),
+  certificationLevel: yup
+    .string()
+    .oneOf(["BEGINNER", "INTERMEDIATE", "EXPERT"])
+    .required("Niveau de certification requis"),
+  specialization: yup
+    .array()
+    .of(yup.string())
+    .min(1, "Au moins une spécialisation requise")
+    .required("Spécialisations requises"),
+  phone: yup.string().optional(),
+  email: yup.string().email("Email invalide").optional(),
 });

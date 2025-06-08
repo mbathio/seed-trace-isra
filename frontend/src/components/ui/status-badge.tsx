@@ -1,31 +1,55 @@
-// frontend/src/components/ui/status-badge.tsx
 import React from "react";
 import { Badge, BadgeProps } from "@/components/ui/badge";
 
 interface StatusBadgeProps extends Omit<BadgeProps, "variant"> {
   status: string;
-  statusMap?: Record<string, { variant: BadgeProps["variant"]; label: string }>;
+  type?:
+    | "lot"
+    | "production"
+    | "user"
+    | "multiplier"
+    | "parcel"
+    | "contract"
+    | "quality";
 }
 
-const defaultStatusMap: Record<
-  string,
-  { variant: BadgeProps["variant"]; label: string }
-> = {
-  active: { variant: "default", label: "Actif" },
-  inactive: { variant: "secondary", label: "Inactif" },
-  pending: { variant: "outline", label: "En attente" },
-  approved: { variant: "default", label: "Approuvé" },
-  rejected: { variant: "destructive", label: "Rejeté" },
-  draft: { variant: "secondary", label: "Brouillon" },
-  published: { variant: "default", label: "Publié" },
+const statusMaps = {
+  lot: {
+    PENDING: { variant: "outline" as const, label: "En attente" },
+    CERTIFIED: { variant: "default" as const, label: "Certifié" },
+    REJECTED: { variant: "destructive" as const, label: "Rejeté" },
+    IN_STOCK: { variant: "secondary" as const, label: "En stock" },
+    ACTIVE: { variant: "default" as const, label: "Actif" },
+    DISTRIBUTED: { variant: "secondary" as const, label: "Distribué" },
+    SOLD: { variant: "outline" as const, label: "Vendu" },
+  },
+  production: {
+    PLANNED: { variant: "outline" as const, label: "Planifiée" },
+    IN_PROGRESS: { variant: "default" as const, label: "En cours" },
+    COMPLETED: { variant: "secondary" as const, label: "Terminée" },
+    CANCELLED: { variant: "destructive" as const, label: "Annulée" },
+  },
+  multiplier: {
+    ACTIVE: { variant: "default" as const, label: "Actif" },
+    INACTIVE: { variant: "secondary" as const, label: "Inactif" },
+  },
+  quality: {
+    PASS: { variant: "default" as const, label: "Réussi" },
+    FAIL: { variant: "destructive" as const, label: "Échec" },
+  },
+  // Autres mappings...
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
   status,
-  statusMap = defaultStatusMap,
+  type = "lot",
   ...props
 }) => {
-  const config = statusMap[status] || { variant: "outline", label: status };
+  const statusMap = statusMaps[type] || statusMaps.lot;
+  const config = statusMap[status] || {
+    variant: "outline" as const,
+    label: status,
+  };
 
   return (
     <Badge variant={config.variant} {...props}>

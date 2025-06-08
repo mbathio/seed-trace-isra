@@ -17,33 +17,62 @@ export const CROP_TYPES = [
   { value: "MILLET", label: "Mil" },
 ];
 
+// ✅ CORRECTION: Utiliser les mêmes valeurs que dans la DB (MAJUSCULES + underscore)
 export const LOT_STATUSES = [
-  { value: "pending", label: "En attente" },
-  { value: "certified", label: "Certifié" },
-  { value: "rejected", label: "Rejeté" },
-  { value: "in-stock", label: "En stock" },
-  { value: "active", label: "Actif" },
-  { value: "distributed", label: "Distribué" },
+  { value: "PENDING", label: "En attente" },
+  { value: "CERTIFIED", label: "Certifié" },
+  { value: "REJECTED", label: "Rejeté" },
+  { value: "IN_STOCK", label: "En stock" },
+  { value: "ACTIVE", label: "Actif" },
+  { value: "DISTRIBUTED", label: "Distribué" },
+  { value: "SOLD", label: "Vendu" },
 ];
 
+// ✅ CORRECTION: Utiliser les mêmes valeurs que dans la DB (MAJUSCULES)
 export const USER_ROLES = [
-  { value: "admin", label: "Administrateur" },
-  { value: "manager", label: "Manager" },
-  { value: "researcher", label: "Chercheur" },
-  { value: "technician", label: "Technicien" },
-  { value: "inspector", label: "Inspecteur" },
-  { value: "multiplier", label: "Multiplicateur" },
-  { value: "guest", label: "Invité" },
+  { value: "ADMIN", label: "Administrateur" },
+  { value: "MANAGER", label: "Manager" },
+  { value: "RESEARCHER", label: "Chercheur" },
+  { value: "TECHNICIAN", label: "Technicien" },
+  { value: "INSPECTOR", label: "Inspecteur" },
+  { value: "MULTIPLIER", label: "Multiplicateur" },
+  { value: "GUEST", label: "Invité" },
 ];
 
+// ✅ CORRECTION: Utiliser les mêmes valeurs que dans la DB (MAJUSCULES)
 export const QUALITY_TEST_RESULTS = [
-  { value: "pass", label: "Réussi" },
-  { value: "fail", label: "Échec" },
+  { value: "PASS", label: "Réussi" },
+  { value: "FAIL", label: "Échec" },
 ];
 
+// ✅ CORRECTION: Utiliser les mêmes valeurs que dans la DB (MAJUSCULES + underscore)
 export const PRODUCTION_STATUSES = [
-  { value: "planned", label: "Planifiée" },
-  { value: "in-progress", label: "En cours" },
-  { value: "completed", label: "Terminée" },
-  { value: "cancelled", label: "Annulée" },
+  { value: "PLANNED", label: "Planifiée" },
+  { value: "IN_PROGRESS", label: "En cours" },
+  { value: "COMPLETED", label: "Terminée" },
+  { value: "CANCELLED", label: "Annulée" },
+];
+
+export const MULTIPLIER_STATUSES = [
+  { value: "ACTIVE", label: "Actif" },
+  { value: "INACTIVE", label: "Inactif" },
+];
+
+export const CERTIFICATION_LEVELS = [
+  { value: "BEGINNER", label: "Débutant" },
+  { value: "INTERMEDIATE", label: "Intermédiaire" },
+  { value: "EXPERT", label: "Expert" },
+];
+
+export const PARCEL_STATUSES = [
+  { value: "AVAILABLE", label: "Disponible" },
+  { value: "IN_USE", label: "En cours d'utilisation" },
+  { value: "RESTING", label: "En repos" },
+];
+
+export const CONTRACT_STATUSES = [
+  { value: "DRAFT", label: "Brouillon" },
+  { value: "ACTIVE", label: "Actif" },
+  { value: "COMPLETED", label: "Terminé" },
+  { value: "CANCELLED", label: "Annulé" },
 ];
