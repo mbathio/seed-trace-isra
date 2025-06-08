@@ -1,7 +1,7 @@
 // frontend/src/pages/seeds/CreateSeedLot.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import {
@@ -21,15 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "../../components/ui/form";
+import { Label } from "../../components/ui/label";
 import { toast } from "react-toastify";
 import { api } from "../../services/api";
 import { SEED_LEVELS } from "../../constants";
@@ -67,7 +59,13 @@ const CreateSeedLot: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<CreateSeedLotForm>({
+  const {
+    control,
+    handleSubmit,
+    watch,
+    getValues,
+    formState: { errors },
+  } = useForm<CreateSeedLotForm>({
     resolver: yupResolver(seedLotValidationSchema),
     defaultValues: {
       quantity: 0,
@@ -95,9 +93,9 @@ const CreateSeedLot: React.FC = () => {
 
   // Fetch parent lots for genealogy
   const { data: parentLots } = useQuery<SeedLot[]>({
-    queryKey: ["parent-lots", form.watch("level")],
+    queryKey: ["parent-lots", watch("level")],
     queryFn: async () => {
-      const currentLevel = form.getValues("level");
+      const currentLevel = getValues("level");
       if (!currentLevel) return [];
 
       // Get possible parent levels (previous generation)
@@ -112,7 +110,7 @@ const CreateSeedLot: React.FC = () => {
       });
       return response.data.data;
     },
-    enabled: !!form.watch("level"),
+    enabled: !!watch("level"),
   });
 
   const createMutation = useMutation<
@@ -168,292 +166,293 @@ const CreateSeedLot: React.FC = () => {
         </div>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Informations principales */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Informations principales</CardTitle>
-                <CardDescription>
-                  Détails essentiels du lot de semences
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Informations principales */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Informations principales</CardTitle>
+              <CardDescription>
+                Détails essentiels du lot de semences
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="varietyId">Variété *</Label>
+                <Controller
                   name="varietyId"
+                  control={control}
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Variété *</FormLabel>
-                      <Select
-                        value={field.value?.toString()}
-                        onValueChange={(value) =>
-                          field.onChange(parseInt(value))
-                        }
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner une variété" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {varieties?.map((variety) => (
-                            <SelectItem
-                              key={variety.id}
-                              value={variety.id.toString()}
-                            >
-                              {variety.name} ({variety.code})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
+                    <Select
+                      value={field.value?.toString()}
+                      onValueChange={(value) => field.onChange(parseInt(value))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner une variété" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {varieties?.map((variety) => (
+                          <SelectItem
+                            key={variety.id}
+                            value={variety.id.toString()}
+                          >
+                            {variety.name} ({variety.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
                 />
+                {errors.varietyId && (
+                  <p className="text-sm text-red-500">
+                    {errors.varietyId.message}
+                  </p>
+                )}
+              </div>
 
-                <FormField
-                  control={form.control}
+              <div className="space-y-2">
+                <Label htmlFor="level">Niveau de génération *</Label>
+                <Controller
                   name="level"
+                  control={control}
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Niveau de génération *</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner un niveau" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {SEED_LEVELS.map((level) => (
-                            <SelectItem key={level.value} value={level.value}>
-                              {level.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un niveau" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SEED_LEVELS.map((level) => (
+                          <SelectItem key={level.value} value={level.value}>
+                            {level.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
                 />
+                {errors.level && (
+                  <p className="text-sm text-red-500">{errors.level.message}</p>
+                )}
+              </div>
 
-                <FormField
-                  control={form.control}
+              <div className="space-y-2">
+                <Label htmlFor="quantity">Quantité (kg) *</Label>
+                <Controller
                   name="quantity"
+                  control={control}
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Quantité (kg) *</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          placeholder="0.0"
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(parseFloat(e.target.value) || 0)
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      placeholder="0.0"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(parseFloat(e.target.value) || 0)
+                      }
+                    />
                   )}
                 />
+                {errors.quantity && (
+                  <p className="text-sm text-red-500">
+                    {errors.quantity.message}
+                  </p>
+                )}
+              </div>
 
-                <FormField
-                  control={form.control}
+              <div className="space-y-2">
+                <Label htmlFor="batchNumber">Numéro de lot</Label>
+                <Controller
                   name="batchNumber"
+                  control={control}
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Numéro de lot</FormLabel>
-                      <FormControl>
-                        <Input placeholder="B-2024-001" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        Numéro d'identification du lot (optionnel)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
+                    <Input placeholder="B-2024-001" {...field} />
                   )}
                 />
-              </CardContent>
-            </Card>
+                <p className="text-sm text-muted-foreground">
+                  Numéro d'identification du lot (optionnel)
+                </p>
+                {errors.batchNumber && (
+                  <p className="text-sm text-red-500">
+                    {errors.batchNumber.message}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Dates et traçabilité */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Dates et traçabilité</CardTitle>
-                <CardDescription>
-                  Informations temporelles et généalogie
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
+          {/* Dates et traçabilité */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Dates et traçabilité</CardTitle>
+              <CardDescription>
+                Informations temporelles et généalogie
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="productionDate">Date de production *</Label>
+                <Controller
                   name="productionDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date de production *</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  control={control}
+                  render={({ field }) => <Input type="date" {...field} />}
                 />
+                {errors.productionDate && (
+                  <p className="text-sm text-red-500">
+                    {errors.productionDate.message}
+                  </p>
+                )}
+              </div>
 
-                <FormField
-                  control={form.control}
+              <div className="space-y-2">
+                <Label htmlFor="expiryDate">Date d'expiration</Label>
+                <Controller
                   name="expiryDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date d'expiration</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        Date limite d'utilisation (optionnelle)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  control={control}
+                  render={({ field }) => <Input type="date" {...field} />}
                 />
+                <p className="text-sm text-muted-foreground">
+                  Date limite d'utilisation (optionnelle)
+                </p>
+                {errors.expiryDate && (
+                  <p className="text-sm text-red-500">
+                    {errors.expiryDate.message}
+                  </p>
+                )}
+              </div>
 
-                <FormField
-                  control={form.control}
+              <div className="space-y-2">
+                <Label htmlFor="parentLotId">Lot parent</Label>
+                <Controller
                   name="parentLotId"
+                  control={control}
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Lot parent</FormLabel>
-                      <Select
-                        value={field.value || ""}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner le lot parent" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="">Aucun parent</SelectItem>
-                          {parentLots?.map((lot) => (
-                            <SelectItem key={lot.id} value={lot.id}>
-                              {lot.id} - {lot.variety.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Lot source pour établir la généalogie
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
+                    <Select
+                      value={field.value || ""}
+                      onValueChange={field.onChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner le lot parent" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Aucun parent</SelectItem>
+                        {parentLots?.map((lot) => (
+                          <SelectItem key={lot.id} value={lot.id}>
+                            {lot.id} - {lot.variety.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
                 />
-              </CardContent>
-            </Card>
+                <p className="text-sm text-muted-foreground">
+                  Lot source pour établir la généalogie
+                </p>
+                {errors.parentLotId && (
+                  <p className="text-sm text-red-500">
+                    {errors.parentLotId.message}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Production et localisation */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Production et localisation</CardTitle>
-                <CardDescription>
-                  Informations sur le producteur et la parcelle
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
+          {/* Production et localisation */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Production et localisation</CardTitle>
+              <CardDescription>
+                Informations sur le producteur et la parcelle
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="multiplierId">Multiplicateur</Label>
+                <Controller
                   name="multiplierId"
+                  control={control}
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Multiplicateur</FormLabel>
-                      <Select
-                        value={field.value?.toString() || ""}
-                        onValueChange={(value) =>
-                          field.onChange(value ? parseInt(value) : undefined)
-                        }
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner un multiplicateur" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="">Aucun multiplicateur</SelectItem>
-                          {multipliers?.map((multiplier) => (
-                            <SelectItem
-                              key={multiplier.id}
-                              value={multiplier.id.toString()}
-                            >
-                              {multiplier.name} - {multiplier.address}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        Producteur responsable du lot (optionnel)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
+                    <Select
+                      value={field.value?.toString() || ""}
+                      onValueChange={(value) =>
+                        field.onChange(value ? parseInt(value) : undefined)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un multiplicateur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Aucun multiplicateur</SelectItem>
+                        {multipliers?.map((multiplier) => (
+                          <SelectItem
+                            key={multiplier.id}
+                            value={multiplier.id.toString()}
+                          >
+                            {multiplier.name} - {multiplier.address}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
                 />
-              </CardContent>
-            </Card>
+                <p className="text-sm text-muted-foreground">
+                  Producteur responsable du lot (optionnel)
+                </p>
+                {errors.multiplierId && (
+                  <p className="text-sm text-red-500">
+                    {errors.multiplierId.message}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Notes et observations */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Notes et observations</CardTitle>
-                <CardDescription>Informations complémentaires</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <FormField
-                  control={form.control}
+          {/* Notes et observations */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Notes et observations</CardTitle>
+              <CardDescription>Informations complémentaires</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Controller
                   name="notes"
+                  control={control}
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Observations, conditions particulières, remarques..."
-                          className="min-h-[100px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Notes libres sur le lot (optionnel)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
+                    <Textarea
+                      placeholder="Observations, conditions particulières, remarques..."
+                      className="min-h-[100px]"
+                      {...field}
+                    />
                   )}
                 />
-              </CardContent>
-            </Card>
-          </div>
+                <p className="text-sm text-muted-foreground">
+                  Notes libres sur le lot (optionnel)
+                </p>
+                {errors.notes && (
+                  <p className="text-sm text-red-500">{errors.notes.message}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* Actions */}
-          <div className="flex justify-end space-x-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate("/seeds")}
-            >
-              Annuler
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              <Save className="mr-2 h-4 w-4" />
-              Créer le lot
-            </Button>
-          </div>
-        </form>
-      </Form>
+        {/* Actions */}
+        <div className="flex justify-end space-x-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate("/seeds")}
+          >
+            Annuler
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Save className="mr-2 h-4 w-4" />
+            Créer le lot
+          </Button>
+        </div>
+      </form>
     </div>
   );
 };

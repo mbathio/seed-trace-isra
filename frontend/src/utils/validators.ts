@@ -10,17 +10,24 @@ export const seedLotValidationSchema = yup.object({
     .number()
     .positive("La quantité doit être positive")
     .required("Quantité requise"),
-  productionDate: yup
-    .date()
-    .required("Date de production requise")
-    .max(new Date(), "La date ne peut pas être dans le futur"),
+  productionDate: yup.string().required("Date de production requise"),
   expiryDate: yup
-    .date()
-    .min(
-      yup.ref("productionDate"),
-      "La date d'expiration doit être après la production"
+    .string()
+    .optional()
+    .test(
+      "is-after-production",
+      "La date d'expiration doit être après la production",
+      function (value) {
+        if (!value) return true; // Si pas de date d'expiration, c'est valide
+        const { productionDate } = this.parent;
+        if (!productionDate) return true;
+        return new Date(value) > new Date(productionDate);
+      }
     ),
   notes: yup.string().max(500, "Notes trop longues (max 500 caractères)"),
+  batchNumber: yup.string().optional(),
+  multiplierId: yup.number().optional(),
+  parentLotId: yup.string().optional(),
 });
 
 export const qualityControlValidationSchema = yup.object({
