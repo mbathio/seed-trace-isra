@@ -1,4 +1,4 @@
-// prisma/seed.ts
+// prisma/seed.ts (corrigé)
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 
@@ -8,10 +8,11 @@ async function main() {
   console.log("🌱 Début du seeding de la base de données...");
 
   // Nettoyer la base de données
-  await prisma.qualityControl.deleteMany();
+  await prisma.activityInput.deleteMany();
   await prisma.productionActivity.deleteMany();
   await prisma.productionIssue.deleteMany();
   await prisma.weatherData.deleteMany();
+  await prisma.qualityControl.deleteMany();
   await prisma.production.deleteMany();
   await prisma.report.deleteMany();
   await prisma.refreshToken.deleteMany();
@@ -28,7 +29,7 @@ async function main() {
   console.log("🧹 Base de données nettoyée");
 
   // Créer les utilisateurs (MOCK_USERS du frontend)
-  const hashedPassword = await bcrypt.hash("12345", 12);
+  const hashedPassword = await bcrypt.hash("123456", 12);
 
   const users = await Promise.all([
     prisma.user.create({
@@ -378,22 +379,20 @@ async function main() {
   console.log("🌱 Lots de semences créés:", seedLots.length);
 
   // Créer les contrôles qualité
-  await Promise.all([
-    prisma.qualityControl.create({
-      data: {
-        lotId: "SL-R1-2024-003",
-        controlDate: new Date("2024-03-10"),
-        germinationRate: 82.1,
-        varietyPurity: 96.8,
-        moistureContent: 13.5,
-        seedHealth: 95.2,
-        result: "PASS",
-        observations: "Qualité commerciale acceptable",
-        testMethod: "Test rapide",
-        inspectorId: 4,
-      },
-    }),
-  ]);
+  await prisma.qualityControl.create({
+    data: {
+      lotId: "SL-R1-2024-003",
+      controlDate: new Date("2024-03-10"),
+      germinationRate: 82.1,
+      varietyPurity: 96.8,
+      moistureContent: 13.5,
+      seedHealth: 95.2,
+      result: "PASS",
+      observations: "Qualité commerciale acceptable",
+      testMethod: "Test rapide",
+      inspectorId: 4,
+    },
+  });
 
   console.log("🔬 Contrôles qualité créés");
 
@@ -435,6 +434,7 @@ async function main() {
   const productions = await Promise.all([
     prisma.production.create({
       data: {
+        id: 1,
         lotId: "SL-G1-2024-001",
         multiplierId: 1,
         parcelId: 1,
@@ -451,6 +451,7 @@ async function main() {
     }),
     prisma.production.create({
       data: {
+        id: 2,
         lotId: "SL-G2-2024-002",
         multiplierId: 2,
         parcelId: 2,
@@ -467,6 +468,7 @@ async function main() {
     }),
     prisma.production.create({
       data: {
+        id: 3,
         lotId: "SL-R1-2024-003",
         multiplierId: 4,
         parcelId: 4,
@@ -486,7 +488,7 @@ async function main() {
   await Promise.all([
     prisma.productionActivity.create({
       data: {
-        productionId: 1,
+        productionId: 1, // Référence à la production créée
         type: "SOIL_PREPARATION",
         activityDate: new Date("2024-01-16"),
         description: "Préparation du sol avec labour et hersage",
@@ -508,7 +510,7 @@ async function main() {
     }),
     prisma.productionActivity.create({
       data: {
-        productionId: 1,
+        productionId: 1, // Référence à la production créée
         type: "SOWING",
         activityDate: new Date("2024-01-20"),
         description: "Semis des graines Sahel 108 G1",
@@ -633,7 +635,7 @@ async function main() {
   console.log("   👨‍🌾 4 multiplicateurs");
   console.log("   🏞️ 4 parcelles");
   console.log("   🌱 4 lots de semences");
-  console.log("   🔬 3 contrôles qualité");
+  console.log("   🔬 1 contrôle qualité");
   console.log("   📋 2 contrats");
   console.log("   🚜 3 productions");
   console.log("   📝 Activités et problèmes");

@@ -1,3 +1,4 @@
+// backend/src/app.ts (corrigé)
 import express, { Application, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -10,8 +11,15 @@ import path from "path";
 // Import des routes
 import authRoutes from "./routes/auth";
 import userRoutes from "./routes/users";
-import seedRoutes from "./routes/seedLots";
-// ... autres imports de routes
+import seedLotRoutes from "./routes/seedLots";
+import varietyRoutes from "./routes/varieties";
+import multiplierRoutes from "./routes/multipliers";
+import parcelRoutes from "./routes/parcels";
+import productionRoutes from "./routes/productions";
+import qualityControlRoutes from "./routes/qualityControls";
+import reportRoutes from "./routes/reports";
+import statisticsRoutes from "./routes/statistics";
+import exportRoutes from "./routes/export";
 
 // Import des middlewares
 import { errorHandler } from "./middleware/errorHandler";
@@ -26,10 +34,11 @@ class App {
     this.app = express();
     this.configureMiddlewares();
     this.configureRoutes();
+    this.configureErrorHandling();
   }
 
   private configureMiddlewares(): void {
-    // Configuration CORS corrigée
+    // Configuration CORS
     const corsOptions = {
       origin: process.env.CLIENT_URL || "http://localhost:5173",
       credentials: true,
@@ -59,8 +68,12 @@ class App {
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
       max: 100, // Limite de 100 requêtes
-      message:
-        "Trop de requêtes depuis cette IP, veuillez réessayer plus tard.",
+      message: {
+        success: false,
+        message:
+          "Trop de requêtes depuis cette IP, veuillez réessayer plus tard.",
+        data: null,
+      },
     });
     this.app.use("/api/", limiter);
 
@@ -78,24 +91,62 @@ class App {
         status: "OK",
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || "development",
-        version: process.env.npm_package_version || "1.0.0",
+        version: "1.0.0",
+        services: {
+          database: "connected",
+          api: "running",
+        },
       });
     });
 
     // Routes API
     this.app.use("/api/auth", authRoutes);
     this.app.use("/api/users", userRoutes);
-    this.app.use("/api/seeds", seedRoutes);
-    // ... autres routes
+    this.app.use("/api/seed-lots", seedLotRoutes);
+    this.app.use("/api/varieties", varietyRoutes);
+    this.app.use("/api/multipliers", multiplierRoutes);
+    this.app.use("/api/parcels", parcelRoutes);
+    this.app.use("/api/productions", productionRoutes);
+    this.app.use("/api/quality-controls", qualityControlRoutes);
+    this.app.use("/api/reports", reportRoutes);
+    this.app.use("/api/statistics", statisticsRoutes);
+    this.app.use("/api/export", exportRoutes);
 
     // Route de base
     this.app.get("/", (req: Request, res: Response) => {
       res.json({
-        message: "ISRA Seed Trace API",
+        message: "🌾 ISRA Seed Trace API",
         version: "1.0.0",
         documentation: "/api/docs",
+        health: "/api/health",
+        endpoints: {
+          auth: "/api/auth",
+          seedLots: "/api/seed-lots",
+          varieties: "/api/varieties",
+          multipliers: "/api/multipliers",
+          parcels: "/api/parcels",
+          productions: "/api/productions",
+          qualityControls: "/api/quality-controls",
+          reports: "/api/reports",
+          statistics: "/api/statistics",
+          export: "/api/export",
+        },
       });
     });
+
+    // Route 404 pour les endpoints API non trouvés
+    this.app.use("/api/*", (req: Request, res: Response) => {
+      res.status(404).json({
+        success: false,
+        message: `Endpoint non trouvé: ${req.method} ${req.originalUrl}`,
+        data: null,
+      });
+    });
+  }
+
+  private configureErrorHandling(): void {
+    // Gestionnaire d'erreurs global
+    this.app.use(errorHandler);
   }
 
   // Méthode pour obtenir l'application Express
