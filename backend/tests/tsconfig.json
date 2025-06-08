@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../",
+    "outDir": "../dist",
+    "types": ["node", "jest", "@types/jest", "@jest/globals"],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": "../",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["**/*.test.ts", "**/*.spec.ts", "setup.ts", "../src/**/*"],
+  "exclude": ["node_modules", "../dist"]
+}

@@ -1,0 +1,124 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15.4-alpine # Version spécifique plus sécurisée
+    environment:
+      POSTGRES_USER: isra_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-isra_secure_password_2024}
+      POSTGRES_DB: isra_seeds
+      # Sécurisation supplémentaire
+      POSTGRES_INITDB_ARGS: "--auth-host=md5"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U isra_user -d isra_seeds"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    # Sécurité : limiter les ressources
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+  redis:
+    image: redis:7.2-alpine # Version spécifique
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_password_2024}
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.3"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${API_PORT:-3001}:3001"
+    environment:
+      DATABASE_URL: "postgresql://isra_user:${POSTGRES_PASSWORD:-isra_secure_password_2024}@postgres:5432/isra_seeds"
+      JWT_SECRET: "${JWT_SECRET:-your-super-secret-jwt-key-change-in-production-please}"
+      NODE_ENV: "${NODE_ENV:-development}"
+      CLIENT_URL: "${CLIENT_URL:-http://localhost:5173}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:-redis_secure_password_2024}@redis:6379"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+      # En développement seulement
+      - ./src:/app/src:ro
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+    # Sécurité : utilisateur non-root
+    user: "1001:1001"
+
+  # Service optionnel pour le monitoring
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+    profiles: ["monitoring"] # Démarrer avec: docker-compose --profile monitoring up
+
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+    profiles: ["monitoring"]
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# Configuration réseau sécurisée
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
