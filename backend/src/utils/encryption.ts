@@ -22,27 +22,34 @@ export class EncryptionService {
       throw new Error("JWT_SECRET doit être une chaîne de caractères valide");
     }
 
-    // ✅ CORRECTION: Générer l'access token avec expiration courte
+    // ✅ SOLUTION FINALE: Typage explicite des options
+    const tokenPayload = {
+      userId: payload.userId,
+      email: payload.email,
+      role: payload.role,
+    };
+
+    // ✅ CORRECTION: Typage explicite avec assertion de type
+    const accessTokenOptions: jwt.SignOptions = {
+      expiresIn: config.jwt.accessTokenExpiry as string,
+    };
+
+    const refreshTokenOptions: jwt.SignOptions = {
+      expiresIn: config.jwt.refreshTokenExpiry as string,
+    };
+
+    // ✅ CORRECTION: Cast du secret pour éviter les conflits de surcharge
     const accessToken = jwt.sign(
-      {
-        userId: payload.userId,
-        email: payload.email,
-        role: payload.role,
-      },
-      secret,
-      {
-        expiresIn: config.jwt.accessTokenExpiry,
-        issuer: "isra-seeds",
-        audience: "isra-seeds-app",
-      }
+      tokenPayload,
+      secret as jwt.Secret,
+      accessTokenOptions
     );
 
-    // ✅ CORRECTION: Générer le refresh token avec expiration longue
-    const refreshToken = jwt.sign({ userId: payload.userId }, secret, {
-      expiresIn: config.jwt.refreshTokenExpiry,
-      issuer: "isra-seeds",
-      audience: "isra-seeds-app",
-    });
+    const refreshToken = jwt.sign(
+      { userId: payload.userId },
+      secret as jwt.Secret,
+      refreshTokenOptions
+    );
 
     return { accessToken, refreshToken };
   }
@@ -55,19 +62,21 @@ export class EncryptionService {
     }
 
     try {
-      // ✅ CORRECTION: Vérification avec options améliorées
-      const decoded = jwt.verify(token, secret, {
-        issuer: "isra-seeds",
-        audience: "isra-seeds-app",
-      }) as JwtPayload;
+      // ✅ CORRECTION: Cast du secret et du résultat
+      const decoded = jwt.verify(token, secret as jwt.Secret) as any;
 
       if (!decoded.userId) {
         throw new Error("Token invalide: userId manquant");
       }
 
-      return decoded;
+      return {
+        userId: decoded.userId,
+        email: decoded.email,
+        role: decoded.role,
+        iat: decoded.iat,
+        exp: decoded.exp,
+      };
     } catch (error: any) {
-      // ✅ CORRECTION: Gestion d'erreur améliorée
       if (error.name === "TokenExpiredError") {
         throw new Error("Token expiré");
       } else if (error.name === "JsonWebTokenError") {
