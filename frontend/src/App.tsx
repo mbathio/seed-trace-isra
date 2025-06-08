@@ -29,6 +29,7 @@ import QualityControls from "./pages/quality/QualityControls";
 import Productions from "./pages/productions/Productions";
 import Reports from "./pages/reports/Reports";
 import Users from "./pages/users/Users";
+import VarietyDetail from "./pages/varieties/VarietyDetail";
 
 // Components
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -78,6 +79,7 @@ function App() {
                 <Route path="varieties">
                   <Route index element={<Varieties />} />
                   <Route path="create" element={<CreateVariety />} />
+                  <Route path=":id" element={<VarietyDetail />} />
                 </Route>
 
                 {/* Multipliers */}

@@ -1,16 +1,18 @@
-// frontend/src/types/api.ts
+// src/types/api.ts - Mise à jour
 export interface ApiResponse<T = any> {
   success: boolean;
   message: string;
   data: T;
-  meta?: {
-    page?: number;
-    pageSize?: number;
-    totalCount?: number;
-    totalPages?: number;
-    hasNextPage?: boolean;
-    hasPreviousPage?: boolean;
-  };
+  meta?: PaginationMeta;
+}
+
+export interface PaginationMeta {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
 }
 
 export interface PaginationParams {
@@ -28,5 +30,6 @@ export interface FilterParams {
   multiplierId?: number;
   startDate?: string;
   endDate?: string;
-  cropType?: string; // Propriété manquante ajoutée
+  cropType?: string;
+  result?: string; // Pour les contrôles qualité
 }
