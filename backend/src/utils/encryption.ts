@@ -1,4 +1,3 @@
-// backend/src/utils/encryption.ts
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { config } from "../config/environment";
@@ -20,25 +19,30 @@ export class EncryptionService {
     const secret = config.jwt.secret;
 
     if (!secret || typeof secret !== "string") {
-      throw new Error("JWT_SECRET must be a valid string");
+      throw new Error("JWT_SECRET doit être une chaîne de caractères valide");
     }
 
-    // ✅ Conversion explicite des options pour TypeScript
+    // ✅ CORRECTION: Générer l'access token avec expiration courte
     const accessToken = jwt.sign(
-      payload,
-      secret as jwt.Secret,
+      {
+        userId: payload.userId,
+        email: payload.email,
+        role: payload.role,
+      },
+      secret,
       {
         expiresIn: config.jwt.accessTokenExpiry,
-      } as jwt.SignOptions
+        issuer: "isra-seeds",
+        audience: "isra-seeds-app",
+      }
     );
 
-    const refreshToken = jwt.sign(
-      { userId: payload.userId },
-      secret as jwt.Secret,
-      {
-        expiresIn: config.jwt.refreshTokenExpiry,
-      } as jwt.SignOptions
-    );
+    // ✅ CORRECTION: Générer le refresh token avec expiration longue
+    const refreshToken = jwt.sign({ userId: payload.userId }, secret, {
+      expiresIn: config.jwt.refreshTokenExpiry,
+      issuer: "isra-seeds",
+      audience: "isra-seeds-app",
+    });
 
     return { accessToken, refreshToken };
   }
@@ -47,10 +51,33 @@ export class EncryptionService {
     const secret = config.jwt.secret;
 
     if (!secret || typeof secret !== "string") {
-      throw new Error("JWT_SECRET must be a valid string");
+      throw new Error("JWT_SECRET doit être une chaîne de caractères valide");
     }
 
-    return jwt.verify(token, secret as jwt.Secret) as JwtPayload;
+    try {
+      // ✅ CORRECTION: Vérification avec options améliorées
+      const decoded = jwt.verify(token, secret, {
+        issuer: "isra-seeds",
+        audience: "isra-seeds-app",
+      }) as JwtPayload;
+
+      if (!decoded.userId) {
+        throw new Error("Token invalide: userId manquant");
+      }
+
+      return decoded;
+    } catch (error: any) {
+      // ✅ CORRECTION: Gestion d'erreur améliorée
+      if (error.name === "TokenExpiredError") {
+        throw new Error("Token expiré");
+      } else if (error.name === "JsonWebTokenError") {
+        throw new Error("Token invalide");
+      } else if (error.name === "NotBeforeError") {
+        throw new Error("Token pas encore valide");
+      } else {
+        throw new Error("Erreur de vérification du token");
+      }
+    }
   }
 
   static generateLotId(level: string, year?: number): string {

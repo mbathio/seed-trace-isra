@@ -1,19 +1,21 @@
 import { Router } from "express";
 import { StatisticsController } from "../controllers/StatisticsController";
-import { requireRole } from "../middleware/auth";
+import { authMiddleware, requireRole } from "../middleware/auth"; // ✅ Import authMiddleware
 
 const router = Router();
 
-// GET /api/statistics/dashboard
+// ✅ CORRECTION: Ajouter authMiddleware avant requireRole
 router.get(
   "/dashboard",
+  authMiddleware, // ✅ AJOUTÉ: Middleware d'authentification
   requireRole("MANAGER", "ADMIN", "RESEARCHER"),
   StatisticsController.getDashboardStats
 );
 
-// GET /api/statistics/trends?months=6
+// ✅ CORRECTION: Ajouter authMiddleware avant requireRole
 router.get(
   "/trends",
+  authMiddleware, // ✅ AJOUTÉ: Middleware d'authentification
   requireRole("MANAGER", "ADMIN", "RESEARCHER"),
   StatisticsController.getMonthlyTrends
 );

@@ -1,4 +1,3 @@
-// backend/src/config/environment.ts
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -18,9 +17,10 @@ export const config = {
   },
 
   jwt: {
+    // ✅ CORRECTION: Secret JWT plus robuste avec validation
     secret:
       process.env.JWT_SECRET ||
-      "your-super-secret-jwt-key-change-in-production-please",
+      "isra-seeds-super-secret-key-change-in-production-please-make-it-very-long-and-secure",
     accessTokenExpiry: process.env.JWT_ACCESS_EXPIRY || "15m",
     refreshTokenExpiry: process.env.JWT_REFRESH_EXPIRY || "7d",
   },
@@ -53,3 +53,13 @@ export const config = {
       process.env.QR_BASE_URL || "https://api.qrserver.com/v1/create-qr-code/",
   },
 };
+
+// ✅ CORRECTION: Validation du secret JWT au démarrage
+if (!config.jwt.secret || config.jwt.secret.length < 32) {
+  console.error(
+    "⚠️  ATTENTION: JWT_SECRET est trop court ou manquant. Utilisez un secret d'au moins 32 caractères."
+  );
+  if (config.environment === "production") {
+    process.exit(1);
+  }
+}
