@@ -25,7 +25,7 @@ import { toast } from "react-toastify";
 import { api } from "../../services/api";
 import { SeedLot } from "../../types/entities";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { qualityControlValidationSchema } from "../../utils/validators";
+import * as yup from "yup";
 
 interface CreateQualityControlForm {
   lotId: string;
@@ -37,6 +37,47 @@ interface CreateQualityControlForm {
   observations?: string;
   testMethod?: string;
 }
+
+// Schéma de validation adapté à l'interface
+const qualityControlValidationSchema = yup.object({
+  lotId: yup.string().required("Lot requis"),
+  controlDate: yup
+    .string()
+    .required("Date de contrôle requise")
+    .test(
+      "is-not-future",
+      "La date ne peut pas être dans le futur",
+      function (value) {
+        if (!value) return true;
+        return new Date(value) <= new Date();
+      }
+    ),
+  germinationRate: yup
+    .number()
+    .min(0, "Minimum 0%")
+    .max(100, "Maximum 100%")
+    .required("Taux de germination requis"),
+  varietyPurity: yup
+    .number()
+    .min(0, "Minimum 0%")
+    .max(100, "Maximum 100%")
+    .required("Pureté variétale requise"),
+  moistureContent: yup
+    .number()
+    .optional()
+    .min(0, "Minimum 0%")
+    .max(100, "Maximum 100%"),
+  seedHealth: yup
+    .number()
+    .optional()
+    .min(0, "Minimum 0%")
+    .max(100, "Maximum 100%"),
+  observations: yup
+    .string()
+    .optional()
+    .max(1000, "Observations trop longues (max 1000 caractères)"),
+  testMethod: yup.string().optional(),
+});
 
 const CreateQualityControl: React.FC = () => {
   const navigate = useNavigate();
@@ -50,6 +91,8 @@ const CreateQualityControl: React.FC = () => {
     resolver: yupResolver(qualityControlValidationSchema),
     defaultValues: {
       controlDate: new Date().toISOString().split("T")[0],
+      germinationRate: 0,
+      varietyPurity: 0,
     },
   });
 

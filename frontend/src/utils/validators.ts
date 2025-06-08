@@ -33,9 +33,16 @@ export const seedLotValidationSchema = yup.object({
 export const qualityControlValidationSchema = yup.object({
   lotId: yup.string().required("Lot requis"),
   controlDate: yup
-    .date()
+    .string()
     .required("Date de contrôle requise")
-    .max(new Date(), "La date ne peut pas être dans le futur"),
+    .test(
+      "is-not-future",
+      "La date ne peut pas être dans le futur",
+      function (value) {
+        if (!value) return true;
+        return new Date(value) <= new Date();
+      }
+    ),
   germinationRate: yup
     .number()
     .min(0, "Minimum 0%")
@@ -46,11 +53,21 @@ export const qualityControlValidationSchema = yup.object({
     .min(0, "Minimum 0%")
     .max(100, "Maximum 100%")
     .required("Pureté variétale requise"),
-  moistureContent: yup.number().min(0, "Minimum 0%").max(100, "Maximum 100%"),
-  seedHealth: yup.number().min(0, "Minimum 0%").max(100, "Maximum 100%"),
+  moistureContent: yup
+    .number()
+    .optional()
+    .min(0, "Minimum 0%")
+    .max(100, "Maximum 100%"),
+  seedHealth: yup
+    .number()
+    .optional()
+    .min(0, "Minimum 0%")
+    .max(100, "Maximum 100%"),
   observations: yup
     .string()
+    .optional()
     .max(1000, "Observations trop longues (max 1000 caractères)"),
+  testMethod: yup.string().optional(),
 });
 
 export const varietyValidationSchema = yup.object({
