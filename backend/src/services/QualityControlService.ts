@@ -1,16 +1,15 @@
-// backend/src/services/QualityControlService.ts
+// backend/src/services/QualityControlService.ts - CORRECTION
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { CreateQualityControlData } from "../types/entities";
 import { PaginationQuery } from "../types/api";
-import { TestResult, LotStatus } from "@prisma/client"; // ✅ Import des enums
+import { TestResult, LotStatus } from "@prisma/client";
 
 export class QualityControlService {
   static async createQualityControl(
     data: CreateQualityControlData & { inspectorId: number }
   ): Promise<any> {
     try {
-      // Vérifier que le lot existe
       const seedLot = await prisma.seedLot.findUnique({
         where: { id: data.lotId, isActive: true },
       });
@@ -19,7 +18,6 @@ export class QualityControlService {
         throw new Error("Lot de semences non trouvé");
       }
 
-      // Déterminer le résultat automatiquement basé sur les seuils
       const result = this.determineResult(
         data.germinationRate,
         data.varietyPurity,
@@ -34,7 +32,7 @@ export class QualityControlService {
           varietyPurity: data.varietyPurity,
           moistureContent: data.moistureContent,
           seedHealth: data.seedHealth,
-          result, // ✅ Utilise directement la valeur de l'énumération
+          result,
           observations: data.observations,
           testMethod: data.testMethod,
           inspectorId: data.inspectorId,
@@ -52,17 +50,15 @@ export class QualityControlService {
         },
       });
 
-      // Mettre à jour le statut du lot si le test passe
       if (result === TestResult.PASS) {
-        // ✅ Utilisation de l'enum
         await prisma.seedLot.update({
           where: { id: data.lotId },
-          data: { status: LotStatus.CERTIFIED }, // ✅ Utilisation de l'enum
+          data: { status: LotStatus.CERTIFIED },
         });
       } else {
         await prisma.seedLot.update({
           where: { id: data.lotId },
-          data: { status: LotStatus.REJECTED }, // ✅ Utilisation de l'enum
+          data: { status: LotStatus.REJECTED },
         });
       }
 
@@ -78,8 +74,6 @@ export class QualityControlService {
     varietyPurity: number,
     level: string
   ): TestResult {
-    // ✅ Type de retour avec l'enum
-    // Seuils minimaux selon le niveau de semence
     const thresholds: {
       [key: string]: { germination: number; purity: number };
     } = {
@@ -96,8 +90,8 @@ export class QualityControlService {
 
     return germinationRate >= threshold.germination &&
       varietyPurity >= threshold.purity
-      ? TestResult.PASS // ✅ Utilisation de l'enum
-      : TestResult.FAIL; // ✅ Utilisation de l'enum
+      ? TestResult.PASS
+      : TestResult.FAIL;
   }
 
   static async getQualityControls(
@@ -115,7 +109,10 @@ export class QualityControlService {
         sortOrder = "desc",
       } = query;
 
-      const skip = (page - 1) * pageSize;
+      // ✅ CORRECTION: Conversion explicite en entiers
+      const pageNum = parseInt(page.toString());
+      const pageSizeNum = parseInt(pageSize.toString());
+      const skip = (pageNum - 1) * pageSizeNum;
 
       const where: any = {};
 
@@ -135,7 +132,7 @@ export class QualityControlService {
       }
 
       if (inspectorId) {
-        where.inspectorId = parseInt(inspectorId);
+        where.inspectorId = parseInt(inspectorId.toString());
       }
 
       const [controls, total] = await Promise.all([
@@ -154,21 +151,23 @@ export class QualityControlService {
           },
           orderBy: { [sortBy]: sortOrder },
           skip,
-          take: pageSize,
+          take: pageSizeNum, // ✅ CORRECTION: Entier au lieu de string
         }),
         prisma.qualityControl.count({ where }),
       ]);
 
-      const totalPages = Math.ceil(total / pageSize);
+      const totalPages = Math.ceil(total / pageSizeNum);
 
       return {
         controls,
         total,
         meta: {
-          page,
-          pageSize,
+          page: pageNum,
+          pageSize: pageSizeNum,
           totalCount: total,
           totalPages,
+          hasNextPage: pageNum < totalPages,
+          hasPreviousPage: pageNum > 1,
         },
       };
     } catch (error) {

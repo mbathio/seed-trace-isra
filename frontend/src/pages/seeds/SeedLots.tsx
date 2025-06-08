@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/SeedLots.tsx
+// frontend/src/pages/seeds/SeedLots.tsx - CORRECTION
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -62,6 +62,7 @@ const SeedLots: React.FC = () => {
     },
   });
 
+  // ✅ CORRECTION: Utiliser les valeurs exactes de la DB pour le mapping
   const getStatusBadge = (status: string) => {
     const statusMap: Record<
       string,
@@ -70,12 +71,13 @@ const SeedLots: React.FC = () => {
         label: string;
       }
     > = {
-      pending: { variant: "secondary", label: "En attente" },
-      certified: { variant: "default", label: "Certifié" },
-      rejected: { variant: "destructive", label: "Rejeté" },
-      "in-stock": { variant: "outline", label: "En stock" },
-      active: { variant: "default", label: "Actif" },
-      distributed: { variant: "secondary", label: "Distribué" },
+      PENDING: { variant: "secondary", label: "En attente" },
+      CERTIFIED: { variant: "default", label: "Certifié" },
+      REJECTED: { variant: "destructive", label: "Rejeté" },
+      IN_STOCK: { variant: "outline", label: "En stock" },
+      ACTIVE: { variant: "default", label: "Actif" },
+      DISTRIBUTED: { variant: "secondary", label: "Distribué" },
+      SOLD: { variant: "outline", label: "Vendu" },
     };
 
     const config = statusMap[status] || { variant: "secondary", label: status };

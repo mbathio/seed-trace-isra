@@ -46,7 +46,10 @@ export class VarietyService {
         sortOrder = "asc",
       } = query;
 
-      const skip = (page - 1) * pageSize;
+      // ✅ CORRECTION: Conversion explicite en entiers
+      const pageNum = parseInt(page.toString());
+      const pageSizeNum = parseInt(pageSize.toString());
+      const skip = (pageNum - 1) * pageSizeNum;
 
       const where: any = {
         isActive: true,
@@ -79,21 +82,23 @@ export class VarietyService {
           },
           orderBy: { [sortBy]: sortOrder },
           skip,
-          take: pageSize,
+          take: pageSizeNum, // ✅ CORRECTION: Entier au lieu de string
         }),
         prisma.variety.count({ where }),
       ]);
 
-      const totalPages = Math.ceil(total / pageSize);
+      const totalPages = Math.ceil(total / pageSizeNum);
 
       return {
         varieties,
         total,
         meta: {
-          page,
-          pageSize,
+          page: pageNum,
+          pageSize: pageSizeNum,
           totalCount: total,
           totalPages,
+          hasNextPage: pageNum < totalPages,
+          hasPreviousPage: pageNum > 1,
         },
       };
     } catch (error) {

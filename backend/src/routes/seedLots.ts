@@ -1,8 +1,9 @@
-// backend/src/routes/seedLots.ts
+// backend/src/routes/seedLots.ts -
 import { Router } from "express";
 import { SeedLotController } from "../controllers/SeedLotController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole } from "../middleware/auth";
+import { parseQueryParams } from "../middleware/queryParser"; // ✅ NOUVEAU
 import {
   createSeedLotSchema,
   updateSeedLotSchema,
@@ -14,6 +15,7 @@ const router = Router();
 // GET /api/seed-lots
 router.get(
   "/",
+  parseQueryParams, // ✅ NOUVEAU: Parser les query params
   validateRequest({ query: seedLotQuerySchema }),
   SeedLotController.getSeedLots
 );
@@ -30,7 +32,7 @@ router.get("/:id/qr-code", SeedLotController.getQRCode);
 // POST /api/seed-lots
 router.post(
   "/",
-  requireRole("RESEARCHER", "TECHNICIAN", "ADMIN"), // Majuscules cohérentes
+  requireRole("RESEARCHER", "TECHNICIAN", "ADMIN"),
   validateRequest({ body: createSeedLotSchema }),
   SeedLotController.createSeedLot
 );

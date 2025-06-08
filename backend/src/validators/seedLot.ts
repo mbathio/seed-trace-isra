@@ -1,4 +1,3 @@
-// backend/src/validators/seedLot.ts
 import { z } from "zod";
 
 export const createSeedLotSchema = z.object({
@@ -18,15 +17,14 @@ export const updateSeedLotSchema = z.object({
   quantity: z.number().positive().optional(),
   status: z
     .enum([
-      "pending",
-      "certified",
-      "rejected",
-      "in-stock",
-      "sold",
-      "active",
-      "distributed",
+      "PENDING", // ✅ CORRECTION: Valeurs DB directes
+      "CERTIFIED",
+      "REJECTED",
+      "IN_STOCK",
+      "SOLD",
+      "ACTIVE",
+      "DISTRIBUTED",
     ])
-    .transform((status) => status.toUpperCase().replace("-", "_"))
     .optional(),
   notes: z.string().optional(),
   expiryDate: z
@@ -37,20 +35,20 @@ export const updateSeedLotSchema = z.object({
 
 export const seedLotQuerySchema = z.object({
   page: z
-    .string()
-    .transform(Number)
-    .refine((n) => n > 0)
+    .union([z.string(), z.number()])
+    .transform((val) => parseInt(val.toString()))
+    .refine((n) => n > 0, "Page doit être positive")
     .optional(),
   pageSize: z
-    .string()
-    .transform(Number)
-    .refine((n) => n > 0 && n <= 100)
+    .union([z.string(), z.number()])
+    .transform((val) => Math.min(parseInt(val.toString()), 100))
+    .refine((n) => n > 0 && n <= 100, "PageSize doit être entre 1 et 100")
     .optional(),
   search: z.string().optional(),
-  level: z.enum(["GO", "G1", "G2", "G3", "G4", "R1", "R2"]).optional(), // ✅ MAJUSCULES
+  level: z.enum(["GO", "G1", "G2", "G3", "G4", "R1", "R2"]).optional(),
   status: z
     .enum([
-      "PENDING", // ✅ MAJUSCULES
+      "PENDING", // ✅ CORRECTION: Valeurs DB directes
       "CERTIFIED",
       "REJECTED",
       "IN_STOCK",
@@ -59,8 +57,11 @@ export const seedLotQuerySchema = z.object({
       "DISTRIBUTED",
     ])
     .optional(),
-  varietyId: z.union([z.string(), z.number()]).optional(), // ✅ Accepte les deux types
-  multiplierId: z.string().transform(Number).optional(),
+  varietyId: z.union([z.string(), z.number()]).optional(),
+  multiplierId: z
+    .union([z.string(), z.number()])
+    .transform((val) => parseInt(val.toString()))
+    .optional(),
   sortBy: z.enum(["productionDate", "quantity", "level", "status"]).optional(),
   sortOrder: z.enum(["asc", "desc"]).optional(),
 });

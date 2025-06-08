@@ -1,3 +1,4 @@
+// frontend/src/constants/index.ts - CORRECTION COMPLÈTE
 export const SEED_LEVELS = [
   { value: "GO", label: "GO - Génération origine" },
   { value: "G1", label: "G1 - Première génération" },
@@ -17,7 +18,7 @@ export const CROP_TYPES = [
   { value: "MILLET", label: "Mil" },
 ];
 
-// ✅ CORRECTION: Utiliser les mêmes valeurs que dans la DB (MAJUSCULES + underscore)
+// ✅ CORRECTION: Utiliser les mêmes valeurs exactes que la DB (MAJUSCULES + underscore)
 export const LOT_STATUSES = [
   { value: "PENDING", label: "En attente" },
   { value: "CERTIFIED", label: "Certifié" },
@@ -28,7 +29,7 @@ export const LOT_STATUSES = [
   { value: "SOLD", label: "Vendu" },
 ];
 
-// ✅ CORRECTION: Utiliser les mêmes valeurs que dans la DB (MAJUSCULES)
+// ✅ CORRECTION: Valeurs exactes de la DB (MAJUSCULES)
 export const USER_ROLES = [
   { value: "ADMIN", label: "Administrateur" },
   { value: "MANAGER", label: "Manager" },
@@ -39,13 +40,13 @@ export const USER_ROLES = [
   { value: "GUEST", label: "Invité" },
 ];
 
-// ✅ CORRECTION: Utiliser les mêmes valeurs que dans la DB (MAJUSCULES)
+// ✅ CORRECTION: Valeurs exactes de la DB (MAJUSCULES)
 export const QUALITY_TEST_RESULTS = [
   { value: "PASS", label: "Réussi" },
   { value: "FAIL", label: "Échec" },
 ];
 
-// ✅ CORRECTION: Utiliser les mêmes valeurs que dans la DB (MAJUSCULES + underscore)
+// ✅ CORRECTION: Valeurs exactes de la DB (MAJUSCULES + underscore)
 export const PRODUCTION_STATUSES = [
   { value: "PLANNED", label: "Planifiée" },
   { value: "IN_PROGRESS", label: "En cours" },
@@ -76,3 +77,39 @@ export const CONTRACT_STATUSES = [
   { value: "COMPLETED", label: "Terminé" },
   { value: "CANCELLED", label: "Annulé" },
 ];
+
+// ✅ AJOUT: Mapping pour transformation frontend/backend
+export const STATUS_MAPPINGS = {
+  // Frontend vers Backend
+  toBackend: {
+    pending: "PENDING",
+    certified: "CERTIFIED",
+    rejected: "REJECTED",
+    "in-stock": "IN_STOCK",
+    active: "ACTIVE",
+    distributed: "DISTRIBUTED",
+    sold: "SOLD",
+    planned: "PLANNED",
+    "in-progress": "IN_PROGRESS",
+    completed: "COMPLETED",
+    cancelled: "CANCELLED",
+    pass: "PASS",
+    fail: "FAIL",
+  },
+  // Backend vers Frontend
+  toFrontend: {
+    PENDING: "pending",
+    CERTIFIED: "certified",
+    REJECTED: "rejected",
+    IN_STOCK: "in-stock",
+    ACTIVE: "active",
+    DISTRIBUTED: "distributed",
+    SOLD: "sold",
+    PLANNED: "planned",
+    IN_PROGRESS: "in-progress",
+    COMPLETED: "completed",
+    CANCELLED: "cancelled",
+    PASS: "pass",
+    FAIL: "fail",
+  },
+};

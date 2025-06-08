@@ -140,7 +140,10 @@ export class SeedLotService {
         sortOrder = "desc",
       } = query;
 
-      const skip = (page - 1) * pageSize;
+      // ✅ CORRECTION: Conversion explicite en entiers
+      const pageNum = parseInt(page.toString());
+      const pageSizeNum = parseInt(pageSize.toString());
+      const skip = (pageNum - 1) * pageSizeNum;
 
       const where: any = {
         isActive: true,
@@ -157,25 +160,22 @@ export class SeedLotService {
       }
 
       if (level) {
-        // Le niveau vient du frontend en majuscules, pas besoin de transformation
         where.level = level as SeedLevel;
       }
 
       if (status) {
-        // Transformer le statut du frontend vers la DB
+        // ✅ CORRECTION: Transformer le statut du frontend vers la DB
         where.status = DataTransformer.transformInputStatus(
           status
         ) as LotStatus;
       }
 
-      // Gestion améliorée de varietyId
       if (varietyId) {
         if (typeof varietyId === "string") {
           const parsedId = parseInt(varietyId);
           if (!isNaN(parsedId)) {
             where.varietyId = parsedId;
           } else {
-            // Recherche par code
             where.variety = { code: varietyId };
           }
         } else {
@@ -184,7 +184,7 @@ export class SeedLotService {
       }
 
       if (multiplierId) {
-        where.multiplierId = parseInt(multiplierId);
+        where.multiplierId = parseInt(multiplierId.toString());
       }
 
       const [lots, total] = await Promise.all([
@@ -218,12 +218,12 @@ export class SeedLotService {
           },
           orderBy: { [sortBy]: sortOrder },
           skip,
-          take: pageSize,
+          take: pageSizeNum, // ✅ CORRECTION: Entier au lieu de string
         }),
         prisma.seedLot.count({ where }),
       ]);
 
-      const totalPages = Math.ceil(total / pageSize);
+      const totalPages = Math.ceil(total / pageSizeNum);
 
       // Transformer les données pour le frontend
       const transformedLots = lots.map((lot) =>
@@ -234,12 +234,12 @@ export class SeedLotService {
         lots: transformedLots,
         total,
         meta: {
-          page,
-          pageSize,
+          page: pageNum,
+          pageSize: pageSizeNum,
           totalCount: total,
           totalPages,
-          hasNextPage: page < totalPages,
-          hasPreviousPage: page > 1,
+          hasNextPage: pageNum < totalPages,
+          hasPreviousPage: pageNum > 1,
         },
       };
     } catch (error) {

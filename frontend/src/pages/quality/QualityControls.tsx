@@ -64,8 +64,8 @@ const QualityControls: React.FC = () => {
 
   const getResultBadge = (result: string) => {
     const badgeMap = {
-      pass: { variant: "default" as const, label: "Réussi" },
-      fail: { variant: "destructive" as const, label: "Échec" },
+      PASS: { variant: "default" as const, label: "Réussi" },
+      FAIL: { variant: "destructive" as const, label: "Échec" },
     };
     const config = badgeMap[result as keyof typeof badgeMap] || {
       variant: "secondary" as const,
