@@ -26,6 +26,9 @@
     "docker:down": "docker-compose down",
     "docker:build": "docker-compose build"
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "keywords": [
     "seed",
     "traceability",
