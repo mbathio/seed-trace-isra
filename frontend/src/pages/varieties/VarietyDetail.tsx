@@ -1,4 +1,4 @@
-// src/pages/varieties/VarietyDetail.tsx
+// frontend/src/pages/varieties/VarietyDetail.tsx
 import React from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
