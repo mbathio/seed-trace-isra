@@ -1,10 +1,10 @@
 // frontend/src/components/ui/data-table-pagination.tsx
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  DoubleArrowLeftIcon,
-  DoubleArrowRightIcon,
-} from "@radix-ui/react-icons";
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -82,7 +82,7 @@ export function DataTablePagination({
             disabled={!hasPreviousPage}
           >
             <span className="sr-only">Aller à la première page</span>
-            <DoubleArrowLeftIcon className="h-4 w-4" />
+            <ChevronsLeft className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
@@ -91,7 +91,7 @@ export function DataTablePagination({
             disabled={!hasPreviousPage}
           >
             <span className="sr-only">Aller à la page précédente</span>
-            <ChevronLeftIcon className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
@@ -100,7 +100,7 @@ export function DataTablePagination({
             disabled={!hasNextPage}
           >
             <span className="sr-only">Aller à la page suivante</span>
-            <ChevronRightIcon className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
@@ -109,7 +109,7 @@ export function DataTablePagination({
             disabled={!hasNextPage}
           >
             <span className="sr-only">Aller à la dernière page</span>
-            <DoubleArrowRightIcon className="h-4 w-4" />
+            <ChevronsRight className="h-4 w-4" />
           </Button>
         </div>
       </div>

@@ -1,5 +1,4 @@
 // frontend/src/components/ui/date-picker.tsx
-import * as React from "react";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";

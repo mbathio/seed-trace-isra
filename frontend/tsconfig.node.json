@@ -7,7 +7,6 @@
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": false,
-    "noEmit": true,
     "emitDeclarationOnly": false,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",

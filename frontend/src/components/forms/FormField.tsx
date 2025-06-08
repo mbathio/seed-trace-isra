@@ -1,6 +1,10 @@
 // frontend/src/components/forms/FormField.tsx
-import React from "react";
-import { UseFormRegister, FieldError, Path } from "react-hook-form";
+import {
+  UseFormRegister,
+  FieldError,
+  Path,
+  FieldValues,
+} from "react-hook-form";
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -13,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface BaseFieldProps<T> {
+interface BaseFieldProps<T extends FieldValues> {
   name: Path<T>;
   label: string;
   error?: FieldError;
@@ -22,14 +26,14 @@ interface BaseFieldProps<T> {
   className?: string;
 }
 
-interface InputFieldProps<T> extends BaseFieldProps<T> {
+interface InputFieldProps<T extends FieldValues> extends BaseFieldProps<T> {
   type: "text" | "email" | "password" | "number" | "tel" | "url";
   register: UseFormRegister<T>;
   placeholder?: string;
   disabled?: boolean;
 }
 
-interface TextareaFieldProps<T> extends BaseFieldProps<T> {
+interface TextareaFieldProps<T extends FieldValues> extends BaseFieldProps<T> {
   type: "textarea";
   register: UseFormRegister<T>;
   placeholder?: string;
@@ -37,7 +41,7 @@ interface TextareaFieldProps<T> extends BaseFieldProps<T> {
   rows?: number;
 }
 
-interface SelectFieldProps<T> extends BaseFieldProps<T> {
+interface SelectFieldProps<T extends FieldValues> extends BaseFieldProps<T> {
   type: "select";
   options: { value: string; label: string }[];
   value?: string;
@@ -46,12 +50,12 @@ interface SelectFieldProps<T> extends BaseFieldProps<T> {
   disabled?: boolean;
 }
 
-type FormFieldProps<T> =
+type FormFieldProps<T extends FieldValues> =
   | InputFieldProps<T>
   | TextareaFieldProps<T>
   | SelectFieldProps<T>;
 
-export function FormField<T>(props: FormFieldProps<T>) {
+export function FormField<T extends FieldValues>(props: FormFieldProps<T>) {
   const { name, label, error, required, description, className } = props;
 
   const renderField = () => {
