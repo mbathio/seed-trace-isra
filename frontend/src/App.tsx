@@ -24,12 +24,13 @@ import SeedLotDetail from "./pages/seeds/SeedLotDetail";
 import CreateSeedLot from "./pages/seeds/CreateSeedLot";
 import Varieties from "./pages/varieties/Varieties";
 import CreateVariety from "./pages/varieties/CreateVariety";
+import VarietyDetail from "./pages/varieties/VarietyDetail";
 import Multipliers from "./pages/multipliers/Multipliers";
 import QualityControls from "./pages/quality/QualityControls";
+import CreateQualityControl from "./pages/quality/CreateQualityControl";
 import Productions from "./pages/productions/Productions";
 import Reports from "./pages/reports/Reports";
 import Users from "./pages/users/Users";
-import VarietyDetail from "./pages/varieties/VarietyDetail";
 
 // Components
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -90,6 +91,7 @@ function App() {
                 {/* Quality Controls */}
                 <Route path="quality">
                   <Route index element={<QualityControls />} />
+                  <Route path="create" element={<CreateQualityControl />} />
                 </Route>
 
                 {/* Productions */}
