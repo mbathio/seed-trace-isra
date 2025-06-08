@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import jwt, { SignOptions } from "jsonwebtoken";
 import { config } from "../config/environment";
 import { JwtPayload, AuthTokens } from "../types/api";
 
@@ -29,14 +29,21 @@ export class EncryptionService {
       role: payload.role,
     };
 
-    // ✅ CORRECTION FINALE: Type assertion appropriée pour StringValue
-    const accessToken = jwt.sign(tokenPayload, secret, {
-      expiresIn: config.jwt.accessTokenExpiry as jwt.StringValue,
-    });
+    // ✅ CORRECTION: Utilisation d'interface SignOptions explicite
+    const accessTokenOptions: SignOptions = {
+      expiresIn: config.jwt.accessTokenExpiry,
+    };
 
-    const refreshToken = jwt.sign({ userId: payload.userId }, secret, {
-      expiresIn: config.jwt.refreshTokenExpiry as jwt.StringValue,
-    });
+    const refreshTokenOptions: SignOptions = {
+      expiresIn: config.jwt.refreshTokenExpiry,
+    };
+
+    const accessToken = jwt.sign(tokenPayload, secret, accessTokenOptions);
+    const refreshToken = jwt.sign(
+      { userId: payload.userId },
+      secret,
+      refreshTokenOptions
+    );
 
     return { accessToken, refreshToken };
   }
