@@ -26,7 +26,7 @@ import {
   User,
   LogOut,
 } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { Button } from "../ui/button";
 
 const AppSidebar: React.FC = () => {
