@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Début du seeding de la base de données...");
 
-  // Nettoyer la base de données
+  // Nettoyer la base de données dans le bon ordre (dépendances)
   await prisma.activityInput.deleteMany();
   await prisma.productionActivity.deleteMany();
   await prisma.productionIssue.deleteMany();
@@ -16,12 +16,12 @@ async function main() {
   await prisma.production.deleteMany();
   await prisma.report.deleteMany();
   await prisma.refreshToken.deleteMany();
-  await prisma.seedLot.deleteMany();
+  await prisma.seedLot.deleteMany(); // Supprimer les lots avant les relations
   await prisma.contract.deleteMany();
   await prisma.productionHistory.deleteMany();
   await prisma.soilAnalysis.deleteMany();
   await prisma.previousCrop.deleteMany();
-  await prisma.parcel.deleteMany();
+  await prisma.parcel.deleteMany(); // Supprimer les parcelles avant les multiplicateurs
   await prisma.multiplier.deleteMany();
   await prisma.variety.deleteMany();
   await prisma.user.deleteMany();
@@ -34,7 +34,6 @@ async function main() {
   const users = await Promise.all([
     prisma.user.create({
       data: {
-        id: 1,
         name: "Amadou Diop",
         email: "adiop@isra.sn",
         password: hashedPassword,
@@ -44,7 +43,6 @@ async function main() {
     }),
     prisma.user.create({
       data: {
-        id: 2,
         name: "Fatou Sy",
         email: "fsy@isra.sn",
         password: hashedPassword,
@@ -54,7 +52,6 @@ async function main() {
     }),
     prisma.user.create({
       data: {
-        id: 3,
         name: "Moussa Kane",
         email: "mkane@isra.sn",
         password: hashedPassword,
@@ -64,7 +61,6 @@ async function main() {
     }),
     prisma.user.create({
       data: {
-        id: 4,
         name: "Ousmane Ndiaye",
         email: "ondiaye@isra.sn",
         password: hashedPassword,
@@ -74,7 +70,6 @@ async function main() {
     }),
     prisma.user.create({
       data: {
-        id: 5,
         name: "Admin ISRA",
         email: "admin@isra.sn",
         password: hashedPassword,
@@ -90,7 +85,6 @@ async function main() {
   const varieties = await Promise.all([
     prisma.variety.create({
       data: {
-        id: 1,
         code: "sahel108",
         name: "Sahel 108",
         cropType: "RICE",
@@ -105,7 +99,6 @@ async function main() {
     }),
     prisma.variety.create({
       data: {
-        id: 2,
         code: "sahel202",
         name: "Sahel 202",
         cropType: "RICE",
@@ -120,7 +113,6 @@ async function main() {
     }),
     prisma.variety.create({
       data: {
-        id: 3,
         code: "zm309",
         name: "ZM309",
         cropType: "MAIZE",
@@ -135,7 +127,6 @@ async function main() {
     }),
     prisma.variety.create({
       data: {
-        id: 4,
         code: "73-33",
         name: "73-33",
         cropType: "PEANUT",
@@ -156,7 +147,6 @@ async function main() {
   const multipliers = await Promise.all([
     prisma.multiplier.create({
       data: {
-        id: 1,
         name: "Ibrahima Ba",
         status: "ACTIVE",
         address: "Dagana, Saint-Louis",
@@ -171,7 +161,6 @@ async function main() {
     }),
     prisma.multiplier.create({
       data: {
-        id: 2,
         name: "Aminata Diallo",
         status: "ACTIVE",
         address: "Podor, Saint-Louis",
@@ -186,7 +175,6 @@ async function main() {
     }),
     prisma.multiplier.create({
       data: {
-        id: 3,
         name: "Mamadou Sow",
         status: "INACTIVE",
         address: "Richard-Toll, Saint-Louis",
@@ -199,7 +187,6 @@ async function main() {
     }),
     prisma.multiplier.create({
       data: {
-        id: 4,
         name: "Aissatou Ndiaye",
         status: "ACTIVE",
         address: "Matam",
@@ -215,11 +202,10 @@ async function main() {
 
   console.log("👨‍🌾 Multiplicateurs créés:", multipliers.length);
 
-  // Créer les parcelles
+  // Créer les parcelles - CORRECTION: utiliser les IDs réels des multiplicateurs
   const parcels = await Promise.all([
     prisma.parcel.create({
       data: {
-        id: 1,
         name: "Parcelle Dagana 01",
         area: 5.2,
         latitude: 16.5182,
@@ -228,12 +214,11 @@ async function main() {
         soilType: "Argilo-limoneux",
         irrigationSystem: "Goutte-à-goutte",
         address: "Zone agricole de Dagana, Saint-Louis",
-        multiplierId: 1,
+        multiplierId: multipliers[0].id, // Utiliser l'ID réel
       },
     }),
     prisma.parcel.create({
       data: {
-        id: 2,
         name: "Parcelle Podor 02",
         area: 3.8,
         latitude: 16.6518,
@@ -242,12 +227,11 @@ async function main() {
         soilType: "Limoneux",
         irrigationSystem: "Aspersion",
         address: "Zone agricole de Podor, Saint-Louis",
-        multiplierId: 2,
+        multiplierId: multipliers[1].id, // Utiliser l'ID réel
       },
     }),
     prisma.parcel.create({
       data: {
-        id: 3,
         name: "Parcelle Richard-Toll 03",
         area: 7.1,
         latitude: 16.4625,
@@ -256,12 +240,11 @@ async function main() {
         soilType: "Argileux",
         irrigationSystem: "Inondation contrôlée",
         address: "Zone agricole de Richard-Toll, Saint-Louis",
-        multiplierId: 3,
+        multiplierId: multipliers[2].id, // Utiliser l'ID réel
       },
     }),
     prisma.parcel.create({
       data: {
-        id: 4,
         name: "Parcelle Matam 04",
         area: 2.5,
         latitude: 15.6552,
@@ -270,7 +253,7 @@ async function main() {
         soilType: "Sablo-limoneux",
         irrigationSystem: "Manuel",
         address: "Zone agricole de Matam",
-        multiplierId: 4,
+        multiplierId: multipliers[3].id, // Utiliser l'ID réel
       },
     }),
   ]);
@@ -281,7 +264,7 @@ async function main() {
   await Promise.all([
     prisma.soilAnalysis.create({
       data: {
-        parcelId: 1,
+        parcelId: parcels[0].id, // Utiliser l'ID réel
         analysisDate: new Date("2024-01-15"),
         pH: 6.8,
         organicMatter: 2.1,
@@ -293,7 +276,7 @@ async function main() {
     }),
     prisma.soilAnalysis.create({
       data: {
-        parcelId: 2,
+        parcelId: parcels[1].id, // Utiliser l'ID réel
         analysisDate: new Date("2024-02-01"),
         pH: 7.2,
         organicMatter: 1.8,
@@ -312,13 +295,13 @@ async function main() {
     prisma.seedLot.create({
       data: {
         id: "SL-GO-2023-001",
-        varietyId: 1, // Sahel 108
+        varietyId: varieties[0].id, // Sahel 108 - utiliser l'ID réel
         level: "GO",
         quantity: 500,
         productionDate: new Date("2023-12-15"),
         expiryDate: new Date("2025-12-15"),
-        multiplierId: 1,
-        parcelId: 1,
+        multiplierId: multipliers[0].id, // Utiliser l'ID réel
+        parcelId: parcels[0].id, // Utiliser l'ID réel
         status: "CERTIFIED",
         batchNumber: "B-2023-001",
         notes: "Lot de base de haute qualité",
@@ -328,13 +311,13 @@ async function main() {
     prisma.seedLot.create({
       data: {
         id: "SL-G1-2024-001",
-        varietyId: 1, // Sahel 108
+        varietyId: varieties[0].id, // Sahel 108 - utiliser l'ID réel
         level: "G1",
         quantity: 2500,
         productionDate: new Date("2024-01-20"),
         expiryDate: new Date("2026-01-20"),
-        multiplierId: 1,
-        parcelId: 1,
+        multiplierId: multipliers[0].id, // Utiliser l'ID réel
+        parcelId: parcels[0].id, // Utiliser l'ID réel
         parentLotId: "SL-GO-2023-001",
         status: "CERTIFIED",
         batchNumber: "B-2024-001",
@@ -345,13 +328,13 @@ async function main() {
     prisma.seedLot.create({
       data: {
         id: "SL-G2-2024-002",
-        varietyId: 2, // Sahel 202
+        varietyId: varieties[1].id, // Sahel 202 - utiliser l'ID réel
         level: "G2",
         quantity: 1800,
         productionDate: new Date("2024-02-10"),
         expiryDate: new Date("2026-02-10"),
-        multiplierId: 2,
-        parcelId: 2,
+        multiplierId: multipliers[1].id, // Utiliser l'ID réel
+        parcelId: parcels[1].id, // Utiliser l'ID réel
         status: "IN_STOCK",
         batchNumber: "B-2024-002",
         notes: "Deuxième génération, qualité confirmée",
@@ -361,13 +344,13 @@ async function main() {
     prisma.seedLot.create({
       data: {
         id: "SL-R1-2024-003",
-        varietyId: 3, // ZM309
+        varietyId: varieties[2].id, // ZM309 - utiliser l'ID réel
         level: "R1",
         quantity: 5000,
         productionDate: new Date("2024-03-05"),
         expiryDate: new Date("2025-03-05"),
-        multiplierId: 4,
-        parcelId: 4,
+        multiplierId: multipliers[3].id, // Utiliser l'ID réel
+        parcelId: parcels[3].id, // Utiliser l'ID réel
         status: "PENDING",
         batchNumber: "B-2024-003",
         notes: "Lot commercial en cours de certification",
@@ -390,7 +373,7 @@ async function main() {
       result: "PASS",
       observations: "Qualité commerciale acceptable",
       testMethod: "Test rapide",
-      inspectorId: 4,
+      inspectorId: users[3].id, // Utiliser l'ID réel d'Ousmane Ndiaye (inspecteur)
     },
   });
 
@@ -400,8 +383,8 @@ async function main() {
   await Promise.all([
     prisma.contract.create({
       data: {
-        multiplierId: 1,
-        varietyId: 1, // Sahel 108
+        multiplierId: multipliers[0].id, // Utiliser l'ID réel
+        varietyId: varieties[0].id, // Sahel 108 - utiliser l'ID réel
         startDate: new Date("2024-01-01"),
         endDate: new Date("2024-12-31"),
         seedLevel: "G1",
@@ -414,8 +397,8 @@ async function main() {
     }),
     prisma.contract.create({
       data: {
-        multiplierId: 2,
-        varietyId: 2, // Sahel 202
+        multiplierId: multipliers[1].id, // Utiliser l'ID réel
+        varietyId: varieties[1].id, // Sahel 202 - utiliser l'ID réel
         startDate: new Date("2024-02-01"),
         endDate: new Date("2024-11-30"),
         seedLevel: "G2",
@@ -434,10 +417,9 @@ async function main() {
   const productions = await Promise.all([
     prisma.production.create({
       data: {
-        id: 1,
         lotId: "SL-G1-2024-001",
-        multiplierId: 1,
-        parcelId: 1,
+        multiplierId: multipliers[0].id, // Utiliser l'ID réel
+        parcelId: parcels[0].id, // Utiliser l'ID réel
         startDate: new Date("2024-01-15"),
         endDate: new Date("2024-05-20"),
         sowingDate: new Date("2024-01-20"),
@@ -451,10 +433,9 @@ async function main() {
     }),
     prisma.production.create({
       data: {
-        id: 2,
         lotId: "SL-G2-2024-002",
-        multiplierId: 2,
-        parcelId: 2,
+        multiplierId: multipliers[1].id, // Utiliser l'ID réel
+        parcelId: parcels[1].id, // Utiliser l'ID réel
         startDate: new Date("2024-02-01"),
         endDate: new Date("2024-06-10"),
         sowingDate: new Date("2024-02-10"),
@@ -468,10 +449,9 @@ async function main() {
     }),
     prisma.production.create({
       data: {
-        id: 3,
         lotId: "SL-R1-2024-003",
-        multiplierId: 4,
-        parcelId: 4,
+        multiplierId: multipliers[3].id, // Utiliser l'ID réel
+        parcelId: parcels[3].id, // Utiliser l'ID réel
         startDate: new Date("2024-03-01"),
         sowingDate: new Date("2024-03-05"),
         plannedQuantity: 5500,
@@ -488,13 +468,13 @@ async function main() {
   await Promise.all([
     prisma.productionActivity.create({
       data: {
-        productionId: 1, // Référence à la production créée
+        productionId: productions[0].id, // Utiliser l'ID réel
         type: "SOIL_PREPARATION",
         activityDate: new Date("2024-01-16"),
         description: "Préparation du sol avec labour et hersage",
         personnel: ["Jean Sow", "Marie Diallo"],
         notes: "Sol bien préparé, conditions optimales",
-        userId: 2,
+        userId: users[1].id, // Utiliser l'ID réel de Fatou Sy (technicien)
         inputs: {
           create: [
             { name: "Diesel", quantity: "50", unit: "litres", cost: 45000 },
@@ -510,13 +490,13 @@ async function main() {
     }),
     prisma.productionActivity.create({
       data: {
-        productionId: 1, // Référence à la production créée
+        productionId: productions[0].id, // Utiliser l'ID réel
         type: "SOWING",
         activityDate: new Date("2024-01-20"),
         description: "Semis des graines Sahel 108 G1",
         personnel: ["Jean Sow", "Amadou Ba"],
         notes: "Semis réalisé selon les bonnes pratiques",
-        userId: 2,
+        userId: users[1].id, // Utiliser l'ID réel de Fatou Sy (technicien)
         inputs: {
           create: [
             { name: "Semences G1", quantity: "25", unit: "kg", cost: 125000 },
@@ -538,7 +518,7 @@ async function main() {
   await Promise.all([
     prisma.productionIssue.create({
       data: {
-        productionId: 2,
+        productionId: productions[1].id, // Utiliser l'ID réel
         issueDate: new Date("2024-04-15"),
         type: "WEATHER",
         description: "Sécheresse prolongée affectant la croissance",
@@ -551,7 +531,7 @@ async function main() {
     }),
     prisma.productionIssue.create({
       data: {
-        productionId: 3,
+        productionId: productions[2].id, // Utiliser l'ID réel
         issueDate: new Date("2024-04-10"),
         type: "PEST",
         description: "Attaque de chenilles sur jeunes plants",
@@ -570,7 +550,7 @@ async function main() {
   await Promise.all([
     prisma.weatherData.create({
       data: {
-        productionId: 1,
+        productionId: productions[0].id, // Utiliser l'ID réel
         recordDate: new Date("2024-01-20"),
         temperature: 28.5,
         rainfall: 5.2,
@@ -581,7 +561,7 @@ async function main() {
     }),
     prisma.weatherData.create({
       data: {
-        productionId: 1,
+        productionId: productions[0].id, // Utiliser l'ID réel
         recordDate: new Date("2024-02-20"),
         temperature: 31.2,
         rainfall: 0.0,
@@ -602,7 +582,7 @@ async function main() {
         type: "PRODUCTION",
         description:
           "Analyse des performances de production du premier trimestre",
-        createdById: 3,
+        createdById: users[2].id, // Utiliser l'ID réel de Moussa Kane (manager)
         parameters: {
           startDate: "2024-01-01",
           endDate: "2024-03-31",
@@ -616,7 +596,7 @@ async function main() {
         title: "Contrôle qualité - Bilan mensuel",
         type: "QUALITY",
         description: "Synthèse des contrôles qualité effectués en mars 2024",
-        createdById: 4,
+        createdById: users[3].id, // Utiliser l'ID réel d'Ousmane Ndiaye (inspecteur)
         parameters: {
           month: "2024-03",
           inspector: "Ousmane Ndiaye",
