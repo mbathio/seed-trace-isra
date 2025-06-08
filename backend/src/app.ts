@@ -102,7 +102,7 @@ class App {
     // Routes API
     this.app.use("/api/auth", authRoutes);
     this.app.use("/api/users", userRoutes);
-    this.app.use("/api/seed-lots", seedLotRoutes);
+    this.app.use("/api/seeds", seedLotRoutes);
     this.app.use("/api/varieties", varietyRoutes);
     this.app.use("/api/multipliers", multiplierRoutes);
     this.app.use("/api/parcels", parcelRoutes);

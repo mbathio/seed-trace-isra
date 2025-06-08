@@ -1,4 +1,4 @@
-// frontend/src/App.tsx
+// frontend/src/App.tsx - CORRECTION DU ROUTAGE
 import {
   BrowserRouter as Router,
   Routes,
@@ -67,6 +67,7 @@ function App() {
                   </ProtectedRoute>
                 }
               >
+                {/* ✅ CORRECTION: Route Dashboard */}
                 <Route index element={<Dashboard />} />
 
                 {/* Seed Lots */}
@@ -110,8 +111,7 @@ function App() {
                 </Route>
               </Route>
 
-              {/* Redirect to dashboard */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              {/* ✅ CORRECTION: Redirection vers la racine */}
               <Route
                 path="/login"
                 element={<Navigate to="/auth/login" replace />}

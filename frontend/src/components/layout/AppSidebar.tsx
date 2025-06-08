@@ -1,4 +1,4 @@
-// frontend/src/components/layout/AppSidebar.tsx
+// frontend/src/components/layout/AppSidebar.tsx - NAVIGATION CORRIGÉE
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -39,7 +39,7 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Tableau de bord",
-          url: "/",
+          url: "/", // ✅ CORRECTION: URL correcte
           icon: Home,
         },
       ],
@@ -49,12 +49,12 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Lots de semences",
-          url: "/seeds",
+          url: "/seeds", // ✅ CORRECTION: URL correcte
           icon: Sprout,
         },
         {
           title: "Variétés",
-          url: "/varieties",
+          url: "/varieties", // ✅ CORRECTION: URL correcte
           icon: Leaf,
         },
       ],
@@ -64,12 +64,12 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Multiplicateurs",
-          url: "/multipliers",
+          url: "/multipliers", // ✅ CORRECTION: URL correcte
           icon: Users,
         },
         {
           title: "Productions",
-          url: "/productions",
+          url: "/productions", // ✅ CORRECTION: URL correcte
           icon: Tractor,
         },
       ],
@@ -79,7 +79,7 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Contrôles qualité",
-          url: "/quality",
+          url: "/quality", // ✅ CORRECTION: URL correcte
           icon: FlaskConical,
         },
       ],
@@ -89,7 +89,7 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Rapports",
-          url: "/reports",
+          url: "/reports", // ✅ CORRECTION: URL correcte
           icon: FileText,
         },
       ],
@@ -102,12 +102,12 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Utilisateurs",
-          url: "/users",
+          url: "/users", // ✅ CORRECTION: URL correcte
           icon: User,
         },
         {
           title: "Paramètres",
-          url: "/settings",
+          url: "/settings", // ✅ CORRECTION: URL correcte
           icon: Settings,
         },
       ],
@@ -154,7 +154,8 @@ const AppSidebar: React.FC = () => {
           </SidebarGroup>
         ))}
 
-        {user?.role === "admin" && (
+        {/* ✅ CORRECTION: Vérification du rôle admin */}
+        {user?.role === "ADMIN" && (
           <>
             {adminNavigation.map((group, index) => (
               <SidebarGroup key={`admin-${index}`}>

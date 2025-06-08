@@ -78,9 +78,9 @@ export const CONTRACT_STATUSES = [
   { value: "CANCELLED", label: "Annulé" },
 ];
 
-// ✅ AJOUT: Mapping pour transformation frontend/backend
+// ✅ AJOUT: Mapping pour transformation frontend/backend si nécessaire
 export const STATUS_MAPPINGS = {
-  // Frontend vers Backend
+  // Frontend vers Backend (si on utilisait des valeurs différentes)
   toBackend: {
     pending: "PENDING",
     certified: "CERTIFIED",
@@ -96,20 +96,20 @@ export const STATUS_MAPPINGS = {
     pass: "PASS",
     fail: "FAIL",
   },
-  // Backend vers Frontend
+  // Backend vers Frontend (pour l'affichage)
   toFrontend: {
-    PENDING: "pending",
-    CERTIFIED: "certified",
-    REJECTED: "rejected",
-    IN_STOCK: "in-stock",
-    ACTIVE: "active",
-    DISTRIBUTED: "distributed",
-    SOLD: "sold",
-    PLANNED: "planned",
-    IN_PROGRESS: "in-progress",
-    COMPLETED: "completed",
-    CANCELLED: "cancelled",
-    PASS: "pass",
-    FAIL: "fail",
+    PENDING: "En attente",
+    CERTIFIED: "Certifié",
+    REJECTED: "Rejeté",
+    IN_STOCK: "En stock",
+    ACTIVE: "Actif",
+    DISTRIBUTED: "Distribué",
+    SOLD: "Vendu",
+    PLANNED: "Planifiée",
+    IN_PROGRESS: "En cours",
+    COMPLETED: "Terminée",
+    CANCELLED: "Annulée",
+    PASS: "Réussi",
+    FAIL: "Échec",
   },
 };
