@@ -1,4 +1,4 @@
-// frontend/src/App.tsx - CORRECTION DU ROUTAGE
+// frontend/src/App.tsx - AVEC PAGE D'ACCUEIL
 import {
   BrowserRouter as Router,
   Routes,
@@ -17,7 +17,8 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import AuthLayout from "./layouts/AuthLayout";
 
 // Pages
-import { Dashboard } from "./pages/Dashboard";
+import LandingPage from "./pages/LandingPage"; // ✅ Nouvelle page d'accueil
+import Dashboard from "./pages/Dashboard";
 import Login from "./pages/auth/Login";
 import SeedLots from "./pages/seeds/SeedLots";
 import SeedLotDetail from "./pages/seeds/SeedLotDetail";
@@ -51,8 +52,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
-          <div className="min-h-screen bg-gray-50">
+          <div className="min-h-screen">
             <Routes>
+              {/* ✅ Page d'accueil publique */}
+              <Route path="/" element={<LandingPage />} />
+
               {/* Auth Routes */}
               <Route path="/auth" element={<AuthLayout />}>
                 <Route path="login" element={<Login />} />
@@ -60,14 +64,14 @@ function App() {
 
               {/* Protected Dashboard Routes */}
               <Route
-                path="/"
+                path="/dashboard"
                 element={
                   <ProtectedRoute>
                     <DashboardLayout />
                   </ProtectedRoute>
                 }
               >
-                {/* ✅ CORRECTION: Route Dashboard */}
+                {/* ✅ Dashboard Route */}
                 <Route index element={<Dashboard />} />
 
                 {/* Seed Lots */}
@@ -111,7 +115,7 @@ function App() {
                 </Route>
               </Route>
 
-              {/* ✅ CORRECTION: Redirection vers la racine */}
+              {/* ✅ Redirections */}
               <Route
                 path="/login"
                 element={<Navigate to="/auth/login" replace />}

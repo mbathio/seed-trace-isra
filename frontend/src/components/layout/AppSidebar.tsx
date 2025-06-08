@@ -1,4 +1,4 @@
-// frontend/src/components/layout/AppSidebar.tsx - NAVIGATION CORRIGÉE
+// frontend/src/components/layout/AppSidebar.tsx - LIENS MIS À JOUR
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -39,7 +39,7 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Tableau de bord",
-          url: "/", // ✅ CORRECTION: URL correcte
+          url: "/dashboard", // ✅ Mis à jour
           icon: Home,
         },
       ],
@@ -49,12 +49,12 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Lots de semences",
-          url: "/seeds", // ✅ CORRECTION: URL correcte
+          url: "/dashboard/seeds", // ✅ Mis à jour
           icon: Sprout,
         },
         {
           title: "Variétés",
-          url: "/varieties", // ✅ CORRECTION: URL correcte
+          url: "/dashboard/varieties", // ✅ Mis à jour
           icon: Leaf,
         },
       ],
@@ -64,12 +64,12 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Multiplicateurs",
-          url: "/multipliers", // ✅ CORRECTION: URL correcte
+          url: "/dashboard/multipliers", // ✅ Mis à jour
           icon: Users,
         },
         {
           title: "Productions",
-          url: "/productions", // ✅ CORRECTION: URL correcte
+          url: "/dashboard/productions", // ✅ Mis à jour
           icon: Tractor,
         },
       ],
@@ -79,7 +79,7 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Contrôles qualité",
-          url: "/quality", // ✅ CORRECTION: URL correcte
+          url: "/dashboard/quality", // ✅ Mis à jour
           icon: FlaskConical,
         },
       ],
@@ -89,7 +89,7 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Rapports",
-          url: "/reports", // ✅ CORRECTION: URL correcte
+          url: "/dashboard/reports", // ✅ Mis à jour
           icon: FileText,
         },
       ],
@@ -102,12 +102,12 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Utilisateurs",
-          url: "/users", // ✅ CORRECTION: URL correcte
+          url: "/dashboard/users", // ✅ Mis à jour
           icon: User,
         },
         {
           title: "Paramètres",
-          url: "/settings", // ✅ CORRECTION: URL correcte
+          url: "/dashboard/settings", // ✅ Mis à jour
           icon: Settings,
         },
       ],
@@ -115,8 +115,8 @@ const AppSidebar: React.FC = () => {
   ];
 
   const isActive = (url: string) => {
-    if (url === "/") {
-      return location.pathname === "/";
+    if (url === "/dashboard") {
+      return location.pathname === "/dashboard";
     }
     return location.pathname.startsWith(url);
   };
@@ -154,7 +154,7 @@ const AppSidebar: React.FC = () => {
           </SidebarGroup>
         ))}
 
-        {/* ✅ CORRECTION: Vérification du rôle admin */}
+        {/* Admin Navigation */}
         {user?.role === "ADMIN" && (
           <>
             {adminNavigation.map((group, index) => (
