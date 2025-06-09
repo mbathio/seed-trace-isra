@@ -1,8 +1,8 @@
-// frontend/src/pages/Dashboard.tsx - CORRIGÉ
+// frontend/src/pages/Dashboard.tsx - VERSION CORRIGÉE
 import React from "react";
 import { useApiQuery } from "../hooks/useApi";
 import { StatsCard } from "../components/charts/StatsCard";
-import { DashboardStats } from "../types/entities";
+import { DashboardStats, SeedLot, Production } from "../types/entities";
 import {
   Sprout,
   Users,
@@ -26,28 +26,13 @@ import { Badge } from "../components/ui/badge";
 import { Progress } from "../components/ui/progress";
 import { formatDate } from "../utils/formatters";
 
-// ✅ CORRECTION: Types pour les réponses d'activités et lots
-interface Activity {
-  id: string;
-  description: string;
-  createdAt: string;
-  type?: string;
-  userId?: number;
+// ✅ CORRECTION: Types pour les réponses API
+interface ProductionsResponse {
+  data: Production[];
 }
 
-interface RecentLotsResponse {
-  data: Array<{
-    id: string;
-    level: string;
-    quantity: number;
-    variety: {
-      name: string;
-    };
-  }>;
-}
-
-interface ActivitiesResponse {
-  data: Activity[];
+interface LotsResponse {
+  data: SeedLot[];
 }
 
 const Dashboard: React.FC = () => {
@@ -57,21 +42,64 @@ const Dashboard: React.FC = () => {
     error,
   } = useApiQuery<DashboardStats>(["dashboard-stats"], "/statistics/dashboard");
 
-  // ✅ CORRECTION: Typage correct pour les activités récentes
-  const { data: recentActivitiesResponse } = useApiQuery<ActivitiesResponse>(
-    ["recent-activities"],
-    "/activities/recent?limit=5"
+  // ✅ CORRECTION: Utiliser les productions récentes au lieu d'activities
+  const { data: recentProductionsResponse } = useApiQuery<ProductionsResponse>(
+    ["recent-productions"],
+    "/productions?pageSize=5&sortBy=startDate&sortOrder=desc"
   );
 
-  // ✅ CORRECTION: Typage correct pour les lots récents
-  const { data: recentLotsResponse } = useApiQuery<RecentLotsResponse>(
+  // ✅ CORRECTION: Corriger le champ de tri pour les lots
+  const { data: recentLotsResponse } = useApiQuery<LotsResponse>(
     ["recent-lots"],
-    "/seeds?pageSize=5&sortBy=createdAt&sortOrder=desc"
+    "/seeds?pageSize=5&sortBy=productionDate&sortOrder=desc"
   );
 
-  // ✅ CORRECTION: Extraction sécurisée des données
-  const recentActivities = recentActivitiesResponse?.data || [];
+  // ✅ CORRECTION: Extraction sécurisée des données avec transformation
+  const recentActivities = React.useMemo(() => {
+    if (!recentProductionsResponse?.data) return [];
+
+    return recentProductionsResponse.data.map((production) => ({
+      id: production.id.toString(),
+      description: `Production ${getStatusLabel(production.status)} - ${
+        production.seedLot?.variety?.name || "Variété inconnue"
+      }`,
+      createdAt: production.startDate,
+      type: production.status,
+    }));
+  }, [recentProductionsResponse]);
+
   const recentLots = recentLotsResponse?.data || [];
+
+  // ✅ AJOUT: Fonction utilitaire pour les labels de statut
+  const getStatusLabel = (status: string): string => {
+    const statusLabels: Record<string, string> = {
+      PLANNED: "planifiée",
+      IN_PROGRESS: "en cours",
+      COMPLETED: "terminée",
+      CANCELLED: "annulée",
+    };
+    return statusLabels[status] || status.toLowerCase();
+  };
+
+  // ✅ CORRECTION: Fonctions utilitaires pour les calculs sécurisés
+  const getActiveMultipliers = () => {
+    return stats?.overview?.activeMultipliers || 0;
+  };
+
+  const getExpertMultipliers = () => {
+    // Cette donnée n'est pas disponible dans les stats actuelles, on retourne 0
+    return 0;
+  };
+
+  const getAverageExperience = () => {
+    // Cette donnée n'est pas disponible dans les stats actuelles, on retourne 0
+    return 0;
+  };
+
+  const getTotalParcels = () => {
+    // Cette donnée n'est pas disponible dans les stats actuelles, on retourne 0
+    return 0;
+  };
 
   if (isLoading) {
     return (
@@ -115,7 +143,7 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title="Lots Actifs"
-          value={stats?.overview.activeSeedLots || 0}
+          value={stats?.overview?.activeSeedLots || 0}
           icon={Sprout}
           color="text-green-600"
           change={{
@@ -125,7 +153,7 @@ const Dashboard: React.FC = () => {
         />
         <StatsCard
           title="Multiplicateurs"
-          value={stats?.overview.activeMultipliers || 0}
+          value={getActiveMultipliers()}
           icon={Users}
           color="text-blue-600"
           change={{
@@ -135,7 +163,7 @@ const Dashboard: React.FC = () => {
         />
         <StatsCard
           title="Contrôles Qualité"
-          value={stats?.overview.totalQualityControls || 0}
+          value={stats?.overview?.totalQualityControls || 0}
           icon={FlaskConical}
           color="text-purple-600"
           change={{
@@ -145,7 +173,7 @@ const Dashboard: React.FC = () => {
         />
         <StatsCard
           title="Productions"
-          value={stats?.overview.completedProductions || 0}
+          value={stats?.overview?.completedProductions || 0}
           icon={Tractor}
           color="text-orange-600"
           change={{
@@ -171,17 +199,17 @@ const Dashboard: React.FC = () => {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-2xl font-bold text-green-600">
-                  {stats?.rates.qualityPassRate?.toFixed(1) || 0}%
+                  {stats?.rates?.qualityPassRate?.toFixed(1) || "0"}%
                 </span>
                 <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
               <Progress
-                value={stats?.rates.qualityPassRate || 0}
+                value={stats?.rates?.qualityPassRate || 0}
                 className="h-2"
               />
               <p className="text-sm text-muted-foreground">
-                {stats?.overview.passedQualityControls || 0} lots certifiés sur{" "}
-                {stats?.overview.totalQualityControls || 0} contrôlés
+                {stats?.overview?.passedQualityControls || 0} lots certifiés sur{" "}
+                {stats?.overview?.totalQualityControls || 0} contrôlés
               </p>
             </div>
           </CardContent>
@@ -201,17 +229,17 @@ const Dashboard: React.FC = () => {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-2xl font-bold text-blue-600">
-                  {stats?.rates.productionCompletionRate?.toFixed(1) || 0}%
+                  {stats?.rates?.productionCompletionRate?.toFixed(1) || "0"}%
                 </span>
                 <Tractor className="h-6 w-6 text-blue-600" />
               </div>
               <Progress
-                value={stats?.rates.productionCompletionRate || 0}
+                value={stats?.rates?.productionCompletionRate || 0}
                 className="h-2"
               />
               <p className="text-sm text-muted-foreground">
-                {stats?.overview.completedProductions || 0} productions
-                terminées sur {stats?.overview.totalProductions || 0} total
+                {stats?.overview?.completedProductions || 0} productions
+                terminées sur {stats?.overview?.totalProductions || 0} total
               </p>
             </div>
           </CardContent>
@@ -232,7 +260,7 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stats?.distribution.lotsByLevel?.map((item) => {
+              {stats?.distribution?.lotsByLevel?.map((item) => {
                 const colors = {
                   GO: "bg-red-100 text-red-800",
                   G1: "bg-orange-100 text-orange-800",
@@ -262,7 +290,7 @@ const Dashboard: React.FC = () => {
                       </span>
                     </div>
                     <span className="text-sm text-muted-foreground">
-                      {item.totalQuantity.toFixed(1)} kg
+                      {item.totalQuantity?.toFixed(1) || "0"} kg
                     </span>
                   </div>
                 );
@@ -281,11 +309,11 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stats?.distribution.topVarieties
+              {stats?.distribution?.topVarieties
                 ?.slice(0, 5)
                 .map((item, index) => (
                   <div
-                    key={item.variety.id}
+                    key={item.variety?.id || index}
                     className="flex items-center justify-between"
                   >
                     <div className="flex items-center space-x-3">
@@ -294,17 +322,17 @@ const Dashboard: React.FC = () => {
                       </div>
                       <div>
                         <p className="font-medium text-sm">
-                          {item.variety.name}
+                          {item.variety?.name || "Variété inconnue"}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {item.variety.code}
+                          {item.variety?.code || "N/A"}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">{item.count} lots</p>
                       <p className="text-xs text-muted-foreground">
-                        {item.totalQuantity.toFixed(1)} kg
+                        {item.totalQuantity?.toFixed(1) || "0"} kg
                       </p>
                     </div>
                   </div>
@@ -320,15 +348,14 @@ const Dashboard: React.FC = () => {
           <CardHeader>
             <CardTitle className="flex items-center">
               <Calendar className="h-5 w-5 mr-2 text-blue-600" />
-              Activités Récentes
+              Productions Récentes
             </CardTitle>
             <CardDescription>
-              Dernières actions effectuées dans le système
+              Dernières productions créées dans le système
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {/* ✅ CORRECTION: Utilisation correcte des données typées */}
               {recentActivities.length > 0 ? (
                 recentActivities.map((activity, index) => (
                   <div
@@ -336,7 +363,7 @@ const Dashboard: React.FC = () => {
                     className="flex items-start space-x-3"
                   >
                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-100">
-                      <Calendar className="h-4 w-4 text-green-600" />
+                      <Tractor className="h-4 w-4 text-green-600" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">
@@ -350,7 +377,7 @@ const Dashboard: React.FC = () => {
                 ))
               ) : (
                 <p className="text-muted-foreground text-sm">
-                  Aucune activité récente
+                  Aucune production récente
                 </p>
               )}
             </div>
@@ -367,7 +394,6 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {/* ✅ CORRECTION: Utilisation correcte des données typées */}
               {recentLots.length > 0 ? (
                 recentLots.map((lot) => {
                   const levelColors = {
@@ -392,7 +418,7 @@ const Dashboard: React.FC = () => {
                             {lot.id}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {lot.variety.name}
+                            {lot.variety?.name || "Variété inconnue"}
                           </p>
                         </div>
                       </div>
@@ -424,28 +450,29 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Message si pas de données */}
-      {stats && Object.values(stats.overview).every((val) => val === 0) && (
-        <Card className="border-0 shadow-sm">
-          <CardContent className="py-12 text-center">
-            <Sprout className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">
-              Bienvenue dans ISRA Seeds
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              Aucune donnée disponible pour le moment. Commencez par créer des
-              variétés et des lots de semences.
-            </p>
-            <div className="flex justify-center space-x-4">
-              <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm">
-                Créer une variété
-              </button>
-              <button className="border border-green-600 text-green-600 hover:bg-green-50 px-4 py-2 rounded-md text-sm">
-                Créer un lot
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {stats &&
+        Object.values(stats.overview || {}).every((val) => val === 0) && (
+          <Card className="border-0 shadow-sm">
+            <CardContent className="py-12 text-center">
+              <Sprout className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">
+                Bienvenue dans ISRA Seeds
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                Aucune donnée disponible pour le moment. Commencez par créer des
+                variétés et des lots de semences.
+              </p>
+              <div className="flex justify-center space-x-4">
+                <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm">
+                  Créer une variété
+                </button>
+                <button className="border border-green-600 text-green-600 hover:bg-green-50 px-4 py-2 rounded-md text-sm">
+                  Créer un lot
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
     </div>
   );
 };
