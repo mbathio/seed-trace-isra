@@ -290,41 +290,47 @@ async function main() {
 
   console.log("🧪 Analyses de sol créées");
 
-  // Créer les lots de semences (MOCK_SEED_LOTS du frontend)
-  const seedLots = await Promise.all([
-    prisma.seedLot.create({
-      data: {
-        id: "SL-GO-2023-001",
-        varietyId: varieties[0].id, // Sahel 108 - utiliser l'ID réel
-        level: "GO",
-        quantity: 500,
-        productionDate: new Date("2023-12-15"),
-        expiryDate: new Date("2025-12-15"),
-        multiplierId: multipliers[0].id, // Utiliser l'ID réel
-        parcelId: parcels[0].id, // Utiliser l'ID réel
-        status: "CERTIFIED",
-        batchNumber: "B-2023-001",
-        notes: "Lot de base de haute qualité",
-        qrCode: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...", // QR code fictif
-      },
-    }),
-    prisma.seedLot.create({
-      data: {
-        id: "SL-G1-2024-001",
-        varietyId: varieties[0].id, // Sahel 108 - utiliser l'ID réel
-        level: "G1",
-        quantity: 2500,
-        productionDate: new Date("2024-01-20"),
-        expiryDate: new Date("2026-01-20"),
-        multiplierId: multipliers[0].id, // Utiliser l'ID réel
-        parcelId: parcels[0].id, // Utiliser l'ID réel
-        parentLotId: "SL-GO-2023-001",
-        status: "CERTIFIED",
-        batchNumber: "B-2024-001",
-        notes: "Première génération, excellent rendement",
-        qrCode: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
-      },
-    }),
+  // ✅ CORRECTION: Créer les lots de semences dans le bon ordre (parent avant enfant)
+
+  // 1. D'abord créer le lot parent (GO)
+  const parentLot = await prisma.seedLot.create({
+    data: {
+      id: "SL-GO-2023-001",
+      varietyId: varieties[0].id, // Sahel 108 - utiliser l'ID réel
+      level: "GO",
+      quantity: 500,
+      productionDate: new Date("2023-12-15"),
+      expiryDate: new Date("2025-12-15"),
+      multiplierId: multipliers[0].id, // Utiliser l'ID réel
+      parcelId: parcels[0].id, // Utiliser l'ID réel
+      status: "CERTIFIED",
+      batchNumber: "B-2023-001",
+      notes: "Lot de base de haute qualité",
+      qrCode: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...", // QR code fictif
+    },
+  });
+
+  // 2. Puis créer le lot enfant G1 avec parentLotId
+  const childLotG1 = await prisma.seedLot.create({
+    data: {
+      id: "SL-G1-2024-001",
+      varietyId: varieties[0].id, // Sahel 108 - utiliser l'ID réel
+      level: "G1",
+      quantity: 2500,
+      productionDate: new Date("2024-01-20"),
+      expiryDate: new Date("2026-01-20"),
+      multiplierId: multipliers[0].id, // Utiliser l'ID réel
+      parcelId: parcels[0].id, // Utiliser l'ID réel
+      parentLotId: parentLot.id, // ✅ CORRECTION: Référencer le lot parent créé
+      status: "CERTIFIED",
+      batchNumber: "B-2024-001",
+      notes: "Première génération, excellent rendement",
+      qrCode: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    },
+  });
+
+  // 3. Créer les autres lots indépendants
+  const otherLots = await Promise.all([
     prisma.seedLot.create({
       data: {
         id: "SL-G2-2024-002",
@@ -359,7 +365,8 @@ async function main() {
     }),
   ]);
 
-  console.log("🌱 Lots de semences créés:", seedLots.length);
+  const allSeedLots = [parentLot, childLotG1, ...otherLots];
+  console.log("🌱 Lots de semences créés:", allSeedLots.length);
 
   // Créer les contrôles qualité
   await prisma.qualityControl.create({
