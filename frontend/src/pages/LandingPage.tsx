@@ -347,7 +347,7 @@ const LandingPage: React.FC = () => {
                     ISRA Saint-Louis
                   </h3>
                   <p className="text-green-700">
-                    Au service de l'agriculture sénégalaise depuis plus de 30
+                    Au service de l'agriculture sénégalaise depuis plus de 50
                     ans
                   </p>
                 </div>

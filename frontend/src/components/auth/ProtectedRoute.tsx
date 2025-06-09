@@ -1,4 +1,4 @@
-// frontend/src/components/auth/ProtectedRoute.tsx - CORRECTION
+// frontend/src/components/auth/ProtectedRoute.tsx - REDIRECTION VERS LANDING PAGE
 import React, { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
@@ -30,8 +30,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // ✅ CORRECTION: Redirect to login with state to remember intended location
+  // ✅ CORRECTION: Rediriger vers la landing page au lieu de /auth/login
   if (!isAuthenticated) {
+    // Stocker la destination voulue dans l'état pour rediriger après connexion
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 

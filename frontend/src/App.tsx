@@ -1,4 +1,4 @@
-// frontend/src/App.tsx - CORRECTION COMPLÈTE DES ROUTES
+// frontend/src/App.tsx - ROUTAGE CORRIGÉ AVEC LANDING PAGE
 import {
   BrowserRouter as Router,
   Routes,
@@ -16,9 +16,14 @@ import { AuthProvider } from "./contexts/AuthContext";
 import DashboardLayout from "./layouts/DashboardLayout";
 import AuthLayout from "./layouts/AuthLayout";
 
-// Pages
-import Dashboard from "./pages/Dashboard";
+// Landing Page
+import LandingPage from "./pages/LandingPage";
+
+// Auth Pages
 import Login from "./pages/auth/Login";
+
+// Dashboard Pages
+import Dashboard from "./pages/Dashboard";
 import SeedLots from "./pages/seeds/SeedLots";
 import SeedLotDetail from "./pages/seeds/SeedLotDetail";
 import CreateSeedLot from "./pages/seeds/CreateSeedLot";
@@ -54,29 +59,22 @@ function App() {
         <Router>
           <div className="min-h-screen bg-gray-50">
             <Routes>
-              {/* ✅ CORRECTION: Route de redirection par défaut */}
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <Navigate to="/dashboard" replace />
-                  </ProtectedRoute>
-                }
-              />
+              {/* ✅ LANDING PAGE - Page d'accueil publique */}
+              <Route path="/" element={<LandingPage />} />
 
-              {/* ✅ CORRECTION: Routes d'authentification */}
+              {/* ✅ ROUTES D'AUTHENTIFICATION */}
               <Route path="/auth" element={<AuthLayout />}>
                 <Route index element={<Navigate to="/auth/login" replace />} />
                 <Route path="login" element={<Login />} />
               </Route>
 
-              {/* ✅ CORRECTION: Route de connexion directe */}
+              {/* ✅ ROUTE DE CONNEXION DIRECTE */}
               <Route
                 path="/login"
                 element={<Navigate to="/auth/login" replace />}
               />
 
-              {/* ✅ CORRECTION: Routes protégées du dashboard */}
+              {/* ✅ ROUTES PROTÉGÉES DU DASHBOARD */}
               <Route
                 path="/dashboard"
                 element={
@@ -88,7 +86,7 @@ function App() {
                 <Route index element={<Dashboard />} />
               </Route>
 
-              {/* ✅ CORRECTION: Routes de semences */}
+              {/* ✅ ROUTES DE SEMENCES */}
               <Route
                 path="/seeds"
                 element={
@@ -102,7 +100,7 @@ function App() {
                 <Route path=":id" element={<SeedLotDetail />} />
               </Route>
 
-              {/* ✅ CORRECTION: Routes de variétés */}
+              {/* ✅ ROUTES DE VARIÉTÉS */}
               <Route
                 path="/varieties"
                 element={
@@ -116,7 +114,7 @@ function App() {
                 <Route path=":id" element={<VarietyDetail />} />
               </Route>
 
-              {/* ✅ CORRECTION: Routes de multiplicateurs */}
+              {/* ✅ ROUTES DE MULTIPLICATEURS */}
               <Route
                 path="/multipliers"
                 element={
@@ -128,7 +126,7 @@ function App() {
                 <Route index element={<Multipliers />} />
               </Route>
 
-              {/* ✅ CORRECTION: Routes de contrôle qualité */}
+              {/* ✅ ROUTES DE CONTRÔLE QUALITÉ */}
               <Route
                 path="/quality"
                 element={
@@ -141,7 +139,7 @@ function App() {
                 <Route path="create" element={<CreateQualityControl />} />
               </Route>
 
-              {/* ✅ CORRECTION: Routes de productions */}
+              {/* ✅ ROUTES DE PRODUCTIONS */}
               <Route
                 path="/productions"
                 element={
@@ -153,7 +151,7 @@ function App() {
                 <Route index element={<Productions />} />
               </Route>
 
-              {/* ✅ CORRECTION: Routes de rapports */}
+              {/* ✅ ROUTES DE RAPPORTS */}
               <Route
                 path="/reports"
                 element={
@@ -165,7 +163,7 @@ function App() {
                 <Route index element={<Reports />} />
               </Route>
 
-              {/* ✅ CORRECTION: Routes d'administration */}
+              {/* ✅ ROUTES D'ADMINISTRATION */}
               <Route
                 path="/users"
                 element={
@@ -177,8 +175,8 @@ function App() {
                 <Route index element={<Users />} />
               </Route>
 
-              {/* ✅ CORRECTION: Route 404 */}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              {/* ✅ ROUTE 404 - Redirection vers la landing page */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
 

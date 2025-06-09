@@ -1,4 +1,4 @@
-// frontend/src/contexts/AuthContext.tsx - REDIRECTION MISE À JOUR
+// frontend/src/contexts/AuthContext.tsx - REDIRECTION LANDING PAGE
 import React, {
   createContext,
   useContext,
@@ -79,7 +79,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     setUser(null);
-    // ✅ Rediriger vers la page d'accueil au lieu de /auth/login
+    // ✅ CORRECTION: Rediriger vers la landing page (page d'accueil) au lieu de /auth/login
     window.location.href = "/";
   };
 

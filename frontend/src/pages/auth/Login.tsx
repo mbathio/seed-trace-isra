@@ -1,4 +1,4 @@
-// frontend/src/pages/auth/Login.tsx - CORRECTION REDIRECTIONS
+// frontend/src/pages/auth/Login.tsx - GESTION REDIRECTIONS AMÉLIORÉE
 import React, { useState } from "react";
 import { useNavigate, Navigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -43,7 +43,7 @@ const Login: React.FC = () => {
     formState: { errors },
   } = useForm<LoginForm>();
 
-  // ✅ CORRECTION: Redirect if already authenticated
+  // ✅ CORRECTION: Redirect if already authenticated to dashboard
   if (isAuthenticated) {
     // Get the intended destination from location state, or default to dashboard
     const from = (location.state as any)?.from?.pathname || "/dashboard";
@@ -67,6 +67,23 @@ const Login: React.FC = () => {
         errorResponse?.message ||
         "Erreur de connexion. Vérifiez vos identifiants.";
       toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ✅ FONCTION UTILITAIRE: Connexion rapide avec les comptes de démo
+  const quickLogin = async (email: string, password: string) => {
+    try {
+      setIsLoading(true);
+      await login(email, password);
+      toast.success("Connexion réussie !");
+
+      const from = (location.state as any)?.from?.pathname || "/dashboard";
+      navigate(from, { replace: true });
+    } catch (error) {
+      console.error("Quick login error:", error);
+      toast.error("Erreur de connexion");
     } finally {
       setIsLoading(false);
     }
@@ -112,7 +129,7 @@ const Login: React.FC = () => {
                 {...register("password", {
                   required: "Le mot de passe est requis",
                   minLength: {
-                    value: 5, // ✅ CORRECTION: Ajusté pour correspondre aux comptes de test
+                    value: 5,
                     message:
                       "Le mot de passe doit contenir au moins 5 caractères",
                   },
@@ -144,7 +161,7 @@ const Login: React.FC = () => {
           </Button>
         </form>
 
-        {/* ✅ AMÉLIORATION: Demo credentials avec boutons de connexion rapide */}
+        {/* ✅ COMPTES DE DÉMONSTRATION avec boutons de connexion rapide */}
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <p className="text-sm font-medium text-gray-700 mb-3">
             Comptes de démonstration :
@@ -155,11 +172,8 @@ const Login: React.FC = () => {
               variant="outline"
               size="sm"
               className="w-full justify-start text-xs"
-              onClick={() => {
-                handleSubmit(() =>
-                  onSubmit({ email: "admin@isra.sn", password: "12345" })
-                )();
-              }}
+              onClick={() => quickLogin("admin@isra.sn", "12345")}
+              disabled={isLoading}
             >
               <strong className="mr-2">Admin :</strong> admin@isra.sn / 12345
             </Button>
@@ -168,11 +182,8 @@ const Login: React.FC = () => {
               variant="outline"
               size="sm"
               className="w-full justify-start text-xs"
-              onClick={() => {
-                handleSubmit(() =>
-                  onSubmit({ email: "adiop@isra.sn", password: "12345" })
-                )();
-              }}
+              onClick={() => quickLogin("adiop@isra.sn", "12345")}
+              disabled={isLoading}
             >
               <strong className="mr-2">Chercheur :</strong> adiop@isra.sn /
               12345
@@ -182,11 +193,8 @@ const Login: React.FC = () => {
               variant="outline"
               size="sm"
               className="w-full justify-start text-xs"
-              onClick={() => {
-                handleSubmit(() =>
-                  onSubmit({ email: "fsy@isra.sn", password: "12345" })
-                )();
-              }}
+              onClick={() => quickLogin("fsy@isra.sn", "12345")}
+              disabled={isLoading}
             >
               <strong className="mr-2">Technicien :</strong> fsy@isra.sn / 12345
             </Button>
