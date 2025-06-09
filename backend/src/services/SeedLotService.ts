@@ -1,4 +1,4 @@
-// backend/src/services/SeedLotService.ts
+// backend/src/services/SeedLotService.ts - ✅ CORRIGÉ avec gestion d'erreurs cohérente
 import { prisma } from "../config/database";
 import { EncryptionService } from "../utils/encryption";
 import { QRCodeService } from "../utils/qrCode";
@@ -7,6 +7,17 @@ import { CreateSeedLotData, UpdateSeedLotData } from "../types/entities";
 import { PaginationQuery } from "../types/api";
 import { SeedLevel, LotStatus } from "@prisma/client";
 import { DataTransformer } from "../utils/transformers";
+
+// ✅ CORRECTION: Classe d'erreur personnalisée pour une meilleure gestion
+export class SeedLotError extends Error {
+  constructor(
+    message: string,
+    public code?: string
+  ) {
+    super(message);
+    this.name = "SeedLotError";
+  }
+}
 
 export class SeedLotService {
   static async createSeedLot(data: CreateSeedLotData): Promise<any> {
@@ -27,8 +38,9 @@ export class SeedLotService {
             where: { code: data.varietyId, isActive: true },
           });
           if (!variety) {
-            throw new Error(
-              `Variété non trouvée avec le code: ${data.varietyId}`
+            throw new SeedLotError(
+              `Variété non trouvée avec le code: ${data.varietyId}`,
+              "VARIETY_NOT_FOUND"
             );
           }
           varietyId = variety.id;
@@ -44,7 +56,10 @@ export class SeedLotService {
         });
 
         if (!parentLot) {
-          throw new Error("Lot parent non trouvé");
+          throw new SeedLotError(
+            "Lot parent non trouvé",
+            "PARENT_LOT_NOT_FOUND"
+          );
         }
 
         // Vérifier la hiérarchie des niveaux
@@ -53,8 +68,9 @@ export class SeedLotService {
         const childIndex = levelHierarchy.indexOf(data.level);
 
         if (parentIndex >= childIndex) {
-          throw new Error(
-            `Un lot ${data.level} ne peut pas être créé à partir d'un lot ${parentLot.level}`
+          throw new SeedLotError(
+            `Un lot ${data.level} ne peut pas être créé à partir d'un lot ${parentLot.level}`,
+            "INVALID_HIERARCHY"
           );
         }
       }
@@ -116,10 +132,13 @@ export class SeedLotService {
         },
       });
 
+      logger.info(`Lot de semences créé avec succès: ${lotId}`);
+
       // Transformer les données pour le frontend
       return DataTransformer.transformSeedLot(updatedSeedLot);
     } catch (error) {
       logger.error("Erreur lors de la création du lot:", error);
+      // ✅ CORRECTION: Re-throw l'erreur pour le middleware d'erreur
       throw error;
     }
   }
@@ -218,7 +237,7 @@ export class SeedLotService {
           },
           orderBy: { [sortBy]: sortOrder },
           skip,
-          take: pageSizeNum, // ✅ CORRECTION: Entier au lieu de string
+          take: pageSizeNum,
         }),
         prisma.seedLot.count({ where }),
       ]);
@@ -248,7 +267,8 @@ export class SeedLotService {
     }
   }
 
-  static async getSeedLotById(id: string): Promise<any> {
+  // ✅ CORRECTION: Gestion d'erreurs cohérente - retourne null si non trouvé, throw en cas d'erreur technique
+  static async getSeedLotById(id: string): Promise<any | null> {
     try {
       const seedLot = await prisma.seedLot.findUnique({
         where: { id, isActive: true },
@@ -305,6 +325,7 @@ export class SeedLotService {
         },
       });
 
+      // ✅ CORRECTION: Retourner null si non trouvé (comportement cohérent)
       if (!seedLot) {
         return null;
       }
@@ -322,6 +343,15 @@ export class SeedLotService {
     data: UpdateSeedLotData
   ): Promise<any> {
     try {
+      // ✅ CORRECTION: Vérifier d'abord si le lot existe
+      const existingLot = await prisma.seedLot.findUnique({
+        where: { id, isActive: true },
+      });
+
+      if (!existingLot) {
+        throw new SeedLotError("Lot de semences non trouvé", "LOT_NOT_FOUND");
+      }
+
       const updateData: any = {};
 
       if (data.quantity !== undefined) {
@@ -341,6 +371,10 @@ export class SeedLotService {
 
       if (data.expiryDate) {
         updateData.expiryDate = new Date(data.expiryDate);
+      }
+
+      if (data.batchNumber !== undefined) {
+        updateData.batchNumber = data.batchNumber;
       }
 
       updateData.updatedAt = new Date();
@@ -371,6 +405,8 @@ export class SeedLotService {
         },
       });
 
+      logger.info(`Lot de semences mis à jour: ${id}`);
+
       // Transformer les données pour le frontend
       return DataTransformer.transformSeedLot(seedLot);
     } catch (error) {
@@ -381,14 +417,24 @@ export class SeedLotService {
 
   static async deleteSeedLot(id: string): Promise<void> {
     try {
+      // ✅ CORRECTION: Vérifier d'abord si le lot existe
+      const existingLot = await prisma.seedLot.findUnique({
+        where: { id, isActive: true },
+      });
+
+      if (!existingLot) {
+        throw new SeedLotError("Lot de semences non trouvé", "LOT_NOT_FOUND");
+      }
+
       // Vérifier s'il y a des lots enfants
       const childLotsCount = await prisma.seedLot.count({
         where: { parentLotId: id, isActive: true },
       });
 
       if (childLotsCount > 0) {
-        throw new Error(
-          "Impossible de supprimer ce lot car il a des lots enfants actifs"
+        throw new SeedLotError(
+          "Impossible de supprimer ce lot car il a des lots enfants actifs",
+          "HAS_CHILD_LOTS"
         );
       }
 
@@ -408,7 +454,8 @@ export class SeedLotService {
     }
   }
 
-  static async getGenealogyTree(lotId: string): Promise<any> {
+  // ✅ CORRECTION: Gestion d'erreurs cohérente
+  static async getGenealogyTree(lotId: string): Promise<any | null> {
     try {
       const lot = await this.getSeedLotById(lotId);
       if (!lot) {
@@ -434,63 +481,73 @@ export class SeedLotService {
   }
 
   private static async getAncestors(lotId: string): Promise<any[]> {
-    const ancestors = [];
-    let currentLotId = lotId;
+    try {
+      const ancestors = [];
+      let currentLotId = lotId;
 
-    while (currentLotId) {
-      const lot = await prisma.seedLot.findUnique({
-        where: { id: currentLotId, isActive: true },
-        include: {
-          variety: true,
-          parentLot: {
-            include: {
-              variety: true,
-              multiplier: true,
+      while (currentLotId) {
+        const lot = await prisma.seedLot.findUnique({
+          where: { id: currentLotId, isActive: true },
+          include: {
+            variety: true,
+            parentLot: {
+              include: {
+                variety: true,
+                multiplier: true,
+              },
             },
+            multiplier: true,
           },
-          multiplier: true,
-        },
-      });
+        });
 
-      if (!lot || !lot.parentLotId) {
-        break;
+        if (!lot || !lot.parentLotId) {
+          break;
+        }
+
+        // Transformer et ajouter le lot parent
+        ancestors.push(DataTransformer.transformSeedLot(lot.parentLot));
+        currentLotId = lot.parentLotId;
       }
 
-      // Transformer et ajouter le lot parent
-      ancestors.push(DataTransformer.transformSeedLot(lot.parentLot));
-      currentLotId = lot.parentLotId;
+      return ancestors;
+    } catch (error) {
+      logger.error("Erreur lors de la récupération des ancêtres:", error);
+      throw error;
     }
-
-    return ancestors;
   }
 
   private static async getDescendants(lotId: string): Promise<any[]> {
-    const descendants = await prisma.seedLot.findMany({
-      where: { parentLotId: lotId, isActive: true },
-      include: {
-        variety: true,
-        multiplier: true,
-        qualityControls: {
-          orderBy: { controlDate: "desc" },
-          take: 1,
-        },
-        _count: {
-          select: {
-            childLots: true,
+    try {
+      const descendants = await prisma.seedLot.findMany({
+        where: { parentLotId: lotId, isActive: true },
+        include: {
+          variety: true,
+          multiplier: true,
+          qualityControls: {
+            orderBy: { controlDate: "desc" },
+            take: 1,
+          },
+          _count: {
+            select: {
+              childLots: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    // Récupérer récursivement les descendants de chaque descendant
-    const transformedDescendants = [];
-    for (const descendant of descendants) {
-      const transformed = DataTransformer.transformSeedLot(descendant);
-      transformed.childLots = await this.getDescendants(descendant.id);
-      transformedDescendants.push(transformed);
+      // Récupérer récursivement les descendants de chaque descendant
+      const transformedDescendants = [];
+      for (const descendant of descendants) {
+        const transformed = DataTransformer.transformSeedLot(descendant);
+        transformed.childLots = await this.getDescendants(descendant.id);
+        transformedDescendants.push(transformed);
+      }
+
+      return transformedDescendants;
+    } catch (error) {
+      logger.error("Erreur lors de la récupération des descendants:", error);
+      throw error;
     }
-
-    return transformedDescendants;
   }
 
   private static calculateGenerations(
@@ -514,7 +571,7 @@ export class SeedLotService {
     return maxDepth;
   }
 
-  // Méthodes supplémentaires utiles
+  // Méthodes supplémentaires avec gestion d'erreurs cohérente
 
   static async getStatsByVariety(varietyId: number): Promise<any> {
     try {
@@ -595,11 +652,14 @@ export class SeedLotService {
       });
 
       if (!sourceLot) {
-        throw new Error("Lot source non trouvé");
+        throw new SeedLotError("Lot source non trouvé", "SOURCE_LOT_NOT_FOUND");
       }
 
       if (sourceLot.quantity < quantity) {
-        throw new Error("Quantité insuffisante dans le lot source");
+        throw new SeedLotError(
+          "Quantité insuffisante dans le lot source",
+          "INSUFFICIENT_QUANTITY"
+        );
       }
 
       // Créer une transaction pour assurer l'intégrité
@@ -659,6 +719,10 @@ export class SeedLotService {
           newLot: finalNewLot,
         };
       });
+
+      logger.info(
+        `Transfert de lot réussi: ${quantity}kg de ${lotId} vers ${result.newLot.id}`
+      );
 
       // Transformer les données pour le frontend
       return {

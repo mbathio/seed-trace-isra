@@ -168,6 +168,7 @@ model User {
   @@index([email], map: "idx_users_email")
   @@index([role], map: "idx_users_role")
   @@index([isActive], map: "idx_users_active")
+  @@index([role, isActive], map: "idx_users_role_active") // ✅ AJOUTÉ: Index composite
   @@map("users")
 }
 
@@ -195,6 +196,7 @@ model Variety {
   @@index([isActive], map: "idx_varieties_active")
   @@index([code], map: "idx_varieties_code")
   @@index([name], map: "idx_varieties_name")
+  @@index([cropType, isActive], map: "idx_varieties_crop_active") // ✅ AJOUTÉ: Index composite
   @@map("varieties")
 }
 
@@ -226,6 +228,7 @@ model Parcel {
   @@index([multiplierId], map: "idx_parcels_multiplier")
   @@index([isActive], map: "idx_parcels_active")
   @@index([latitude, longitude], map: "idx_parcels_location")
+  @@index([multiplierId, status], map: "idx_parcels_multiplier_status") // ✅ AJOUTÉ: Index composite
   @@map("parcels")
 }
 
@@ -247,6 +250,7 @@ model SoilAnalysis {
 
   @@index([parcelId], map: "idx_soil_analyses_parcel")
   @@index([analysisDate], map: "idx_soil_analyses_date")
+  @@index([parcelId, analysisDate], map: "idx_soil_analyses_parcel_date") // ✅ AJOUTÉ: Index composite
   @@map("soil_analyses")
 }
 
@@ -263,6 +267,7 @@ model PreviousCrop {
 
   @@index([parcelId], map: "idx_previous_crops_parcel")
   @@index([year], map: "idx_previous_crops_year")
+  @@index([parcelId, year], map: "idx_previous_crops_parcel_year") // ✅ AJOUTÉ: Index composite
   @@map("previous_crops")
 }
 
@@ -296,6 +301,7 @@ model Multiplier {
   @@index([latitude, longitude], map: "idx_multipliers_location")
   @@index([email], map: "idx_multipliers_email")
   @@index([name], map: "idx_multipliers_name")
+  @@index([status, isActive], map: "idx_multipliers_status_active") // ✅ AJOUTÉ: Index composite
   @@map("multipliers")
 }
 
@@ -325,6 +331,7 @@ model Contract {
   @@index([multiplierId], map: "idx_contracts_multiplier")
   @@index([varietyId], map: "idx_contracts_variety")
   @@index([startDate, endDate], map: "idx_contracts_dates")
+  @@index([multiplierId, status], map: "idx_contracts_multiplier_status") // ✅ AJOUTÉ: Index composite
   @@map("contracts")
 }
 
@@ -345,6 +352,7 @@ model ProductionHistory {
 
   @@index([multiplierId], map: "idx_production_history_multiplier")
   @@index([year], map: "idx_production_history_year")
+  @@index([multiplierId, year], map: "idx_production_history_multiplier_year") // ✅ AJOUTÉ: Index composite
   @@map("production_history")
 }
 
@@ -387,6 +395,7 @@ model SeedLot {
   @@index([varietyId, level, status], map: "idx_seed_lots_variety_level_status")
   @@index([productionDate, level], map: "idx_seed_lots_production_level")
   @@index([multiplierId, status, productionDate], map: "idx_seed_lots_multiplier_complete")
+  @@index([expiryDate, status], map: "idx_seed_lots_expiry_status") // ✅ AJOUTÉ: Pour les lots expirants
   @@map("seed_lots")
 }
 
@@ -416,6 +425,8 @@ model QualityControl {
   @@index([result], map: "idx_quality_controls_result")
   @@index([lotId], map: "idx_quality_controls_lot")
   @@index([inspectorId], map: "idx_quality_controls_inspector")
+  @@index([lotId, controlDate], map: "idx_quality_controls_lot_date") // ✅ AJOUTÉ: Index composite
+  @@index([result, controlDate], map: "idx_quality_controls_result_date") // ✅ AJOUTÉ: Index composite
   @@map("quality_controls")
 }
 
@@ -453,6 +464,7 @@ model Production {
   @@index([parcelId], map: "idx_productions_parcel")
   @@index([lotId], map: "idx_productions_lot")
   @@index([startDate, endDate], map: "idx_productions_date_range")
+  @@index([multiplierId, status], map: "idx_productions_multiplier_status") // ✅ AJOUTÉ: Index composite
   @@map("productions")
 }
 
@@ -476,6 +488,7 @@ model ProductionActivity {
   @@index([productionId], map: "idx_production_activities_production")
   @@index([activityDate], map: "idx_production_activities_date")
   @@index([type], map: "idx_production_activities_type")
+  @@index([productionId, activityDate], map: "idx_production_activities_prod_date") // ✅ AJOUTÉ: Index composite
   @@map("production_activities")
 }
 
@@ -514,6 +527,7 @@ model ProductionIssue {
   @@index([productionId], map: "idx_production_issues_production")
   @@index([issueDate], map: "idx_production_issues_date")
   @@index([resolved], map: "idx_production_issues_resolved")
+  @@index([productionId, resolved], map: "idx_production_issues_prod_resolved") // ✅ AJOUTÉ: Index composite
   @@map("production_issues")
 }
 
@@ -534,6 +548,7 @@ model WeatherData {
 
   @@index([productionId], map: "idx_weather_data_production")
   @@index([recordDate], map: "idx_weather_data_date")
+  @@index([productionId, recordDate], map: "idx_weather_data_prod_date") // ✅ AJOUTÉ: Index composite
   @@map("weather_data")
 }
 
@@ -559,10 +574,11 @@ model Report {
   @@index([createdAt], map: "idx_reports_created")
   @@index([createdById], map: "idx_reports_creator")
   @@index([isPublic], map: "idx_reports_public")
+  @@index([type, createdAt], map: "idx_reports_type_created") // ✅ AJOUTÉ: Index composite
   @@map("reports")
 }
 
-// Modèle pour la gestion des sessions et de l'authentification
+// Modèle pour la gestion des sessions et de l'authentification - ✅ CORRIGÉ avec index optimisés
 model RefreshToken {
   id        String   @id @default(cuid())
   token     String   @unique
@@ -570,7 +586,10 @@ model RefreshToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
 
+  // ✅ CORRECTION: Index optimisés pour les performances
   @@index([userId], map: "idx_refresh_tokens_user")
   @@index([expiresAt], map: "idx_refresh_tokens_expiry")
+  @@index([userId, expiresAt], map: "idx_refresh_tokens_user_expiry") // ✅ AJOUTÉ: Index composite pour nettoyage
+  @@index([token, expiresAt], map: "idx_refresh_tokens_token_expiry") // ✅ AJOUTÉ: Index composite pour validation
   @@map("refresh_tokens")
 }

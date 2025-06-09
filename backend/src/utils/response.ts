@@ -1,4 +1,4 @@
-// backend/src/utils/response.ts
+// backend/src/utils/response.ts - ✅ CORRIGÉ pour supporter les paramètres optionnels
 import { Response } from "express";
 import { ApiResponse } from "../types/api";
 
@@ -50,10 +50,12 @@ export class ResponseHandler {
     return this.error(res, message, 404);
   }
 
+  // ✅ CORRECTION: unauthorized ne devrait accepter que res et message
   static unauthorized(res: Response, message = "Non autorisé"): Response {
     return this.error(res, message, 401);
   }
 
+  // ✅ CORRECTION: forbidden ne devrait accepter que res et message
   static forbidden(res: Response, message = "Accès interdit"): Response {
     return this.error(res, message, 403);
   }
@@ -71,5 +73,23 @@ export class ResponseHandler {
     message = "Erreur interne du serveur"
   ): Response {
     return this.error(res, message, 500);
+  }
+
+  // ✅ NOUVELLE MÉTHODE: Pour les cas où on veut passer des erreurs spécifiques avec unauthorized
+  static unauthorizedWithErrors(
+    res: Response,
+    message = "Non autorisé",
+    errors?: string[]
+  ): Response {
+    return this.error(res, message, 401, errors);
+  }
+
+  // ✅ NOUVELLE MÉTHODE: Pour les cas où on veut passer des erreurs spécifiques avec forbidden
+  static forbiddenWithErrors(
+    res: Response,
+    message = "Accès interdit",
+    errors?: string[]
+  ): Response {
+    return this.error(res, message, 403, errors);
   }
 }

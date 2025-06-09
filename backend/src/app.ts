@@ -1,4 +1,4 @@
-// backend/src/app.ts (corrigé)
+// backend/src/app.ts - ✅ CORRIGÉ
 import express, { Application, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -99,10 +99,10 @@ class App {
       });
     });
 
-    // Routes API
+    // Routes API - ✅ CORRECTION: Routes uniformisées
     this.app.use("/api/auth", authRoutes);
     this.app.use("/api/users", userRoutes);
-    this.app.use("/api/seeds", seedLotRoutes);
+    this.app.use("/api/seed-lots", seedLotRoutes); // ✅ CORRIGÉ: était /api/seeds
     this.app.use("/api/varieties", varietyRoutes);
     this.app.use("/api/multipliers", multiplierRoutes);
     this.app.use("/api/parcels", parcelRoutes);
@@ -121,7 +121,7 @@ class App {
         health: "/api/health",
         endpoints: {
           auth: "/api/auth",
-          seedLots: "/api/seed-lots",
+          seedLots: "/api/seed-lots", // ✅ CORRIGÉ: cohérent avec les routes
           varieties: "/api/varieties",
           multipliers: "/api/multipliers",
           parcels: "/api/parcels",
