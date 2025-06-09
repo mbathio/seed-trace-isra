@@ -1,4 +1,4 @@
-// frontend/src/components/layout/AppSidebar.tsx - NAVIGATION CORRIGÉE
+// frontend/src/components/layout/AppSidebar.tsx - NAVIGATION MISE À JOUR
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -25,6 +25,8 @@ import {
   Settings,
   User,
   LogOut,
+  MapPin,
+  GitBranch,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { Button } from "../ui/button";
@@ -33,14 +35,14 @@ const AppSidebar: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  // ✅ CORRECTION: URLs correctes pour correspondre aux routes
+  // ✅ CORRECTION: URLs correctes pour correspondre aux routes avec nouvelles pages
   const navigation = [
     {
       title: "Vue d'ensemble",
       items: [
         {
           title: "Tableau de bord",
-          url: "/dashboard", // ✅ CORRECTION: URL mise à jour
+          url: "/dashboard",
           icon: Home,
         },
       ],
@@ -50,13 +52,18 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Lots de semences",
-          url: "/seeds", // ✅ Correct
+          url: "/seeds",
           icon: Sprout,
         },
         {
           title: "Variétés",
-          url: "/varieties", // ✅ Correct
+          url: "/varieties",
           icon: Leaf,
+        },
+        {
+          title: "Généalogie",
+          url: "/genealogy",
+          icon: GitBranch,
         },
       ],
     },
@@ -65,12 +72,17 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Multiplicateurs",
-          url: "/multipliers", // ✅ Correct
+          url: "/multipliers",
           icon: Users,
         },
         {
+          title: "Parcelles",
+          url: "/parcels",
+          icon: MapPin,
+        },
+        {
           title: "Productions",
-          url: "/productions", // ✅ Correct
+          url: "/productions",
           icon: Tractor,
         },
       ],
@@ -80,7 +92,7 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Contrôles qualité",
-          url: "/quality", // ✅ Correct
+          url: "/quality",
           icon: FlaskConical,
         },
       ],
@@ -90,7 +102,7 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Rapports",
-          url: "/reports", // ✅ Correct
+          url: "/reports",
           icon: FileText,
         },
       ],
@@ -103,12 +115,12 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Utilisateurs",
-          url: "/users", // ✅ Correct
+          url: "/users",
           icon: User,
         },
         {
           title: "Paramètres",
-          url: "/settings", // ✅ Correct
+          url: "/settings",
           icon: Settings,
         },
       ],

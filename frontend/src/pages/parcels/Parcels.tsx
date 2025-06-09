@@ -1,19 +1,15 @@
-// frontend/src/pages/multipliers/Multipliers.tsx
+// frontend/src/pages/parcels/Parcels.tsx
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   Plus,
-  Users,
+  MapPin,
   Eye,
   Edit,
   MoreHorizontal,
   Filter,
   Search,
-  Star,
-  MapPin,
-  Phone,
-  Mail,
 } from "lucide-react";
 import {
   Card,
@@ -38,113 +34,76 @@ import {
 } from "../../components/ui/select";
 import { Input } from "../../components/ui/input";
 import { api } from "../../services/api";
-import { Multiplier } from "../../types/entities";
+import { Parcel } from "../../types/entities";
 import { ApiResponse } from "../../types/api";
+import { formatNumber } from "../../utils/formatters";
 import { useDebounce } from "../../hooks/useDebounce";
 
-const Multipliers: React.FC = () => {
+const Parcels: React.FC = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [certificationFilter, setCertificationFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const debouncedSearch = useDebounce(search, 300);
 
-  const { data, isLoading, error } = useQuery<ApiResponse<Multiplier[]>>({
-    queryKey: [
-      "multipliers",
-      debouncedSearch,
-      statusFilter,
-      certificationFilter,
-    ],
+  const { data, isLoading, error } = useQuery<ApiResponse<Parcel[]>>({
+    queryKey: ["parcels", debouncedSearch, statusFilter, typeFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (debouncedSearch) params.append("search", debouncedSearch);
       if (statusFilter) params.append("status", statusFilter);
-      if (certificationFilter)
-        params.append("certificationLevel", certificationFilter);
+      if (typeFilter) params.append("soilType", typeFilter);
 
-      const response = await api.get(`/multipliers?${params.toString()}`);
+      const response = await api.get(`/parcels?${params.toString()}`);
       return response.data;
     },
   });
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      ACTIVE: { color: "bg-green-100 text-green-800", label: "Actif" },
-      INACTIVE: { color: "bg-gray-100 text-gray-800", label: "Inactif" },
+      AVAILABLE: {
+        variant: "default" as const,
+        label: "Disponible",
+        color: "bg-green-100 text-green-800",
+      },
+      IN_USE: {
+        variant: "secondary" as const,
+        label: "En cours",
+        color: "bg-blue-100 text-blue-800",
+      },
+      RESTING: {
+        variant: "outline" as const,
+        label: "En repos",
+        color: "bg-yellow-100 text-yellow-800",
+      },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || {
-      color: "bg-gray-100 text-gray-800",
+      variant: "outline" as const,
       label: status,
+      color: "bg-gray-100 text-gray-800",
     };
 
     return <Badge className={config.color}>{config.label}</Badge>;
   };
 
-  const getCertificationBadge = (level: string) => {
-    const levelConfig = {
-      BEGINNER: {
-        color: "bg-blue-100 text-blue-800",
-        label: "Débutant",
-        stars: 1,
-      },
-      INTERMEDIATE: {
-        color: "bg-orange-100 text-orange-800",
-        label: "Intermédiaire",
-        stars: 2,
-      },
-      EXPERT: {
-        color: "bg-purple-100 text-purple-800",
-        label: "Expert",
-        stars: 3,
-      },
-    };
-
-    const config = levelConfig[level as keyof typeof levelConfig] || {
-      color: "bg-gray-100 text-gray-800",
-      label: level,
-      stars: 0,
-    };
-
-    return (
-      <div className="flex items-center space-x-1">
-        <Badge className={config.color}>{config.label}</Badge>
-        <div className="flex">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Star
-              key={i}
-              className={`h-3 w-3 ${
-                i < config.stars
-                  ? "text-yellow-400 fill-current"
-                  : "text-gray-300"
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-600">
-          Erreur lors du chargement des multiplicateurs
-        </p>
+        <p className="text-red-600">Erreur lors du chargement des parcelles</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header avec titre et bouton d'ajout */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            Gestion des Multiplicateurs
+            Gestion des Parcelles
           </h1>
           <p className="text-muted-foreground">
-            Suivi et gestion des multiplicateurs de semences
+            Suivi et gestion des parcelles pour la production de semences
           </p>
         </div>
         <div className="flex space-x-2">
@@ -154,7 +113,7 @@ const Multipliers: React.FC = () => {
           </Button>
           <Button className="bg-green-600 hover:bg-green-700">
             <Plus className="h-4 w-4 mr-2" />
-            Ajouter un multiplicateur
+            Ajouter une parcelle
           </Button>
         </div>
       </div>
@@ -166,7 +125,7 @@ const Multipliers: React.FC = () => {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
-                placeholder="Rechercher un multiplicateur..."
+                placeholder="Rechercher une parcelle..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -175,27 +134,26 @@ const Multipliers: React.FC = () => {
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Statut" />
+                <SelectValue placeholder="Tous les statuts" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Tous les statuts</SelectItem>
-                <SelectItem value="ACTIVE">Actif</SelectItem>
-                <SelectItem value="INACTIVE">Inactif</SelectItem>
+                <SelectItem value="AVAILABLE">Disponible</SelectItem>
+                <SelectItem value="IN_USE">En cours</SelectItem>
+                <SelectItem value="RESTING">En repos</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select
-              value={certificationFilter}
-              onValueChange={setCertificationFilter}
-            >
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Certification" />
+                <SelectValue placeholder="Tous les types de sol" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toutes les certifications</SelectItem>
-                <SelectItem value="BEGINNER">Débutant</SelectItem>
-                <SelectItem value="INTERMEDIATE">Intermédiaire</SelectItem>
-                <SelectItem value="EXPERT">Expert</SelectItem>
+                <SelectItem value="">Tous les types</SelectItem>
+                <SelectItem value="Argilo-limoneux">Argilo-limoneux</SelectItem>
+                <SelectItem value="Sableux">Sableux</SelectItem>
+                <SelectItem value="Limono-sableux">Limono-sableux</SelectItem>
+                <SelectItem value="Argilo-sableux">Argilo-sableux</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -207,50 +165,46 @@ const Multipliers: React.FC = () => {
         <Card className="border-0 shadow-sm">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-green-600">
-              {data?.data?.filter((m) => m.status === "ACTIVE").length || 0}
+              {data?.data?.filter((p) => p.status === "AVAILABLE").length || 0}
             </div>
             <p className="text-sm text-muted-foreground">
-              Multiplicateurs actifs
+              Parcelles disponibles
             </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-purple-600">
-              {data?.data?.filter((m) => m.certificationLevel === "EXPERT")
-                .length || 0}
-            </div>
-            <p className="text-sm text-muted-foreground">Experts certifiés</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-sm">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-blue-600">
-              {data?.data?.reduce((avg, m) => avg + m.yearsExperience, 0) /
-                (data?.data?.length || 1) || 0}
+              {data?.data?.filter((p) => p.status === "IN_USE").length || 0}
             </div>
             <p className="text-sm text-muted-foreground">
-              Années d'expérience moy.
+              En cours d'utilisation
             </p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-sm">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-orange-600">
-              {data?.data?.reduce(
-                (sum, m) => sum + (m._count?.parcels || 0),
-                0
-              ) || 0}
+            <div className="text-2xl font-bold text-yellow-600">
+              {data?.data?.filter((p) => p.status === "RESTING").length || 0}
             </div>
-            <p className="text-sm text-muted-foreground">Parcelles gérées</p>
+            <p className="text-sm text-muted-foreground">En repos</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-purple-600">
+              {data?.data?.reduce((sum, p) => sum + p.area, 0).toFixed(1) ||
+                "0"}
+            </div>
+            <p className="text-sm text-muted-foreground">Hectares totaux</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Grille des multiplicateurs */}
+      {/* Grille des parcelles */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading
           ? // Skeleton loading
@@ -268,20 +222,20 @@ const Multipliers: React.FC = () => {
                 </CardContent>
               </Card>
             ))
-          : data?.data?.map((multiplier) => (
+          : data?.data?.map((parcel) => (
               <Card
-                key={multiplier.id}
+                key={parcel.id}
                 className="border-0 shadow-sm hover:shadow-md transition-shadow"
               >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-1">
-                        {multiplier.name}
+                    <div>
+                      <h3 className="font-semibold text-lg">
+                        {parcel.name || `Parcelle ${parcel.id}`}
                       </h3>
-                      <div className="flex items-center text-sm text-muted-foreground">
+                      <div className="flex items-center text-sm text-muted-foreground mt-1">
                         <MapPin className="h-4 w-4 mr-1" />
-                        {multiplier.address}
+                        {parcel.address || "Localisation non spécifiée"}
                       </div>
                     </div>
 
@@ -307,96 +261,54 @@ const Multipliers: React.FC = () => {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">
+                        Superficie:
+                      </span>
+                      <span className="font-medium">
+                        {formatNumber(parcel.area)} hectares
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Type de sol:
+                      </span>
+                      <span className="font-medium">
+                        {parcel.soilType || "Non spécifié"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Irrigation:
+                      </span>
+                      <span className="font-medium">
+                        {parcel.irrigationSystem || "Non spécifiée"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
                         Statut:
                       </span>
-                      {getStatusBadge(multiplier.status)}
+                      {getStatusBadge(parcel.status)}
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Certification:
-                      </span>
-                      {getCertificationBadge(multiplier.certificationLevel)}
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Expérience:
-                      </span>
-                      <span className="font-medium">
-                        {multiplier.yearsExperience} ans
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Parcelles:
-                      </span>
-                      <span className="font-medium">
-                        {multiplier._count?.parcels || 0}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Contrats:
-                      </span>
-                      <span className="font-medium">
-                        {multiplier._count?.contracts || 0}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Spécialisations */}
-                  {multiplier.specialization &&
-                    multiplier.specialization.length > 0 && (
-                      <div className="mt-3 pt-3 border-t">
-                        <div className="text-sm text-muted-foreground mb-2">
-                          Spécialisations:
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {multiplier.specialization
-                            .slice(0, 2)
-                            .map((spec, index) => (
-                              <Badge
-                                key={index}
-                                variant="outline"
-                                className="text-xs"
-                              >
-                                {spec}
-                              </Badge>
-                            ))}
-                          {multiplier.specialization.length > 2 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{multiplier.specialization.length - 2}
-                            </Badge>
-                          )}
-                        </div>
+                    {parcel.multiplier && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          Multiplicateur:
+                        </span>
+                        <span className="font-medium text-sm">
+                          {parcel.multiplier.name}
+                        </span>
                       </div>
                     )}
-
-                  {/* Contact */}
-                  <div className="mt-3 pt-3 border-t">
-                    <div className="flex items-center justify-between text-sm">
-                      {multiplier.phone && (
-                        <div className="flex items-center text-muted-foreground">
-                          <Phone className="h-3 w-3 mr-1" />
-                          <span className="text-xs">{multiplier.phone}</span>
-                        </div>
-                      )}
-                      {multiplier.email && (
-                        <div className="flex items-center text-muted-foreground">
-                          <Mail className="h-3 w-3 mr-1" />
-                          <span className="text-xs">Email</span>
-                        </div>
-                      )}
-                    </div>
                   </div>
 
                   <div className="flex space-x-2 mt-4 pt-4 border-t">
                     <Button variant="outline" size="sm" className="flex-1">
                       <Eye className="h-4 w-4 mr-1" />
-                      Détails
+                      Voir détails
                     </Button>
                     <Button variant="outline" size="sm" className="flex-1">
                       <Edit className="h-4 w-4 mr-1" />
@@ -411,18 +323,18 @@ const Multipliers: React.FC = () => {
       {!isLoading && (!data?.data || data.data.length === 0) && (
         <Card className="border-0 shadow-sm">
           <CardContent className="py-12 text-center">
-            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">
-              Aucun multiplicateur trouvé
+              Aucune parcelle trouvée
             </h3>
             <p className="text-muted-foreground mb-4">
-              {search || statusFilter || certificationFilter
-                ? "Aucun multiplicateur ne correspond à vos critères de recherche."
-                : "Commencez par ajouter votre premier multiplicateur."}
+              {search || statusFilter || typeFilter
+                ? "Aucune parcelle ne correspond à vos critères de recherche."
+                : "Commencez par ajouter votre première parcelle."}
             </p>
             <Button className="bg-green-600 hover:bg-green-700">
               <Plus className="h-4 w-4 mr-2" />
-              Ajouter un multiplicateur
+              Ajouter une parcelle
             </Button>
           </CardContent>
         </Card>
@@ -431,4 +343,4 @@ const Multipliers: React.FC = () => {
   );
 };
 
-export default Multipliers;
+export default Parcels;

@@ -1,4 +1,4 @@
-// frontend/src/App.tsx - ROUTAGE CORRIGÉ AVEC LANDING PAGE
+// frontend/src/App.tsx - ROUTAGE CORRIGÉ AVEC NOUVELLES PAGES
 import {
   BrowserRouter as Router,
   Routes,
@@ -36,6 +36,10 @@ import CreateQualityControl from "./pages/quality/CreateQualityControl";
 import Productions from "./pages/productions/Productions";
 import Reports from "./pages/reports/Reports";
 import Users from "./pages/users/Users";
+
+// Nouvelles pages
+import Parcels from "./pages/parcels/Parcels";
+import Genealogy from "./pages/genealogy/Genealogy";
 
 // Components
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -124,6 +128,30 @@ function App() {
                 }
               >
                 <Route index element={<Multipliers />} />
+              </Route>
+
+              {/* ✅ ROUTES DE PARCELLES */}
+              <Route
+                path="/parcels"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Parcels />} />
+              </Route>
+
+              {/* ✅ ROUTES DE GÉNÉALOGIE */}
+              <Route
+                path="/genealogy"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Genealogy />} />
               </Route>
 
               {/* ✅ ROUTES DE CONTRÔLE QUALITÉ */}

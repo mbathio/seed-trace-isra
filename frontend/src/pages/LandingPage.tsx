@@ -1,6 +1,6 @@
 // frontend/src/pages/LandingPage.tsx
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Leaf,
   Shield,
@@ -12,6 +12,9 @@ import {
   Settings,
   ArrowRight,
   CheckCircle,
+  LogIn,
+  Sprout,
+  FlaskConical,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
@@ -23,10 +26,16 @@ import {
 } from "../components/ui/card";
 
 const LandingPage: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleLoginRedirect = () => {
+    navigate("/auth/login");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-white">
       {/* Header */}
-      <header className="bg-green-600 text-white">
+      <header className="bg-green-600 text-white shadow-lg">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -40,20 +49,19 @@ const LandingPage: React.FC = () => {
                 </p>
               </div>
             </div>
-            <Link to="/auth/login">
-              <Button
-                variant="secondary"
-                className="bg-white text-green-600 hover:bg-green-50"
-              >
-                Se connecter
-              </Button>
-            </Link>
+            <Button
+              onClick={handleLoginRedirect}
+              className="bg-white text-green-600 hover:bg-green-50 flex items-center"
+            >
+              <LogIn className="h-4 w-4 mr-2" />
+              Se connecter
+            </Button>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="bg-green-600 text-white py-20">
+      <section className="bg-gradient-to-r from-green-600 to-green-700 text-white py-20">
         <div className="container mx-auto px-6 text-center">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-5xl font-bold mb-6">
@@ -61,32 +69,97 @@ const LandingPage: React.FC = () => {
             </h1>
             <p className="text-xl text-green-100 mb-8 leading-relaxed">
               La solution numérique de l'ISRA Saint-Louis pour assurer la
-              traçabilité et la qualité des semences au Sénégal
+              traçabilité et la qualité des semences au Sénégal. De la recherche
+              au champ, suivez chaque étape de vos semences.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/auth/login">
-                <Button
-                  size="lg"
-                  className="bg-white text-green-600 hover:bg-green-50 px-8 py-3"
-                >
-                  Accéder au système
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
+              <Button
+                onClick={handleLoginRedirect}
+                size="lg"
+                className="bg-white text-green-600 hover:bg-green-50 px-8 py-3 text-lg"
+              >
+                <LogIn className="mr-2 h-5 w-5" />
+                Accéder au système
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
               <Button
                 size="lg"
                 variant="outline"
-                className="border-white text-white hover:bg-white hover:text-green-600 px-8 py-3"
+                className="border-white text-white hover:bg-white hover:text-green-600 px-8 py-3 text-lg"
+                onClick={() =>
+                  document
+                    .getElementById("features")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
               >
                 En savoir plus
               </Button>
+            </div>
+
+            {/* Demo access notice */}
+            <div className="mt-8 p-4 bg-green-500/20 rounded-lg border border-green-400/30">
+              <p className="text-green-100 text-sm">
+                <strong>Accès de démonstration :</strong> Utilisez les comptes
+                de test disponibles sur la page de connexion
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Une solution éprouvée
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              L'ISRA Saint-Louis utilise ce système pour gérer efficacement sa
+              production de semences
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="bg-green-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Sprout className="h-8 w-8 text-green-600" />
+              </div>
+              <div className="text-3xl font-bold text-green-600 mb-2">500+</div>
+              <p className="text-gray-600">Lots de semences</p>
+            </div>
+
+            <div className="text-center">
+              <div className="bg-blue-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Users className="h-8 w-8 text-blue-600" />
+              </div>
+              <div className="text-3xl font-bold text-blue-600 mb-2">50+</div>
+              <p className="text-gray-600">Multiplicateurs</p>
+            </div>
+
+            <div className="text-center">
+              <div className="bg-purple-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <FlaskConical className="h-8 w-8 text-purple-600" />
+              </div>
+              <div className="text-3xl font-bold text-purple-600 mb-2">95%</div>
+              <p className="text-gray-600">Taux de qualité</p>
+            </div>
+
+            <div className="text-center">
+              <div className="bg-orange-100 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <MapPin className="h-8 w-8 text-orange-600" />
+              </div>
+              <div className="text-3xl font-bold text-orange-600 mb-2">
+                200+
+              </div>
+              <p className="text-gray-600">Hectares gérés</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Why Section */}
-      <section className="py-20">
+      <section id="features" className="py-20 bg-gray-50">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
@@ -151,7 +224,7 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-white">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
@@ -278,7 +351,7 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-20">
+      <section className="py-20 bg-gray-50">
         <div className="container mx-auto px-6">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-16">
@@ -366,15 +439,15 @@ const LandingPage: React.FC = () => {
             Saint-Louis et contribuez à l'amélioration de la filière semencière
             sénégalaise
           </p>
-          <Link to="/auth/login">
-            <Button
-              size="lg"
-              className="bg-white text-green-600 hover:bg-green-50 px-8 py-3"
-            >
-              Accéder au système
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
+          <Button
+            onClick={handleLoginRedirect}
+            size="lg"
+            className="bg-white text-green-600 hover:bg-green-50 px-8 py-3 text-lg"
+          >
+            <LogIn className="mr-2 h-5 w-5" />
+            Accéder au système
+            <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
         </div>
       </section>
 
