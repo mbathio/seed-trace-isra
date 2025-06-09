@@ -1,4 +1,4 @@
-// frontend/src/pages/Dashboard.tsx
+// frontend/src/pages/Dashboard.tsx - CORRIGÉ
 import React from "react";
 import { useApiQuery } from "../hooks/useApi";
 import { StatsCard } from "../components/charts/StatsCard";
@@ -26,6 +26,30 @@ import { Badge } from "../components/ui/badge";
 import { Progress } from "../components/ui/progress";
 import { formatDate } from "../utils/formatters";
 
+// ✅ CORRECTION: Types pour les réponses d'activités et lots
+interface Activity {
+  id: string;
+  description: string;
+  createdAt: string;
+  type?: string;
+  userId?: number;
+}
+
+interface RecentLotsResponse {
+  data: Array<{
+    id: string;
+    level: string;
+    quantity: number;
+    variety: {
+      name: string;
+    };
+  }>;
+}
+
+interface ActivitiesResponse {
+  data: Activity[];
+}
+
 const Dashboard: React.FC = () => {
   const {
     data: stats,
@@ -33,17 +57,21 @@ const Dashboard: React.FC = () => {
     error,
   } = useApiQuery<DashboardStats>(["dashboard-stats"], "/statistics/dashboard");
 
-  // Récupérer les activités récentes
-  const { data: recentActivities } = useApiQuery(
+  // ✅ CORRECTION: Typage correct pour les activités récentes
+  const { data: recentActivitiesResponse } = useApiQuery<ActivitiesResponse>(
     ["recent-activities"],
     "/activities/recent?limit=5"
   );
 
-  // Récupérer les lots récents
-  const { data: recentLots } = useApiQuery(
+  // ✅ CORRECTION: Typage correct pour les lots récents
+  const { data: recentLotsResponse } = useApiQuery<RecentLotsResponse>(
     ["recent-lots"],
     "/seeds?pageSize=5&sortBy=createdAt&sortOrder=desc"
   );
+
+  // ✅ CORRECTION: Extraction sécurisée des données
+  const recentActivities = recentActivitiesResponse?.data || [];
+  const recentLots = recentLotsResponse?.data || [];
 
   if (isLoading) {
     return (
@@ -300,21 +328,27 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentActivities?.data?.map((activity: any, index: number) => (
-                <div key={index} className="flex items-start space-x-3">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-100">
-                    <Calendar className="h-4 w-4 text-green-600" />
+              {/* ✅ CORRECTION: Utilisation correcte des données typées */}
+              {recentActivities.length > 0 ? (
+                recentActivities.map((activity, index) => (
+                  <div
+                    key={activity.id || index}
+                    className="flex items-start space-x-3"
+                  >
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-100">
+                      <Calendar className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">
+                        {activity.description}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(activity.createdAt)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">
-                      {activity.description}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(activity.createdAt)}
-                    </p>
-                  </div>
-                </div>
-              )) || (
+                ))
+              ) : (
                 <p className="text-muted-foreground text-sm">
                   Aucune activité récente
                 </p>
@@ -333,49 +367,53 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentLots?.data?.map((lot: any) => {
-                const levelColors = {
-                  GO: "bg-red-100 text-red-800",
-                  G1: "bg-orange-100 text-orange-800",
-                  G2: "bg-yellow-100 text-yellow-800",
-                  G3: "bg-green-100 text-green-800",
-                  G4: "bg-blue-100 text-blue-800",
-                  R1: "bg-purple-100 text-purple-800",
-                  R2: "bg-pink-100 text-pink-800",
-                };
+              {/* ✅ CORRECTION: Utilisation correcte des données typées */}
+              {recentLots.length > 0 ? (
+                recentLots.map((lot) => {
+                  const levelColors = {
+                    GO: "bg-red-100 text-red-800",
+                    G1: "bg-orange-100 text-orange-800",
+                    G2: "bg-yellow-100 text-yellow-800",
+                    G3: "bg-green-100 text-green-800",
+                    G4: "bg-blue-100 text-blue-800",
+                    R1: "bg-purple-100 text-purple-800",
+                    R2: "bg-pink-100 text-pink-800",
+                  };
 
-                return (
-                  <div
-                    key={lot.id}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="font-mono text-sm font-medium">
-                          {lot.id}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {lot.variety.name}
-                        </p>
+                  return (
+                    <div
+                      key={lot.id}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="font-mono text-sm font-medium">
+                            {lot.id}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {lot.variety.name}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge
+                          className={
+                            levelColors[
+                              lot.level as keyof typeof levelColors
+                            ] || "bg-gray-100 text-gray-800"
+                          }
+                        >
+                          {lot.level}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {lot.quantity} kg
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge
-                        className={
-                          levelColors[lot.level as keyof typeof levelColors] ||
-                          "bg-gray-100 text-gray-800"
-                        }
-                      >
-                        {lot.level}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {lot.quantity} kg
-                      </span>
-                    </div>
-                  </div>
-                );
-              }) || (
+                  );
+                })
+              ) : (
                 <p className="text-muted-foreground text-sm">
                   Aucun lot récent
                 </p>

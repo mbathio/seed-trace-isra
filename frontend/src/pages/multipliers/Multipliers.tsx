@@ -1,26 +1,19 @@
-// frontend/src/pages/multipliers/Multipliers.tsx
+// frontend/src/pages/multipliers/Multipliers.tsx - CORRIGÉ
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
 import {
   Plus,
   Users,
   Eye,
   Edit,
   MoreHorizontal,
-  Filter,
   Search,
   Star,
   MapPin,
   Phone,
   Mail,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
+import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import {
@@ -125,6 +118,29 @@ const Multipliers: React.FC = () => {
     );
   };
 
+  // ✅ CORRECTION: Fonctions utilitaires pour les calculs sécurisés
+  const getActiveMultipliers = () => {
+    return data?.data?.filter((m) => m.status === "ACTIVE").length || 0;
+  };
+
+  const getExpertMultipliers = () => {
+    return (
+      data?.data?.filter((m) => m.certificationLevel === "EXPERT").length || 0
+    );
+  };
+
+  const getAverageExperience = () => {
+    if (!data?.data || data.data.length === 0) return 0;
+    const total = data.data.reduce((avg, m) => avg + m.yearsExperience, 0);
+    return Math.round(total / data.data.length);
+  };
+
+  const getTotalParcels = () => {
+    return (
+      data?.data?.reduce((sum, m) => sum + (m._count?.parcels || 0), 0) || 0
+    );
+  };
+
   if (error) {
     return (
       <div className="text-center py-12">
@@ -149,7 +165,7 @@ const Multipliers: React.FC = () => {
         </div>
         <div className="flex space-x-2">
           <Button variant="outline" className="bg-white">
-            <Filter className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 mr-2" />
             Filtres
           </Button>
           <Button className="bg-green-600 hover:bg-green-700">
@@ -207,7 +223,7 @@ const Multipliers: React.FC = () => {
         <Card className="border-0 shadow-sm">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-green-600">
-              {data?.data?.filter((m) => m.status === "ACTIVE").length || 0}
+              {getActiveMultipliers()}
             </div>
             <p className="text-sm text-muted-foreground">
               Multiplicateurs actifs
@@ -218,8 +234,7 @@ const Multipliers: React.FC = () => {
         <Card className="border-0 shadow-sm">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-purple-600">
-              {data?.data?.filter((m) => m.certificationLevel === "EXPERT")
-                .length || 0}
+              {getExpertMultipliers()}
             </div>
             <p className="text-sm text-muted-foreground">Experts certifiés</p>
           </CardContent>
@@ -228,8 +243,7 @@ const Multipliers: React.FC = () => {
         <Card className="border-0 shadow-sm">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-blue-600">
-              {data?.data?.reduce((avg, m) => avg + m.yearsExperience, 0) /
-                (data?.data?.length || 1) || 0}
+              {getAverageExperience()}
             </div>
             <p className="text-sm text-muted-foreground">
               Années d'expérience moy.
@@ -240,10 +254,7 @@ const Multipliers: React.FC = () => {
         <Card className="border-0 shadow-sm">
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-orange-600">
-              {data?.data?.reduce(
-                (sum, m) => sum + (m._count?.parcels || 0),
-                0
-              ) || 0}
+              {getTotalParcels()}
             </div>
             <p className="text-sm text-muted-foreground">Parcelles gérées</p>
           </CardContent>

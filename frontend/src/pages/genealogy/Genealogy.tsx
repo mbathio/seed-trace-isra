@@ -1,10 +1,9 @@
-// frontend/src/pages/genealogy/Genealogy.tsx
+// frontend/src/pages/genealogy/Genealogy.tsx - CORRIGÉ
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   GitBranch,
   Search,
-  Filter,
   Eye,
   Download,
   ChevronRight,
@@ -32,9 +31,9 @@ import { ApiResponse } from "../../types/api";
 import { formatDate } from "../../utils/formatters";
 import { useDebounce } from "../../hooks/useDebounce";
 
+// ✅ CORRECTION: Interface GenealogyNode avec typage correct
 interface GenealogyNode extends SeedLot {
   children?: GenealogyNode[];
-  level: number;
 }
 
 const Genealogy: React.FC = () => {
@@ -48,6 +47,7 @@ const Genealogy: React.FC = () => {
     queryFn: async () => {
       const params = new URLSearchParams();
       if (debouncedSearch) params.append("search", debouncedSearch);
+      // ✅ CORRECTION: Utiliser une string directement
       params.append("pageSize", "100");
 
       const response = await api.get(`/seeds?${params.toString()}`);
