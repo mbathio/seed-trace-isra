@@ -10,137 +10,84 @@ export const SEED_LEVELS = [
 ];
 
 export const CROP_TYPES = [
-  { value: "RICE", label: "Riz" },
-  { value: "MAIZE", label: "Maïs" },
-  { value: "PEANUT", label: "Arachide" },
-  { value: "SORGHUM", label: "Sorgho" },
-  { value: "COWPEA", label: "Niébé" },
-  { value: "MILLET", label: "Mil" },
+  { value: "rice", label: "Riz" },
+  { value: "maize", label: "Maïs" },
+  { value: "peanut", label: "Arachide" },
+  { value: "sorghum", label: "Sorgho" },
+  { value: "cowpea", label: "Niébé" },
+  { value: "millet", label: "Mil" },
 ];
 
-// ✅ CORRECTION 1: Utiliser les mêmes valeurs exactes que la DB (MAJUSCULES + underscore)
+// Valeurs UI (minuscules avec tirets)
 export const LOT_STATUSES = [
-  { value: "PENDING", label: "En attente" },
-  { value: "CERTIFIED", label: "Certifié" },
-  { value: "REJECTED", label: "Rejeté" },
-  { value: "IN_STOCK", label: "En stock" },
-  { value: "ACTIVE", label: "Actif" },
-  { value: "DISTRIBUTED", label: "Distribué" },
-  { value: "SOLD", label: "Vendu" },
+  { value: "pending", label: "En attente" },
+  { value: "certified", label: "Certifié" },
+  { value: "rejected", label: "Rejeté" },
+  { value: "in-stock", label: "En stock" },
+  { value: "active", label: "Actif" },
+  { value: "distributed", label: "Distribué" },
+  { value: "sold", label: "Vendu" },
 ];
 
-// ✅ CORRECTION 2: Valeurs exactes de la DB (MAJUSCULES)
 export const USER_ROLES = [
-  { value: "ADMIN", label: "Administrateur" },
-  { value: "MANAGER", label: "Manager" },
-  { value: "RESEARCHER", label: "Chercheur" },
-  { value: "TECHNICIAN", label: "Technicien" },
-  { value: "INSPECTOR", label: "Inspecteur" },
-  { value: "MULTIPLIER", label: "Multiplicateur" },
-  { value: "GUEST", label: "Invité" },
+  { value: "admin", label: "Administrateur" },
+  { value: "manager", label: "Manager" },
+  { value: "researcher", label: "Chercheur" },
+  { value: "technician", label: "Technicien" },
+  { value: "inspector", label: "Inspecteur" },
+  { value: "multiplier", label: "Multiplicateur" },
+  { value: "guest", label: "Invité" },
 ];
 
-// ✅ CORRECTION 3: Valeurs exactes de la DB (MAJUSCULES)
 export const QUALITY_TEST_RESULTS = [
-  { value: "PASS", label: "Réussi" },
-  { value: "FAIL", label: "Échec" },
+  { value: "pass", label: "Réussi" },
+  { value: "fail", label: "Échec" },
 ];
 
-// ✅ CORRECTION 4: Valeurs exactes de la DB (MAJUSCULES + underscore)
 export const PRODUCTION_STATUSES = [
-  { value: "PLANNED", label: "Planifiée" },
-  { value: "IN_PROGRESS", label: "En cours" },
-  { value: "COMPLETED", label: "Terminée" },
-  { value: "CANCELLED", label: "Annulée" },
+  { value: "planned", label: "Planifiée" },
+  { value: "in-progress", label: "En cours" },
+  { value: "completed", label: "Terminée" },
+  { value: "cancelled", label: "Annulée" },
 ];
 
 export const MULTIPLIER_STATUSES = [
-  { value: "ACTIVE", label: "Actif" },
-  { value: "INACTIVE", label: "Inactif" },
+  { value: "active", label: "Actif" },
+  { value: "inactive", label: "Inactif" },
 ];
 
 export const CERTIFICATION_LEVELS = [
-  { value: "BEGINNER", label: "Débutant" },
-  { value: "INTERMEDIATE", label: "Intermédiaire" },
-  { value: "EXPERT", label: "Expert" },
+  { value: "beginner", label: "Débutant" },
+  { value: "intermediate", label: "Intermédiaire" },
+  { value: "expert", label: "Expert" },
 ];
 
 export const PARCEL_STATUSES = [
-  { value: "AVAILABLE", label: "Disponible" },
-  { value: "IN_USE", label: "En cours d'utilisation" },
-  { value: "RESTING", label: "En repos" },
+  { value: "available", label: "Disponible" },
+  { value: "in-use", label: "En cours d'utilisation" },
+  { value: "resting", label: "En repos" },
 ];
 
-export const CONTRACT_STATUSES = [
-  { value: "DRAFT", label: "Brouillon" },
-  { value: "ACTIVE", label: "Actif" },
-  { value: "COMPLETED", label: "Terminé" },
-  { value: "CANCELLED", label: "Annulé" },
-];
-
-// ✅ CORRECTION 5: Configuration des endpoints API
-export const API_ENDPOINTS = {
-  // Authentification
-  AUTH: {
-    LOGIN: "/auth/login",
-    LOGOUT: "/auth/logout",
-    REFRESH: "/auth/refresh",
-    ME: "/auth/me",
-    REGISTER: "/auth/register",
-    FORGOT_PASSWORD: "/auth/forgot-password",
-    RESET_PASSWORD: "/auth/reset-password",
-  },
-
-  // Lots de semences
-  SEED_LOTS: {
-    BASE: "/seed-lots",
-    DETAIL: (id: string) => `/seed-lots/${id}`,
-    GENEALOGY: (id: string) => `/seed-lots/${id}/genealogy`,
-    QR_CODE: (id: string) => `/seed-lots/${id}/qr-code`,
-  },
-
-  // Variétés
-  VARIETIES: {
-    BASE: "/varieties",
-    DETAIL: (id: string) => `/varieties/${id}`,
-  },
-
-  // Multiplicateurs
-  MULTIPLIERS: {
-    BASE: "/multipliers",
-    DETAIL: (id: number) => `/multipliers/${id}`,
-  },
-
-  // Parcelles
-  PARCELS: {
-    BASE: "/parcels",
-    DETAIL: (id: number) => `/parcels/${id}`,
-  },
-
-  // Contrôles qualité
-  QUALITY_CONTROLS: {
-    BASE: "/quality-controls",
-    DETAIL: (id: number) => `/quality-controls/${id}`,
-  },
-
-  // Productions
-  PRODUCTIONS: {
-    BASE: "/productions",
-    DETAIL: (id: number) => `/productions/${id}`,
-  },
-
-  // Statistiques
-  STATISTICS: {
-    DASHBOARD: "/statistics/dashboard",
-    PRODUCTION: "/statistics/production",
-    QUALITY: "/statistics/quality",
-  },
-
-  // Autres
-  HEALTH: "/health",
+// Configuration pour l'API
+export const API_CONFIG = {
+  BASE_URL: import.meta.env.VITE_API_URL || "http://localhost:3001/api",
+  TIMEOUT: 30000,
+  RETRY_ATTEMPTS: 3,
+  RETRY_DELAY: 1000,
 };
 
-// ✅ CORRECTION 6: Configuration par défaut pour les requêtes
+// Messages d'erreur standardisés
+export const ERROR_MESSAGES = {
+  NETWORK_ERROR: "Erreur de connexion au serveur",
+  UNAUTHORIZED: "Session expirée. Veuillez vous reconnecter.",
+  FORBIDDEN: "Accès refusé",
+  NOT_FOUND: "Ressource non trouvée",
+  VALIDATION_ERROR: "Données invalides",
+  SERVER_ERROR: "Erreur serveur. Veuillez réessayer plus tard.",
+  UNKNOWN_ERROR: "Une erreur inattendue s'est produite",
+};
+
+// Configuration des requêtes par défaut
 export const DEFAULT_QUERY_CONFIG = {
   PAGINATION: {
     DEFAULT_PAGE: 1,
@@ -150,15 +97,4 @@ export const DEFAULT_QUERY_CONFIG = {
   CACHE_TIME: 5 * 60 * 1000, // 5 minutes
   STALE_TIME: 1 * 60 * 1000, // 1 minute
   RETRY_ATTEMPTS: 3,
-};
-
-// ✅ CORRECTION 7: Messages d'erreur standardisés
-export const ERROR_MESSAGES = {
-  NETWORK_ERROR: "Erreur de connexion au serveur",
-  UNAUTHORIZED: "Session expirée. Veuillez vous reconnecter.",
-  FORBIDDEN: "Accès refusé",
-  NOT_FOUND: "Ressource non trouvée",
-  VALIDATION_ERROR: "Données invalides",
-  SERVER_ERROR: "Erreur serveur. Veuillez réessayer plus tard.",
-  UNKNOWN_ERROR: "Une erreur inattendue s'est produite",
 };
