@@ -1,4 +1,4 @@
-// frontend/src/constants/index.ts - CORRECTION COMPLÈTE
+// frontend/src/constants/index.ts - VERSION CORRIGÉE
 export const SEED_LEVELS = [
   { value: "GO", label: "GO - Génération origine" },
   { value: "G1", label: "G1 - Première génération" },
@@ -112,4 +112,89 @@ export const STATUS_MAPPINGS = {
     PASS: "Réussi",
     FAIL: "Échec",
   },
+};
+
+// ✅ AJOUT: Configuration des endpoints API
+export const API_ENDPOINTS = {
+  // Authentification
+  AUTH: {
+    LOGIN: "/auth/login",
+    LOGOUT: "/auth/logout",
+    REFRESH: "/auth/refresh",
+    ME: "/auth/me",
+    REGISTER: "/auth/register",
+    FORGOT_PASSWORD: "/auth/forgot-password",
+    RESET_PASSWORD: "/auth/reset-password",
+  },
+
+  // Lots de semences
+  SEED_LOTS: {
+    BASE: "/seed-lots",
+    DETAIL: (id: string) => `/seed-lots/${id}`,
+    GENEALOGY: (id: string) => `/seed-lots/${id}/genealogy`,
+    QR_CODE: (id: string) => `/seed-lots/${id}/qr-code`,
+  },
+
+  // Variétés
+  VARIETIES: {
+    BASE: "/varieties",
+    DETAIL: (id: string) => `/varieties/${id}`,
+  },
+
+  // Multiplicateurs
+  MULTIPLIERS: {
+    BASE: "/multipliers",
+    DETAIL: (id: number) => `/multipliers/${id}`,
+  },
+
+  // Parcelles
+  PARCELS: {
+    BASE: "/parcels",
+    DETAIL: (id: number) => `/parcels/${id}`,
+  },
+
+  // Contrôles qualité
+  QUALITY_CONTROLS: {
+    BASE: "/quality-controls",
+    DETAIL: (id: number) => `/quality-controls/${id}`,
+  },
+
+  // Productions
+  PRODUCTIONS: {
+    BASE: "/productions",
+    DETAIL: (id: number) => `/productions/${id}`,
+  },
+
+  // Statistiques
+  STATISTICS: {
+    DASHBOARD: "/statistics/dashboard",
+    PRODUCTION: "/statistics/production",
+    QUALITY: "/statistics/quality",
+  },
+
+  // Autres
+  HEALTH: "/health",
+};
+
+// ✅ AJOUT: Configuration par défaut pour les requêtes
+export const DEFAULT_QUERY_CONFIG = {
+  PAGINATION: {
+    DEFAULT_PAGE: 1,
+    DEFAULT_PAGE_SIZE: 10,
+    MAX_PAGE_SIZE: 100,
+  },
+  CACHE_TIME: 5 * 60 * 1000, // 5 minutes
+  STALE_TIME: 1 * 60 * 1000, // 1 minute
+  RETRY_ATTEMPTS: 3,
+};
+
+// ✅ AJOUT: Messages d'erreur standardisés
+export const ERROR_MESSAGES = {
+  NETWORK_ERROR: "Erreur de connexion au serveur",
+  UNAUTHORIZED: "Session expirée. Veuillez vous reconnecter.",
+  FORBIDDEN: "Accès refusé",
+  NOT_FOUND: "Ressource non trouvée",
+  VALIDATION_ERROR: "Données invalides",
+  SERVER_ERROR: "Erreur serveur. Veuillez réessayer plus tard.",
+  UNKNOWN_ERROR: "Une erreur inattendue s'est produite",
 };

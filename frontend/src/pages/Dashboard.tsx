@@ -1,6 +1,6 @@
 // frontend/src/pages/Dashboard.tsx - VERSION CORRIGÉE
 import React from "react";
-import { useApiQuery } from "../hooks/useApi";
+import { useQuery } from "@tanstack/react-query";
 import { StatsCard } from "../components/charts/StatsCard";
 import { DashboardStats, SeedLot, Production } from "../types/entities";
 import {
@@ -25,6 +25,11 @@ import {
 import { Badge } from "../components/ui/badge";
 import { Progress } from "../components/ui/progress";
 import { formatDate } from "../utils/formatters";
+import {
+  statisticsService,
+  productionService,
+  seedLotService,
+} from "../services/api"; // ✅ CORRIGÉ: Utiliser les services spécialisés
 
 // ✅ CORRECTION: Types pour les réponses API
 interface ProductionsResponse {
@@ -36,23 +41,44 @@ interface LotsResponse {
 }
 
 const Dashboard: React.FC = () => {
+  // ✅ CORRIGÉ: Utiliser le service spécialisé pour les statistiques
   const {
     data: stats,
     isLoading,
     error,
-  } = useApiQuery<DashboardStats>(["dashboard-stats"], "/statistics/dashboard");
+  } = useQuery<DashboardStats>({
+    queryKey: ["dashboard-stats"],
+    queryFn: async () => {
+      const response = await statisticsService.getDashboard();
+      return response.data.data;
+    },
+  });
 
-  // ✅ CORRECTION: Utiliser les productions récentes au lieu d'activities
-  const { data: recentProductionsResponse } = useApiQuery<ProductionsResponse>(
-    ["recent-productions"],
-    "/productions?pageSize=5&sortBy=startDate&sortOrder=desc"
-  );
+  // ✅ CORRIGÉ: Utiliser le service de production
+  const { data: recentProductionsResponse } = useQuery<ProductionsResponse>({
+    queryKey: ["recent-productions"],
+    queryFn: async () => {
+      const response = await productionService.getAll({
+        pageSize: 5,
+        sortBy: "startDate",
+        sortOrder: "desc",
+      });
+      return response.data;
+    },
+  });
 
-  // ✅ CORRECTION: Corriger le champ de tri pour les lots
-  const { data: recentLotsResponse } = useApiQuery<LotsResponse>(
-    ["recent-lots"],
-    "/seeds?pageSize=5&sortBy=productionDate&sortOrder=desc"
-  );
+  // ✅ CORRIGÉ: Utiliser le service de lots de semences
+  const { data: recentLotsResponse } = useQuery<LotsResponse>({
+    queryKey: ["recent-lots"],
+    queryFn: async () => {
+      const response = await seedLotService.getAll({
+        pageSize: 5,
+        sortBy: "productionDate",
+        sortOrder: "desc",
+      });
+      return response.data;
+    },
+  });
 
   // ✅ CORRECTION: Extraction sécurisée des données avec transformation
   const recentActivities = React.useMemo(() => {
@@ -123,6 +149,10 @@ const Dashboard: React.FC = () => {
           </p>
           <p className="text-sm text-muted-foreground">
             Vérifiez que le serveur backend est démarré sur le port 3001
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            URL API:{" "}
+            {import.meta.env.VITE_API_URL || "http://localhost:3001/api"}
           </p>
         </div>
       </div>

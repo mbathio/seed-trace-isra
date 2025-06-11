@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { SearchInput } from "../../components/forms/SearchInput";
-import { api } from "../../services/api";
+import { seedLotService } from "../../services/api"; // ✅ CORRIGÉ: Utiliser le service spécialisé
 import { SeedLot } from "../../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
 import { formatDate, formatNumber } from "../../utils/formatters";
@@ -41,6 +41,7 @@ const SeedLots: React.FC = () => {
   const debouncedSearch = useDebounce(search, 300);
   const { pagination, actions } = usePagination({ initialPageSize: 10 });
 
+  // ✅ CORRIGÉ: Utiliser le bon service API
   const { data, isLoading, error } = useQuery<ApiResponse<SeedLot[]>>({
     queryKey: [
       "seed-lots",
@@ -57,13 +58,12 @@ const SeedLots: React.FC = () => {
         ...filters,
       };
 
-      // ✅ CORRIGÉ : Utiliser le bon endpoint
-      const response = await api.get("/seed-lots", { params });
+      const response = await seedLotService.getAll(params);
       return response.data;
     },
   });
 
-  // ✅ CORRIGÉ : Utiliser les valeurs exactes de la DB pour le mapping
+  // ✅ CORRIGÉ: Utiliser les valeurs exactes de la DB pour le mapping
   const getStatusBadge = (status: string) => {
     const statusMap: Record<
       string,
@@ -107,6 +107,9 @@ const SeedLots: React.FC = () => {
     return (
       <div className="text-center py-12">
         <p className="text-red-600">Erreur lors du chargement des lots</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Vérifiez que le serveur backend est démarré sur le port 3001
+        </p>
       </div>
     );
   }
@@ -196,6 +199,7 @@ const SeedLots: React.FC = () => {
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
               <p>Chargement...</p>
             </div>
           ) : (
@@ -219,7 +223,7 @@ const SeedLots: React.FC = () => {
                     <TableCell>
                       <div>
                         <p className="font-medium">{lot.variety.name}</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {lot.variety.code}
                         </p>
                       </div>
@@ -252,8 +256,25 @@ const SeedLots: React.FC = () => {
             </Table>
           )}
 
+          {/* Empty state */}
+          {!isLoading && (!data?.data || data.data.length === 0) && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">
+                {search || filters.level || filters.status
+                  ? "Aucun lot ne correspond à vos critères de recherche."
+                  : "Aucun lot de semences trouvé."}
+              </p>
+              <Button asChild>
+                <Link to="/seeds/create">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer le premier lot
+                </Link>
+              </Button>
+            </div>
+          )}
+
           {/* Pagination */}
-          {data?.meta && (
+          {data?.meta && data.meta.totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-muted-foreground">
                 Page {data.meta.page} sur {data.meta.totalPages}
