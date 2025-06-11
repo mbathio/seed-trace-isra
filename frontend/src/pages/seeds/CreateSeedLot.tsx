@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/CreateSeedLot.tsx
+// frontend/src/pages/seeds/CreateSeedLot.tsx - VERSION CORRIGÉE
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
@@ -73,7 +73,7 @@ const CreateSeedLot: React.FC = () => {
     },
   });
 
-  // Fetch varieties
+  // ✅ CORRIGÉ : Fetch varieties
   const { data: varieties } = useQuery<Variety[]>({
     queryKey: ["varieties"],
     queryFn: async () => {
@@ -82,7 +82,7 @@ const CreateSeedLot: React.FC = () => {
     },
   });
 
-  // Fetch multipliers
+  // ✅ CORRIGÉ : Fetch multipliers
   const { data: multipliers } = useQuery<Multiplier[]>({
     queryKey: ["multipliers"],
     queryFn: async () => {
@@ -91,7 +91,7 @@ const CreateSeedLot: React.FC = () => {
     },
   });
 
-  // Fetch parent lots for genealogy
+  // ✅ CORRIGÉ : Fetch parent lots for genealogy
   const { data: parentLots } = useQuery<SeedLot[]>({
     queryKey: ["parent-lots", watch("level")],
     queryFn: async () => {
@@ -105,21 +105,22 @@ const CreateSeedLot: React.FC = () => {
       if (currentIndex <= 0) return [];
 
       const parentLevel = levelHierarchy[currentIndex - 1];
-      const response = await api.get("/seeds", {
-        params: { level: parentLevel, status: "certified" },
+      const response = await api.get("/seed-lots", {
+        params: { level: parentLevel, status: "CERTIFIED" },
       });
       return response.data.data;
     },
     enabled: !!watch("level"),
   });
 
+  // ✅ CORRIGÉ : Create mutation
   const createMutation = useMutation<
     CreateSeedLotResponse,
     Error,
     CreateSeedLotForm
   >({
     mutationFn: async (data: CreateSeedLotForm) => {
-      const response = await api.post("/seeds", data);
+      const response = await api.post("/seed-lots", data);
       return response.data;
     },
     onSuccess: (data) => {

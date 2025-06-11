@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/SeedLots.tsx - CORRECTION
+// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -57,12 +57,13 @@ const SeedLots: React.FC = () => {
         ...filters,
       };
 
-      const response = await api.get("/seeds", { params });
+      // ✅ CORRIGÉ : Utiliser le bon endpoint
+      const response = await api.get("/seed-lots", { params });
       return response.data;
     },
   });
 
-  // ✅ CORRECTION: Utiliser les valeurs exactes de la DB pour le mapping
+  // ✅ CORRIGÉ : Utiliser les valeurs exactes de la DB pour le mapping
   const getStatusBadge = (status: string) => {
     const statusMap: Record<
       string,

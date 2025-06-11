@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/SeedLotDetail.tsx
+// frontend/src/pages/seeds/SeedLotDetail.tsx - VERSION CORRIGÉE
 import React from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -57,6 +57,7 @@ const SeedLotDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  // ✅ CORRIGÉ : Utiliser le bon endpoint
   const {
     data: seedLot,
     isLoading,
@@ -64,7 +65,7 @@ const SeedLotDetail: React.FC = () => {
   } = useQuery<SeedLot>({
     queryKey: ["seed-lot", id],
     queryFn: async () => {
-      const response = await api.get(`/seeds/${id}`);
+      const response = await api.get(`/seed-lots/${id}`);
       return response.data.data;
     },
     enabled: !!id,
@@ -78,12 +79,13 @@ const SeedLotDetail: React.FC = () => {
         label: string;
       }
     > = {
-      pending: { variant: "secondary", label: "En attente" },
-      certified: { variant: "default", label: "Certifié" },
-      rejected: { variant: "destructive", label: "Rejeté" },
-      "in-stock": { variant: "outline", label: "En stock" },
-      active: { variant: "default", label: "Actif" },
-      distributed: { variant: "secondary", label: "Distribué" },
+      PENDING: { variant: "secondary", label: "En attente" },
+      CERTIFIED: { variant: "default", label: "Certifié" },
+      REJECTED: { variant: "destructive", label: "Rejeté" },
+      IN_STOCK: { variant: "outline", label: "En stock" },
+      ACTIVE: { variant: "default", label: "Actif" },
+      DISTRIBUTED: { variant: "secondary", label: "Distribué" },
+      SOLD: { variant: "outline", label: "Vendu" },
     };
 
     const config = statusMap[status] || { variant: "secondary", label: status };
@@ -427,12 +429,12 @@ const SeedLotDetail: React.FC = () => {
                         <TableCell>
                           <Badge
                             variant={
-                              control.result === "pass"
+                              control.result === "PASS"
                                 ? "default"
                                 : "destructive"
                             }
                           >
-                            {control.result === "pass" ? "Réussi" : "Échec"}
+                            {control.result === "PASS" ? "Réussi" : "Échec"}
                           </Badge>
                         </TableCell>
                         <TableCell>{control.inspector.name}</TableCell>
