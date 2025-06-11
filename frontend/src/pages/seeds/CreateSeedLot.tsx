@@ -1,4 +1,4 @@
-// ===== CORRECTION 1: frontend/src/pages/seeds/CreateSeedLot.tsx =====
+// frontend/src/pages/seeds/CreateSeedLot.tsx - VERSION CORRIGÉE
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -25,6 +25,7 @@ import {
 import { Label } from "../../components/ui/label";
 import { toast } from "react-toastify";
 import { api } from "../../services/api";
+import { seedLotService } from "../../services/seedLotService"; // ✅ CORRIGÉ: Service spécialisé
 import { SEED_LEVELS } from "../../constants";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { Variety, Multiplier, SeedLot } from "../../types/entities";
@@ -93,8 +94,10 @@ const CreateSeedLot: React.FC = () => {
       if (currentIndex <= 0) return [];
 
       const parentLevel = levelHierarchy[currentIndex - 1];
-      const response = await api.get("/seed-lots", {
-        params: { level: parentLevel, status: "CERTIFIED" },
+      const response = await seedLotService.getAll({
+        // ✅ CORRIGÉ: Service unifié
+        level: parentLevel,
+        status: "CERTIFIED",
       });
       return response.data.data;
     },
@@ -103,12 +106,12 @@ const CreateSeedLot: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateSeedLotForm) => {
-      const response = await api.post("/seed-lots", data);
+      const response = await seedLotService.create(data); // ✅ CORRIGÉ: Service unifié
       return response.data;
     },
     onSuccess: (data) => {
       toast.success("Lot de semences créé avec succès !");
-      navigate(`/seeds/${data.data.id}`);
+      navigate(`/dashboard/seeds/${data.data.id}`);
     },
     onError: (error: any) => {
       console.error("Create error:", error);
@@ -135,7 +138,7 @@ const CreateSeedLot: React.FC = () => {
       <div className="flex items-center space-x-4">
         <Button
           variant="ghost"
-          onClick={() => navigate("/seeds")}
+          onClick={() => navigate("/dashboard/seeds")}
           className="flex items-center"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -394,7 +397,7 @@ const CreateSeedLot: React.FC = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/seeds")}
+            onClick={() => navigate("/dashboard/seeds")}
           >
             Annuler
           </Button>

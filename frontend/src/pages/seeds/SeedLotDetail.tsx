@@ -40,7 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import { api } from "../../services/api";
+import { seedLotService } from "../../services/seedLotService"; // ✅ CORRIGÉ: Service spécialisé
 import { SeedLot } from "../../types/entities";
 import { formatDate, formatNumber } from "../../utils/formatters";
 
@@ -57,15 +57,15 @@ const SeedLotDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // ✅ CORRIGÉ : Utiliser le bon endpoint
+  // ✅ CORRIGÉ : Utiliser le service seedLotService
   const {
     data: seedLot,
     isLoading,
     error,
   } = useQuery<SeedLot>({
-    queryKey: ["seed-lot", id],
+    queryKey: ["seed-lot", id], // ✅ CORRIGÉ: Clé de cache cohérente
     queryFn: async () => {
-      const response = await api.get(`/seed-lots/${id}`);
+      const response = await seedLotService.getById(id!); // ✅ CORRIGÉ: Service unifié
       return response.data.data;
     },
     enabled: !!id,
@@ -125,7 +125,7 @@ const SeedLotDetail: React.FC = () => {
     return (
       <div className="text-center py-12">
         <p className="text-red-600">Erreur lors du chargement du lot</p>
-        <Button onClick={() => navigate("/seeds")} className="mt-4">
+        <Button onClick={() => navigate("/dashboard/seeds")} className="mt-4">
           Retour à la liste
         </Button>
       </div>
@@ -139,7 +139,7 @@ const SeedLotDetail: React.FC = () => {
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
-            onClick={() => navigate("/seeds")}
+            onClick={() => navigate("/dashboard/seeds")}
             className="flex items-center"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -356,7 +356,7 @@ const SeedLotDetail: React.FC = () => {
                           </p>
                         </div>
                         <Button asChild variant="outline" size="sm">
-                          <Link to={`/seeds/${seedLot.parentLot.id}`}>
+                          <Link to={`/dashboard/seeds/${seedLot.parentLot.id}`}>
                             <Eye className="h-4 w-4 mr-1" />
                             Voir
                           </Link>
@@ -385,7 +385,7 @@ const SeedLotDetail: React.FC = () => {
                             </p>
                           </div>
                           <Button asChild variant="outline" size="sm">
-                            <Link to={`/seeds/${childLot.id}`}>
+                            <Link to={`/dashboard/seeds/${childLot.id}`}>
                               <Eye className="h-4 w-4 mr-1" />
                               Voir
                             </Link>

@@ -1,3 +1,4 @@
+// frontend/src/pages/quality/CreateQualityControl.tsx - CORRIGÉ
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
@@ -23,6 +24,7 @@ import {
 import { Label } from "../../components/ui/label";
 import { toast } from "react-toastify";
 import { api } from "../../services/api";
+import { seedLotService } from "../../services/seedLotService"; // ✅ CORRIGÉ: Service spécialisé
 import { SeedLot } from "../../types/entities";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -96,12 +98,14 @@ const CreateQualityControl: React.FC = () => {
     },
   });
 
-  // Fetch seed lots for selection
+  // ✅ CORRIGÉ: Fetch seed lots avec le service unifié
   const { data: seedLots } = useQuery<SeedLot[]>({
-    queryKey: ["seed-lots-for-control"],
+    queryKey: ["seed-lots-for-control"], // ✅ CORRIGÉ: Clé cohérente
     queryFn: async () => {
-      const response = await api.get("/seeds", {
-        params: { status: "pending", pageSize: 100 },
+      const response = await seedLotService.getAll({
+        // ✅ CORRIGÉ: Service unifié
+        status: "pending",
+        pageSize: 100,
       });
       return response.data.data;
     },
@@ -114,7 +118,7 @@ const CreateQualityControl: React.FC = () => {
     },
     onSuccess: () => {
       toast.success("Contrôle qualité créé avec succès !");
-      navigate("/quality");
+      navigate("/dashboard/quality");
     },
     onError: (error: any) => {
       const errorMessage =
@@ -139,7 +143,7 @@ const CreateQualityControl: React.FC = () => {
       <div className="flex items-center space-x-4">
         <Button
           variant="ghost"
-          onClick={() => navigate("/quality")}
+          onClick={() => navigate("/dashboard/quality")}
           className="flex items-center"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -390,7 +394,7 @@ const CreateQualityControl: React.FC = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/quality")}
+            onClick={() => navigate("/dashboard/quality")}
           >
             Annuler
           </Button>

@@ -1,4 +1,4 @@
-// frontend/src/pages/varieties/VarietyDetail.tsx
+// frontend/src/pages/varieties/VarietyDetail.tsx - CORRIGÉ
 import React from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import { api } from "../../services/api";
+import { seedLotService } from "../../services/seedLotService"; // ✅ CORRIGÉ: Service spécialisé
 import { Variety, SeedLot } from "../../types/entities";
 import { formatDate, formatNumber } from "../../utils/formatters";
 
@@ -50,10 +51,11 @@ const VarietyDetail: React.FC = () => {
     enabled: !!id,
   });
 
+  // ✅ CORRIGÉ: Récupérer les seed lots avec le service unifié
   const { data: seedLots } = useQuery<SeedLot[]>({
-    queryKey: ["variety-seed-lots", id],
+    queryKey: ["variety-seed-lots", id], // ✅ CORRIGÉ: Clé cohérente
     queryFn: async () => {
-      const response = await api.get(`/seeds?varietyId=${id}`);
+      const response = await seedLotService.getAll({ varietyId: id }); // ✅ CORRIGÉ: Service unifié
       return response.data.data;
     },
     enabled: !!id,
@@ -94,7 +96,10 @@ const VarietyDetail: React.FC = () => {
     return (
       <div className="text-center py-12">
         <p className="text-red-600">Erreur lors du chargement de la variété</p>
-        <Button onClick={() => navigate("/varieties")} className="mt-4">
+        <Button
+          onClick={() => navigate("/dashboard/varieties")}
+          className="mt-4"
+        >
           Retour à la liste
         </Button>
       </div>
@@ -108,7 +113,7 @@ const VarietyDetail: React.FC = () => {
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
-            onClick={() => navigate("/varieties")}
+            onClick={() => navigate("/dashboard/varieties")}
             className="flex items-center"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -272,7 +277,7 @@ const VarietyDetail: React.FC = () => {
                           size="icon"
                           className="h-8 w-8"
                         >
-                          <Link to={`/seeds/${lot.id}`}>
+                          <Link to={`/dashboard/seeds/${lot.id}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>

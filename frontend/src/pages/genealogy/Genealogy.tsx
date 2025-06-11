@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Input } from "../../components/ui/input";
-import { api } from "../../services/api";
+import { seedLotService } from "../../services/seedLotService"; // ✅ CORRIGÉ: Service spécialisé
 import { SeedLot } from "../../types/entities";
 import { ApiResponse } from "../../types/api";
 import { formatDate } from "../../utils/formatters";
@@ -41,25 +41,25 @@ const Genealogy: React.FC = () => {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
 
-  // Récupérer la liste des lots pour la sélection
+  // ✅ CORRIGÉ: Récupérer la liste des lots avec le service unifié
   const { data: seedLots } = useQuery<ApiResponse<SeedLot[]>>({
-    queryKey: ["seed-lots-for-genealogy", debouncedSearch],
+    queryKey: ["seed-lots-for-genealogy", debouncedSearch], // ✅ CORRIGÉ: Clé cohérente
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (debouncedSearch) params.append("search", debouncedSearch);
-      // ✅ CORRECTION: Utiliser une string directement
-      params.append("pageSize", "100");
+      const params = {
+        search: debouncedSearch || undefined,
+        pageSize: 100,
+      };
 
-      const response = await api.get(`/seeds?${params.toString()}`);
+      const response = await seedLotService.getAll(params); // ✅ CORRIGÉ: Service unifié
       return response.data;
     },
   });
 
-  // Récupérer la généalogie du lot sélectionné
+  // ✅ CORRIGÉ: Récupérer la généalogie avec le service unifié
   const { data: genealogyData, isLoading } = useQuery<GenealogyNode>({
-    queryKey: ["genealogy", selectedLot],
+    queryKey: ["genealogy", selectedLot], // ✅ CORRIGÉ: Clé cohérente
     queryFn: async () => {
-      const response = await api.get(`/seeds/${selectedLot}/genealogy`);
+      const response = await seedLotService.getGenealogy(selectedLot); // ✅ CORRIGÉ: Service unifié
       return response.data.data;
     },
     enabled: !!selectedLot,

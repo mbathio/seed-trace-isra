@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { SearchInput } from "../../components/forms/SearchInput";
-import { seedLotService } from "../../services/api"; // ✅ CORRIGÉ: Utiliser le service spécialisé
+import { seedLotService } from "../../services/seedLotService"; // ✅ CORRIGÉ: Service spécialisé
 import { SeedLot } from "../../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
 import { formatDate, formatNumber } from "../../utils/formatters";
@@ -41,10 +41,10 @@ const SeedLots: React.FC = () => {
   const debouncedSearch = useDebounce(search, 300);
   const { pagination, actions } = usePagination({ initialPageSize: 10 });
 
-  // ✅ CORRIGÉ: Utiliser le bon service API
+  // ✅ CORRIGÉ: Utiliser le service seedLotService
   const { data, isLoading, error } = useQuery<ApiResponse<SeedLot[]>>({
     queryKey: [
-      "seed-lots",
+      "seed-lots", // ✅ CORRIGÉ: Clé de cache cohérente
       pagination.page,
       pagination.pageSize,
       debouncedSearch,
@@ -58,7 +58,7 @@ const SeedLots: React.FC = () => {
         ...filters,
       };
 
-      const response = await seedLotService.getAll(params);
+      const response = await seedLotService.getAll(params); // ✅ CORRIGÉ: Service unifié
       return response.data;
     },
   });
@@ -130,7 +130,7 @@ const SeedLots: React.FC = () => {
             Exporter
           </Button>
           <Button asChild>
-            <Link to="/seeds/create">
+            <Link to="/dashboard/seeds/create">
               <Plus className="h-4 w-4 mr-2" />
               Nouveau lot
             </Link>
@@ -241,7 +241,7 @@ const SeedLots: React.FC = () => {
                           size="icon"
                           className="h-8 w-8"
                         >
-                          <Link to={`/seeds/${lot.id}`}>
+                          <Link to={`/dashboard/seeds/${lot.id}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
@@ -265,7 +265,7 @@ const SeedLots: React.FC = () => {
                   : "Aucun lot de semences trouvé."}
               </p>
               <Button asChild>
-                <Link to="/seeds/create">
+                <Link to="/dashboard/seeds/create">
                   <Plus className="h-4 w-4 mr-2" />
                   Créer le premier lot
                 </Link>

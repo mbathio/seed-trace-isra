@@ -375,3 +375,4 @@ export const apiService = {
 // Export de l'instance axios pour une utilisation directe si nécessaire
 export { api };
 export default apiService;
+export { seedLotService } from "./seedLotService";
