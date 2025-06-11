@@ -1,12 +1,22 @@
-// frontend/src/utils/validators.ts - VERSION CORRIGÉE
+// ===== 3. frontend/src/utils/validators.ts (CORRIGÉ) =====
+
 import * as yup from "yup";
 
-// Schéma pour les lots de semences
+// ✅ CORRECTION: Validation robuste avec test function approprié
 export const seedLotValidationSchema = yup.object({
   varietyId: yup
     .mixed()
     .test("variety-required", "Variété requise", function (value) {
-      return value !== null && value !== undefined && value !== "";
+      return (
+        value !== null && value !== undefined && value !== "" && value !== 0
+      );
+    })
+    .transform((value) => {
+      if (typeof value === "string") {
+        const parsed = parseInt(value, 10);
+        return isNaN(parsed) ? value : parsed;
+      }
+      return value;
     }),
   level: yup
     .string()
@@ -62,7 +72,7 @@ export const seedLotValidationSchema = yup.object({
   parentLotId: yup.string().optional(),
 });
 
-// Schéma pour les contrôles qualité
+// ✅ CORRECTION: Schéma qualité avec validation robuste
 export const qualityControlValidationSchema = yup.object({
   lotId: yup.string().required("Lot requis"),
   controlDate: yup
@@ -103,7 +113,7 @@ export const qualityControlValidationSchema = yup.object({
   testMethod: yup.string().max(100, "Méthode trop longue").optional(),
 });
 
-// Schéma pour les variétés
+// ✅ CORRECTION: Schéma variétés avec validation robuste
 export const varietyValidationSchema = yup.object({
   code: yup
     .string()
@@ -145,7 +155,7 @@ export const varietyValidationSchema = yup.object({
     .optional(),
 });
 
-// Schéma pour les multiplicateurs
+// ✅ CORRECTION: Schéma multiplicateurs avec validation robuste
 export const multiplierValidationSchema = yup.object({
   name: yup
     .string()
@@ -193,7 +203,7 @@ export const multiplierValidationSchema = yup.object({
   email: yup.string().email("Email invalide").optional(),
 });
 
-// Utilitaires de validation
+// ✅ Utilitaires de validation
 export const ValidationUtils = {
   validateLotId: (lotId: string): boolean => {
     const regex = /^SL-(GO|G[1-4]|R[1-2])-\d{4}-\d{3}$/;

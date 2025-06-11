@@ -1,6 +1,7 @@
-// frontend/src/pages/LandingPage.tsx
+// ===== 6. frontend/src/pages/LandingPage.tsx (CORRIGÉ) =====
+
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Leaf,
   Shield,
@@ -9,7 +10,6 @@ import {
   Users,
   MapPin,
   FileText,
-  Settings,
   ArrowRight,
   CheckCircle,
   LogIn,
@@ -158,7 +158,7 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Why Section */}
+      {/* Features Section */}
       <section id="features" className="py-20 bg-gray-50">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
@@ -223,7 +223,7 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Features Grid */}
       <section className="py-20 bg-white">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">

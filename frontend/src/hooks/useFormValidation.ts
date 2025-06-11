@@ -1,4 +1,5 @@
-// frontend/src/hooks/useFormValidation.ts - NOUVEAU HOOK DE VALIDATION
+// ===== 1. frontend/src/hooks/useFormValidation.ts (CORRIGÉ) =====
+
 import { useState, useCallback } from "react";
 import { DataTransformer } from "../utils/transformers";
 
@@ -35,11 +36,17 @@ export function useFormValidation(options: UseFormValidationOptions = {}) {
           });
         }
 
-        // Supprimer l'erreur s'il n'y en a plus
-        setValidationResult((prev) => ({
-          ...prev,
-          errors: { ...prev.errors, [fieldName]: undefined },
-        }));
+        // ✅ CORRECTION: Assurer que errors est de type Record<string, string>
+        setValidationResult((prev) => {
+          const newErrors = { ...prev.errors };
+          delete newErrors[fieldName]; // Supprimer l'erreur s'il n'y en a plus
+
+          return {
+            ...prev,
+            errors: newErrors,
+            isValid: Object.keys(newErrors).length === 0,
+          };
+        });
 
         return true;
       } catch (error: any) {
@@ -47,6 +54,7 @@ export function useFormValidation(options: UseFormValidationOptions = {}) {
           ...prev,
           errors: { ...prev.errors, [fieldName]: error.message },
           isValid: false,
+          warnings: prev.warnings,
         }));
 
         return false;
@@ -84,7 +92,7 @@ export function useFormValidation(options: UseFormValidationOptions = {}) {
           });
         }
 
-        const result = {
+        const result: ValidationResult = {
           isValid: true,
           errors: {},
           warnings: {},
@@ -105,7 +113,7 @@ export function useFormValidation(options: UseFormValidationOptions = {}) {
           errors.general = error.message;
         }
 
-        const result = {
+        const result: ValidationResult = {
           isValid: false,
           errors,
           warnings: {},
@@ -131,6 +139,7 @@ export function useFormValidation(options: UseFormValidationOptions = {}) {
       ...prev,
       errors: { ...prev.errors, [fieldName]: message },
       isValid: false,
+      warnings: prev.warnings,
     }));
   }, []);
 

@@ -1,4 +1,5 @@
-// frontend/src/pages/seeds/CreateSeedLot.tsx - VERSION CORRIGÉE
+// ===== 2. frontend/src/pages/seeds/CreateSeedLot.tsx (CORRIGÉ) =====
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
@@ -29,6 +30,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { seedLotValidationSchema } from "../../utils/validators";
 import { Variety, Multiplier, SeedLot } from "../../types/entities";
 
+// ✅ CORRECTION: Interface stricte pour le formulaire
 interface CreateSeedLotForm {
   varietyId: number;
   level: "GO" | "G1" | "G2" | "G3" | "G4" | "R1" | "R2";
@@ -42,10 +44,12 @@ interface CreateSeedLotForm {
   batchNumber?: string;
 }
 
+// ✅ CORRECTION: Type pour la réponse de création
 interface CreateSeedLotResponse {
   data: SeedLot;
 }
 
+// ✅ CORRECTION: Type pour les erreurs API
 interface ErrorResponse {
   response?: {
     data?: {
@@ -59,6 +63,7 @@ const CreateSeedLot: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ✅ CORRECTION: Typage strict pour react-hook-form
   const {
     control,
     handleSubmit,
@@ -73,7 +78,7 @@ const CreateSeedLot: React.FC = () => {
     },
   });
 
-  // ✅ CORRIGÉ : Fetch varieties
+  // Fetch varieties
   const { data: varieties } = useQuery<Variety[]>({
     queryKey: ["varieties"],
     queryFn: async () => {
@@ -82,7 +87,7 @@ const CreateSeedLot: React.FC = () => {
     },
   });
 
-  // ✅ CORRIGÉ : Fetch multipliers
+  // Fetch multipliers
   const { data: multipliers } = useQuery<Multiplier[]>({
     queryKey: ["multipliers"],
     queryFn: async () => {
@@ -91,14 +96,13 @@ const CreateSeedLot: React.FC = () => {
     },
   });
 
-  // ✅ CORRIGÉ : Fetch parent lots for genealogy
+  // Fetch parent lots for genealogy
   const { data: parentLots } = useQuery<SeedLot[]>({
     queryKey: ["parent-lots", watch("level")],
     queryFn: async () => {
       const currentLevel = getValues("level");
       if (!currentLevel) return [];
 
-      // Get possible parent levels (previous generation)
       const levelHierarchy = ["GO", "G1", "G2", "G3", "G4", "R1", "R2"];
       const currentIndex = levelHierarchy.indexOf(currentLevel);
 
@@ -113,7 +117,7 @@ const CreateSeedLot: React.FC = () => {
     enabled: !!watch("level"),
   });
 
-  // ✅ CORRIGÉ : Create mutation
+  // ✅ CORRECTION: Typage strict pour la mutation
   const createMutation = useMutation<
     CreateSeedLotResponse,
     Error,
