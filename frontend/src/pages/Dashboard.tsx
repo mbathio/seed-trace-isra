@@ -29,7 +29,7 @@ import {
   statisticsService,
   productionService,
   seedLotService,
-} from "../services/api"; // ✅ CORRIGÉ: Utiliser les services spécialisés
+} from "../services/api";
 
 // ✅ CORRECTION: Types pour les réponses API
 interface ProductionsResponse {
@@ -110,21 +110,6 @@ const Dashboard: React.FC = () => {
   // ✅ CORRECTION: Fonctions utilitaires pour les calculs sécurisés
   const getActiveMultipliers = () => {
     return stats?.overview?.activeMultipliers || 0;
-  };
-
-  const getExpertMultipliers = () => {
-    // Cette donnée n'est pas disponible dans les stats actuelles, on retourne 0
-    return 0;
-  };
-
-  const getAverageExperience = () => {
-    // Cette donnée n'est pas disponible dans les stats actuelles, on retourne 0
-    return 0;
-  };
-
-  const getTotalParcels = () => {
-    // Cette donnée n'est pas disponible dans les stats actuelles, on retourne 0
-    return 0;
   };
 
   if (isLoading) {

@@ -1,11 +1,13 @@
 // frontend/src/hooks/useApi.ts - VERSION CORRIGÉE
+import React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AxiosRequestConfig } from "axios";
 import { api } from "../services/api";
 import { toast } from "react-toastify";
 import { DEFAULT_QUERY_CONFIG, ERROR_MESSAGES } from "../constants";
 
-// ✅ AJOUT: Type pour les options de requête étendues
-interface ExtendedQueryOptions {
+// ✅ CORRECTION 1: Interface pour les options de requête étendues avec AxiosRequestConfig
+interface ExtendedQueryOptions extends Partial<AxiosRequestConfig> {
   enabled?: boolean;
   retry?: number | boolean;
   retryDelay?: number;
@@ -16,7 +18,7 @@ interface ExtendedQueryOptions {
   onError?: (error: any) => void;
 }
 
-// ✅ CORRIGÉ: Hook de requête API générique avec gestion d'erreur améliorée
+// ✅ CORRECTION 2: Type générique TVariables avec contrainte AxiosRequestConfig
 export const useApiQuery = <T>(
   key: (string | number)[],
   url: string,
@@ -30,7 +32,6 @@ export const useApiQuery = <T>(
         const response = await api.get(url, { params });
         return response.data.data || response.data;
       } catch (error: any) {
-        // Gestion d'erreur spécifique pour les requêtes
         console.error(`API Query Error (${url}):`, error);
 
         if (error.response?.status === 404) {
@@ -62,8 +63,11 @@ export const useApiQuery = <T>(
   });
 };
 
-// ✅ CORRIGÉ: Hook de mutation API avec gestion d'erreur améliorée
-export const useApiMutation = <TData, TVariables>(
+// ✅ CORRECTION 3: Hook de mutation API avec contrainte AxiosRequestConfig
+export const useApiMutation = <
+  TData,
+  TVariables extends AxiosRequestConfig | Record<string, any>
+>(
   url: string,
   method: "post" | "put" | "patch" | "delete" = "post",
   options?: {
@@ -83,7 +87,6 @@ export const useApiMutation = <TData, TVariables>(
         const response = await api[method](url, variables);
         return response.data.data || response.data;
       } catch (error: any) {
-        // Gestion d'erreur spécifique pour les mutations
         console.error(
           `API Mutation Error (${method.toUpperCase()} ${url}):`,
           error
@@ -109,35 +112,30 @@ export const useApiMutation = <TData, TVariables>(
       }
     },
     onSuccess: (data) => {
-      // Invalider les requêtes spécifiées
       options?.invalidateQueries?.forEach((key) => {
         queryClient.invalidateQueries({ queryKey: key });
       });
 
-      // Afficher le toast de succès si demandé
       if (options?.showSuccessToast !== false) {
         const message = options?.successMessage || "Opération réussie !";
         toast.success(message);
       }
 
-      // Callback de succès
       options?.onSuccess?.(data);
     },
     onError: (error: Error) => {
       console.error("Mutation error:", error);
 
-      // Afficher le toast d'erreur si demandé
       if (options?.showErrorToast !== false) {
         toast.error(error.message);
       }
 
-      // Callback d'erreur
       options?.onError?.(error);
     },
   });
 };
 
-// ✅ AJOUT: Hook spécialisé pour les requêtes paginées
+// ✅ CORRECTION 4: Hook spécialisé pour les requêtes paginées
 export const usePaginatedQuery = <T>(
   key: (string | number)[],
   url: string,
@@ -157,12 +155,12 @@ export const usePaginatedQuery = <T>(
   }>(key, url, params, options);
 };
 
-// ✅ AJOUT: Hook pour les requêtes en temps réel (avec polling)
+// ✅ CORRECTION 5: Hook pour les requêtes en temps réel (avec polling)
 export const useRealtimeQuery = <T>(
   key: (string | number)[],
   url: string,
   params?: Record<string, any>,
-  intervalMs: number = 30000, // 30 secondes par défaut
+  intervalMs: number = 30000,
   options?: ExtendedQueryOptions
 ) => {
   return useApiQuery<T>(key, url, params, {
@@ -172,7 +170,7 @@ export const useRealtimeQuery = <T>(
   });
 };
 
-// ✅ AJOUT: Hook pour les requêtes conditionnelles
+// ✅ CORRECTION 6: Hook pour les requêtes conditionnelles
 export const useConditionalQuery = <T>(
   key: (string | number)[],
   url: string,
@@ -186,7 +184,7 @@ export const useConditionalQuery = <T>(
   });
 };
 
-// ✅ AJOUT: Hook pour les requêtes de recherche avec debounce
+// ✅ CORRECTION 7: Hook pour les requêtes de recherche avec debounce
 export const useSearchQuery = <T>(
   key: (string | number)[],
   url: string,
@@ -216,7 +214,7 @@ export const useSearchQuery = <T>(
   );
 };
 
-// ✅ AJOUT: Hook pour invalider des requêtes spécifiques
+// ✅ CORRECTION 8: Hook pour invalider des requêtes spécifiques
 export const useInvalidateQueries = () => {
   const queryClient = useQueryClient();
 
@@ -233,6 +231,3 @@ export const useInvalidateQueries = () => {
       queryClient.refetchQueries({ queryKey: key }),
   };
 };
-
-// ✅ AJOUT: Import React pour les hooks
-import React from "react";

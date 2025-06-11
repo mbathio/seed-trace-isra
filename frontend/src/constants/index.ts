@@ -18,7 +18,7 @@ export const CROP_TYPES = [
   { value: "MILLET", label: "Mil" },
 ];
 
-// ✅ CORRECTION: Utiliser les mêmes valeurs exactes que la DB (MAJUSCULES + underscore)
+// ✅ CORRECTION 1: Utiliser les mêmes valeurs exactes que la DB (MAJUSCULES + underscore)
 export const LOT_STATUSES = [
   { value: "PENDING", label: "En attente" },
   { value: "CERTIFIED", label: "Certifié" },
@@ -29,7 +29,7 @@ export const LOT_STATUSES = [
   { value: "SOLD", label: "Vendu" },
 ];
 
-// ✅ CORRECTION: Valeurs exactes de la DB (MAJUSCULES)
+// ✅ CORRECTION 2: Valeurs exactes de la DB (MAJUSCULES)
 export const USER_ROLES = [
   { value: "ADMIN", label: "Administrateur" },
   { value: "MANAGER", label: "Manager" },
@@ -40,13 +40,13 @@ export const USER_ROLES = [
   { value: "GUEST", label: "Invité" },
 ];
 
-// ✅ CORRECTION: Valeurs exactes de la DB (MAJUSCULES)
+// ✅ CORRECTION 3: Valeurs exactes de la DB (MAJUSCULES)
 export const QUALITY_TEST_RESULTS = [
   { value: "PASS", label: "Réussi" },
   { value: "FAIL", label: "Échec" },
 ];
 
-// ✅ CORRECTION: Valeurs exactes de la DB (MAJUSCULES + underscore)
+// ✅ CORRECTION 4: Valeurs exactes de la DB (MAJUSCULES + underscore)
 export const PRODUCTION_STATUSES = [
   { value: "PLANNED", label: "Planifiée" },
   { value: "IN_PROGRESS", label: "En cours" },
@@ -78,43 +78,7 @@ export const CONTRACT_STATUSES = [
   { value: "CANCELLED", label: "Annulé" },
 ];
 
-// ✅ AJOUT: Mapping pour transformation frontend/backend si nécessaire
-export const STATUS_MAPPINGS = {
-  // Frontend vers Backend (si on utilisait des valeurs différentes)
-  toBackend: {
-    pending: "PENDING",
-    certified: "CERTIFIED",
-    rejected: "REJECTED",
-    "in-stock": "IN_STOCK",
-    active: "ACTIVE",
-    distributed: "DISTRIBUTED",
-    sold: "SOLD",
-    planned: "PLANNED",
-    "in-progress": "IN_PROGRESS",
-    completed: "COMPLETED",
-    cancelled: "CANCELLED",
-    pass: "PASS",
-    fail: "FAIL",
-  },
-  // Backend vers Frontend (pour l'affichage)
-  toFrontend: {
-    PENDING: "En attente",
-    CERTIFIED: "Certifié",
-    REJECTED: "Rejeté",
-    IN_STOCK: "En stock",
-    ACTIVE: "Actif",
-    DISTRIBUTED: "Distribué",
-    SOLD: "Vendu",
-    PLANNED: "Planifiée",
-    IN_PROGRESS: "En cours",
-    COMPLETED: "Terminée",
-    CANCELLED: "Annulée",
-    PASS: "Réussi",
-    FAIL: "Échec",
-  },
-};
-
-// ✅ AJOUT: Configuration des endpoints API
+// ✅ CORRECTION 5: Configuration des endpoints API
 export const API_ENDPOINTS = {
   // Authentification
   AUTH: {
@@ -176,7 +140,7 @@ export const API_ENDPOINTS = {
   HEALTH: "/health",
 };
 
-// ✅ AJOUT: Configuration par défaut pour les requêtes
+// ✅ CORRECTION 6: Configuration par défaut pour les requêtes
 export const DEFAULT_QUERY_CONFIG = {
   PAGINATION: {
     DEFAULT_PAGE: 1,
@@ -188,7 +152,7 @@ export const DEFAULT_QUERY_CONFIG = {
   RETRY_ATTEMPTS: 3,
 };
 
-// ✅ AJOUT: Messages d'erreur standardisés
+// ✅ CORRECTION 7: Messages d'erreur standardisés
 export const ERROR_MESSAGES = {
   NETWORK_ERROR: "Erreur de connexion au serveur",
   UNAUTHORIZED: "Session expirée. Veuillez vous reconnecter.",
