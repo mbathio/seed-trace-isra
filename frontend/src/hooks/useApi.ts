@@ -16,6 +16,8 @@ interface ExtendedQueryOptions extends Partial<AxiosRequestConfig> {
   cacheTime?: number;
   onSuccess?: (data: any) => void;
   onError?: (error: any) => void;
+  refetchInterval?: number | false;
+  refetchIntervalInBackground?: boolean;
 }
 
 // ✅ CORRECTION 2: Type générique TVariables avec contrainte AxiosRequestConfig

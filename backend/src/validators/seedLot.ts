@@ -1,4 +1,4 @@
-// backend/src/validators/seedLot.ts - Validateurs de lots de semences CORRIGÉS
+// backend/src/validators/seedLot.ts - ✅ CORRIGÉ
 import { z } from "zod";
 import {
   SeedLevelEnum,
@@ -6,132 +6,70 @@ import {
   varietyIdSchema,
   multiplierIdSchema,
   positiveIntSchema,
-  dateSchema,
-  optionalDateSchema,
   paginationSchema,
   notesSchema,
   positiveIdSchema,
 } from "./common";
 
-// ✅ CORRECTION: Validateur pour la création de lots
-export const createSeedLotSchema = z
-  .object({
-    varietyId: varietyIdSchema,
-    level: SeedLevelEnum,
-    quantity: z
-      .number()
-      .positive("Quantité doit être positive")
-      .min(1, "Quantité minimum 1kg")
-      .max(1000000, "Quantité maximum 1,000,000kg"),
-    productionDate: z
-      .string()
-      .refine((date) => !isNaN(Date.parse(date)), "Date de production invalide")
-      .refine((date) => {
-        const prodDate = new Date(date);
-        const now = new Date();
-        const twoYearsAgo = new Date();
-        twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+// ✅ CORRECTION: Validateur pour la création de lots (sans .omit() problématique)
+export const createSeedLotSchema = z.object({
+  varietyId: varietyIdSchema,
+  level: SeedLevelEnum,
+  quantity: z
+    .number()
+    .positive("Quantité doit être positive")
+    .min(1, "Quantité minimum 1kg")
+    .max(1000000, "Quantité maximum 1,000,000kg"),
+  productionDate: z
+    .string()
+    .refine((date) => !isNaN(Date.parse(date)), "Date de production invalide")
+    .refine((date) => {
+      const prodDate = new Date(date);
+      const now = new Date();
+      const twoYearsAgo = new Date();
+      twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
 
-        return prodDate <= now && prodDate >= twoYearsAgo;
-      }, "Date de production doit être dans les 2 dernières années et pas dans le futur"),
-    expiryDate: z
-      .string()
-      .optional()
-      .refine((date) => {
-        if (!date) return true;
-        return !isNaN(Date.parse(date));
-      }, "Date d'expiration invalide"),
-    multiplierId: multiplierIdSchema.optional(),
-    parcelId: positiveIdSchema.optional(),
-    parentLotId: z.string().min(1).optional(),
-    batchNumber: z
-      .string()
-      .max(50, "Numéro de lot ne peut pas dépasser 50 caractères")
-      .optional(),
-    notes: notesSchema,
-    status: LotStatusEnum.optional().default("PENDING"),
-  })
-  .refine(
-    (data) => {
-      if (data.expiryDate && data.productionDate) {
-        const prodDate = new Date(data.productionDate);
-        const expDate = new Date(data.expiryDate);
-        return expDate > prodDate;
-      }
-      return true;
-    },
-    {
-      message:
-        "Date d'expiration doit être postérieure à la date de production",
-      path: ["expiryDate"],
-    }
-  )
-  .refine(
-    (data) => {
-      // ✅ CORRECTION: Validation des quantités selon le niveau
-      const levelLimits: Record<string, { min: number; max: number }> = {
-        GO: { min: 10, max: 1000 },
-        G1: { min: 50, max: 5000 },
-        G2: { min: 100, max: 10000 },
-        G3: { min: 500, max: 20000 },
-        G4: { min: 1000, max: 50000 },
-        R1: { min: 2000, max: 100000 },
-        R2: { min: 5000, max: 500000 },
-      };
+      return prodDate <= now && prodDate >= twoYearsAgo;
+    }, "Date de production doit être dans les 2 dernières années et pas dans le futur"),
+  expiryDate: z
+    .string()
+    .optional()
+    .refine((date) => {
+      if (!date) return true;
+      return !isNaN(Date.parse(date));
+    }, "Date d'expiration invalide"),
+  multiplierId: multiplierIdSchema.optional(),
+  parcelId: positiveIdSchema.optional(),
+  parentLotId: z.string().min(1).optional(),
+  batchNumber: z
+    .string()
+    .max(50, "Numéro de lot ne peut pas dépasser 50 caractères")
+    .optional(),
+  notes: notesSchema,
+  status: LotStatusEnum.optional(),
+});
 
-      const limits = levelLimits[data.level];
-      if (limits) {
-        return data.quantity >= limits.min && data.quantity <= limits.max;
-      }
-      return true;
-    },
-    {
-      message: "Quantité non appropriée pour ce niveau de semence",
-      path: ["quantity"],
-    }
-  );
-
-// ✅ CORRECTION: Validateur pour la mise à jour de lots
-export const updateSeedLotSchema = z
-  .object({
-    quantity: z
-      .number()
-      .positive("Quantité doit être positive")
-      .min(0, "Quantité ne peut pas être négative")
-      .optional(),
-    status: LotStatusEnum.optional(),
-    expiryDate: z
-      .string()
-      .optional()
-      .refine((date) => {
-        if (!date) return true;
-        return !isNaN(Date.parse(date));
-      }, "Date d'expiration invalide"),
-    batchNumber: z
-      .string()
-      .max(50, "Numéro de lot ne peut pas dépasser 50 caractères")
-      .optional(),
-    notes: notesSchema,
-  })
-  .refine(
-    (data) => {
-      // ✅ CORRECTION: Validation de cohérence quantité/statut
-      if (data.quantity !== undefined && data.status) {
-        if (
-          data.quantity === 0 &&
-          !["SOLD", "DISTRIBUTED"].includes(data.status)
-        ) {
-          return false;
-        }
-      }
-      return true;
-    },
-    {
-      message:
-        "Quantité zéro n'est autorisée que pour les statuts SOLD ou DISTRIBUTED",
-      path: ["quantity"],
-    }
-  );
+// ✅ CORRECTION: Validateur pour la mise à jour (schéma indépendant)
+export const updateSeedLotSchema = z.object({
+  quantity: z
+    .number()
+    .positive("Quantité doit être positive")
+    .min(0, "Quantité ne peut pas être négative")
+    .optional(),
+  status: LotStatusEnum.optional(),
+  expiryDate: z
+    .string()
+    .optional()
+    .refine((date) => {
+      if (!date) return true;
+      return !isNaN(Date.parse(date));
+    }, "Date d'expiration invalide"),
+  batchNumber: z
+    .string()
+    .max(50, "Numéro de lot ne peut pas dépasser 50 caractères")
+    .optional(),
+  notes: notesSchema,
+});
 
 // ✅ CORRECTION: Validateur pour les requêtes de recherche
 export const seedLotQuerySchema = paginationSchema.extend({
@@ -142,24 +80,6 @@ export const seedLotQuerySchema = paginationSchema.extend({
   parcelId: positiveIdSchema.optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  expiringInDays: z
-    .union([z.string(), z.number()])
-    .transform((val) => {
-      const num = typeof val === "string" ? parseInt(val) : val;
-      return isNaN(num) ? undefined : num;
-    })
-    .refine(
-      (n) => n === undefined || (n >= 0 && n <= 365),
-      "Nombre de jours doit être entre 0 et 365"
-    )
-    .optional(),
-  hasQualityControl: z
-    .union([z.string(), z.boolean()])
-    .transform((val) => {
-      if (typeof val === "boolean") return val;
-      return val === "true";
-    })
-    .optional(),
   sortBy: z
     .enum([
       "productionDate",
@@ -171,8 +91,7 @@ export const seedLotQuerySchema = paginationSchema.extend({
       "expiryDate",
       "createdAt",
     ])
-    .optional()
-    .default("productionDate"),
+    .optional(),
 });
 
 // ✅ CORRECTION: Validateur pour le transfert de lots

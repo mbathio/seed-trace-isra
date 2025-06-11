@@ -1,4 +1,4 @@
-// backend/src/validators/qualityControl.ts - CORRIGÉ
+// backend/src/validators/qualityControl.ts - ✅ CORRIGÉ
 import { z } from "zod";
 import {
   TestResultEnum,
@@ -9,114 +9,76 @@ import {
 } from "./common";
 
 // ✅ CORRECTION: Validateur pour la création de contrôles qualité
-export const createQualityControlSchema = z
-  .object({
-    lotId: z.string().min(1, "ID de lot requis"),
-    controlDate: z
-      .string()
-      .refine((date) => !isNaN(Date.parse(date)), "Date de contrôle invalide")
-      .refine((date) => {
-        const controlDate = new Date(date);
-        const now = new Date();
-        const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+export const createQualityControlSchema = z.object({
+  lotId: z.string().min(1, "ID de lot requis"),
+  controlDate: z
+    .string()
+    .refine((date) => !isNaN(Date.parse(date)), "Date de contrôle invalide")
+    .refine((date) => {
+      const controlDate = new Date(date);
+      const now = new Date();
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
-        return controlDate <= now && controlDate >= oneYearAgo;
-      }, "Date de contrôle doit être dans l'année écoulée et pas dans le futur"),
-    germinationRate: z
-      .number()
-      .min(0, "Taux de germination minimum 0%")
-      .max(100, "Taux de germination maximum 100%"),
-    varietyPurity: z
-      .number()
-      .min(0, "Pureté variétale minimum 0%")
-      .max(100, "Pureté variétale maximum 100%"),
-    moistureContent: z
-      .number()
-      .min(0, "Taux d'humidité minimum 0%")
-      .max(100, "Taux d'humidité maximum 100%")
-      .optional(),
-    seedHealth: z
-      .number()
-      .min(0, "Santé des graines minimum 0%")
-      .max(100, "Santé des graines maximum 100%")
-      .optional(),
-    observations: notesSchema,
-    testMethod: z.string().max(100, "Méthode de test trop longue").optional(),
-    laboratoryRef: z
-      .string()
-      .max(50, "Référence laboratoire trop longue")
-      .optional(),
-    certificateUrl: z.string().url("URL de certificat invalide").optional(),
-  })
-  .refine(
-    (data) => {
-      // ✅ CORRECTION: Validation des seuils de qualité
-      if (data.germinationRate < 60) {
-        return false; // Taux trop faible pour être certifiable
-      }
-      if (data.varietyPurity < 90) {
-        return false; // Pureté trop faible
-      }
-      return true;
-    },
-    {
-      message:
-        "Taux de germination et pureté insuffisants pour la certification",
-      path: ["germinationRate"],
-    }
-  )
-  .refine(
-    (data) => {
-      // ✅ CORRECTION: Validation de cohérence humidité/santé
-      if (data.moistureContent && data.moistureContent > 18) {
-        return false; // Humidité trop élevée = problème de conservation
-      }
-      return true;
-    },
-    {
-      message: "Taux d'humidité trop élevé (> 18%) - conservation impossible",
-      path: ["moistureContent"],
-    }
-  );
+      return controlDate <= now && controlDate >= oneYearAgo;
+    }, "Date de contrôle doit être dans l'année écoulée et pas dans le futur"),
+  germinationRate: z
+    .number()
+    .min(0, "Taux de germination minimum 0%")
+    .max(100, "Taux de germination maximum 100%"),
+  varietyPurity: z
+    .number()
+    .min(0, "Pureté variétale minimum 0%")
+    .max(100, "Pureté variétale maximum 100%"),
+  moistureContent: z
+    .number()
+    .min(0, "Taux d'humidité minimum 0%")
+    .max(100, "Taux d'humidité maximum 100%")
+    .optional(),
+  seedHealth: z
+    .number()
+    .min(0, "Santé des graines minimum 0%")
+    .max(100, "Santé des graines maximum 100%")
+    .optional(),
+  observations: notesSchema,
+  testMethod: z.string().max(100, "Méthode de test trop longue").optional(),
+  laboratoryRef: z
+    .string()
+    .max(50, "Référence laboratoire trop longue")
+    .optional(),
+  certificateUrl: z.string().url("URL de certificat invalide").optional(),
+});
 
-// ✅ CORRECTION: Validateur pour la mise à jour de contrôles qualité
-export const updateQualityControlSchema = z
-  .object({
-    germinationRate: percentageSchema.optional(),
-    varietyPurity: percentageSchema.optional(),
-    moistureContent: percentageSchema.optional(),
-    seedHealth: percentageSchema.optional(),
-    observations: notesSchema,
-    testMethod: z.string().max(100, "Méthode de test trop longue").optional(),
-    laboratoryRef: z
-      .string()
-      .max(50, "Référence laboratoire trop longue")
-      .optional(),
-    certificateUrl: z.string().url("URL de certificat invalide").optional(),
-    // ✅ Note: Le résultat est calculé automatiquement
-  })
-  .refine(
-    (data) => {
-      // ✅ CORRECTION: Recalcul du résultat si les taux sont modifiés
-      if (
-        data.germinationRate !== undefined ||
-        data.varietyPurity !== undefined
-      ) {
-        const germRate = data.germinationRate ?? 0;
-        const purity = data.varietyPurity ?? 0;
-
-        if (germRate < 60 || purity < 90) {
-          return false;
-        }
-      }
-      return true;
-    },
-    {
-      message: "Taux modifiés insuffisants pour maintenir la certification",
-      path: ["germinationRate"],
-    }
-  );
+// ✅ CORRECTION: Validateur pour la mise à jour (sans les problèmes d'omit)
+export const updateQualityControlSchema = z.object({
+  germinationRate: z
+    .number()
+    .min(0, "Taux de germination minimum 0%")
+    .max(100, "Taux de germination maximum 100%")
+    .optional(),
+  varietyPurity: z
+    .number()
+    .min(0, "Pureté variétale minimum 0%")
+    .max(100, "Pureté variétale maximum 100%")
+    .optional(),
+  moistureContent: z
+    .number()
+    .min(0, "Taux d'humidité minimum 0%")
+    .max(100, "Taux d'humidité maximum 100%")
+    .optional(),
+  seedHealth: z
+    .number()
+    .min(0, "Santé des graines minimum 0%")
+    .max(100, "Santé des graines maximum 100%")
+    .optional(),
+  observations: notesSchema,
+  testMethod: z.string().max(100, "Méthode de test trop longue").optional(),
+  laboratoryRef: z
+    .string()
+    .max(50, "Référence laboratoire trop longue")
+    .optional(),
+  certificateUrl: z.string().url("URL de certificat invalide").optional(),
+});
 
 // ✅ CORRECTION: Validateur pour les requêtes de recherche
 export const qualityControlQuerySchema = paginationSchema.extend({
