@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import app from "./app";
-import { connectDatabase } from "./config/database";
+import { connectDatabase, disconnectDatabase } from "./config/database"; // ✅ CORRECTION: Import de disconnectDatabase
 import { logger } from "./utils/logger";
 
 // Charger les variables d'environnement
@@ -38,7 +38,7 @@ io.on("connection", (socket) => {
 // Fonction pour démarrer le serveur
 const startServer = async (): Promise<void> => {
   try {
-    // Connexion à la base de données
+    // ✅ CORRECTION: Connexion à la base de données
     await connectDatabase();
     logger.info("✅ Connexion à la base de données établie");
 
@@ -50,7 +50,7 @@ const startServer = async (): Promise<void> => {
         `🔗 CORS activé pour: ${process.env.CLIENT_URL || "http://localhost:5173"}`
       );
       logger.info(
-        `🔐 JWT configuré avec expiration: ${process.env.JWT_ACCESS_EXPIRY}`
+        `🔐 JWT configuré avec expiration: ${process.env.JWT_ACCESS_EXPIRY || "15m"}`
       );
 
       if (!isProduction) {
@@ -88,8 +88,8 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
     logger.info("Serveur HTTP fermé");
 
     try {
-      // Fermer les connexions à la base de données
-      // await disconnectDatabase();
+      // ✅ CORRECTION: Fermer les connexions à la base de données
+      await disconnectDatabase();
       logger.info("Connexions à la base de données fermées");
 
       // Fermer d'autres ressources si nécessaire
@@ -114,5 +114,8 @@ const gracefulShutdown = async (signal: string): Promise<void> => {
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-// Démarrer le serveur
-startServer();
+// ✅ CORRECTION: Démarrer le serveur
+startServer().catch((error) => {
+  logger.error("Erreur fatale lors du démarrage:", error);
+  process.exit(1);
+});
