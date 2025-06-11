@@ -1,3 +1,5 @@
+// ===== 3. CORRECTION: frontend/src/components/charts/ProductionChart.tsx =====
+
 import React from "react";
 import {
   LineChart,
@@ -25,7 +27,7 @@ export const ProductionChart: React.FC<ProductionChartProps> = ({
   type = "line",
 }) => {
   const Chart = type === "line" ? LineChart : BarChart;
-  const DataComponent = type === "line" ? Line : Bar;
+  // ✅ CORRECTION: Supprimer la variable non utilisée
 
   return (
     <ResponsiveContainer width="100%" height={300}>
