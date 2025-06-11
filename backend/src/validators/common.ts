@@ -1,7 +1,7 @@
-// backend/src/validators/common.ts - Enums et validateurs communs
+// backend/src/validators/common.ts - Enums et validateurs communs CORRIGÉS
 import { z } from "zod";
 
-// ✅ Enums standardisés (cohérents avec Prisma)
+// ✅ CORRECTION: Enums standardisés (cohérents avec Prisma)
 export const RoleEnum = z.enum([
   "ADMIN",
   "MANAGER",
@@ -88,17 +88,21 @@ export const ReportTypeEnum = z.enum([
   "CUSTOM",
 ]);
 
-// ✅ Validateurs communs réutilisables
+// ✅ CORRECTION: Validateurs communs réutilisables
 export const paginationSchema = z.object({
   page: z
     .union([z.string(), z.number()])
-    .transform((val) => Math.max(1, parseInt(val.toString()) || 1))
+    .transform((val) => {
+      const num = typeof val === "string" ? parseInt(val) : val;
+      return Math.max(1, isNaN(num) ? 1 : num);
+    })
     .refine((n) => n > 0, "Page doit être positive"),
   pageSize: z
     .union([z.string(), z.number()])
-    .transform((val) =>
-      Math.min(Math.max(1, parseInt(val.toString()) || 10), 100)
-    )
+    .transform((val) => {
+      const num = typeof val === "string" ? parseInt(val) : val;
+      return Math.min(Math.max(1, isNaN(num) ? 10 : num), 100);
+    })
     .refine((n) => n > 0 && n <= 100, "PageSize doit être entre 1 et 100"),
   search: z.string().optional(),
   sortBy: z.string().optional(),
@@ -140,23 +144,25 @@ export const phoneSchema = z
   .regex(/^(\+221)?[0-9]{8,9}$/, "Numéro de téléphone sénégalais invalide")
   .optional();
 
-// ✅ Schéma flexible pour varietyId (nombre ou code string)
+// ✅ CORRECTION: Schéma flexible pour varietyId (nombre ou code string)
 export const varietyIdSchema = z.union([
-  z.number().positive(),
-  z.string().min(1),
+  z.number().positive("ID variété doit être positif"),
+  z.string().min(1, "Code variété requis"),
 ]);
 
-// ✅ Schéma flexible pour multiplierIdSchema
+// ✅ CORRECTION: Schéma flexible pour multiplierIdSchema
 export const multiplierIdSchema = z.union([
-  z.number().positive(),
+  z.number().positive("ID multiplicateur doit être positif"),
   z.string().transform((val) => {
     const parsed = parseInt(val);
-    if (isNaN(parsed)) throw new Error("ID multiplicateur invalide");
+    if (isNaN(parsed) || parsed <= 0) {
+      throw new Error("ID multiplicateur invalide");
+    }
     return parsed;
   }),
 ]);
 
-// ✅ Validateur de coordonnées spécifique au Sénégal
+// ✅ CORRECTION: Validateur de coordonnées spécifique au Sénégal
 export const senegalCoordinatesSchema = coordinatesSchema.refine(
   ({ latitude, longitude }) => {
     const bounds = {
@@ -174,3 +180,64 @@ export const senegalCoordinatesSchema = coordinatesSchema.refine(
   },
   "Coordonnées en dehors du Sénégal"
 );
+
+// ✅ CORRECTION: Validateurs d'ID avec transformation sécurisée
+export const positiveIdSchema = z.union([
+  z.number().positive(),
+  z.string().transform((val) => {
+    const parsed = parseInt(val);
+    if (isNaN(parsed) || parsed <= 0) {
+      throw new Error("ID invalide");
+    }
+    return parsed;
+  }),
+]);
+
+// ✅ CORRECTION: Validateur de quantité avec unités
+export const quantitySchema = z.object({
+  value: z.number().positive("Quantité doit être positive"),
+  unit: z.enum(["kg", "g", "t", "units"]).default("kg"),
+});
+
+// ✅ CORRECTION: Validateur pour les résistances de variétés
+export const resistancesSchema = z
+  .array(z.string().min(1, "Résistance ne peut pas être vide"))
+  .max(20, "Maximum 20 résistances autorisées")
+  .optional()
+  .default([]);
+
+// ✅ CORRECTION: Validateur pour les spécialisations
+export const specializationsSchema = z
+  .array(CropTypeEnum)
+  .min(1, "Au moins une spécialisation requise")
+  .max(6, "Maximum 6 spécialisations autorisées");
+
+// ✅ CORRECTION: Validateur pour les notes/observations
+export const notesSchema = z
+  .string()
+  .max(1000, "Notes ne peuvent pas dépasser 1000 caractères")
+  .optional();
+
+// ✅ CORRECTION: Validateur de période de dates
+export const dateRangeSchema = z
+  .object({
+    startDate: dateSchema,
+    endDate: dateSchema,
+  })
+  .refine(
+    ({ startDate, endDate }) => startDate <= endDate,
+    "Date de fin doit être après la date de début"
+  );
+
+// ✅ CORRECTION: Validateur pour les filtres de recherche
+export const searchFiltersSchema = z.object({
+  search: z.string().max(100, "Recherche trop longue").optional(),
+  level: SeedLevelEnum.optional(),
+  status: LotStatusEnum.optional(),
+  cropType: CropTypeEnum.optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  varietyId: varietyIdSchema.optional(),
+  multiplierId: multiplierIdSchema.optional(),
+  parcelId: positiveIdSchema.optional(),
+});
