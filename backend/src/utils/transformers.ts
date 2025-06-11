@@ -1,4 +1,4 @@
-// backend/src/utils/transformers.ts - ✅ VERSION CORRIGÉE avec transformInputStatus
+// backend/src/utils/transformers.ts - TRANSFORMATEURS CORRIGÉS
 import {
   SeedLevel,
   LotStatus,
@@ -7,17 +7,14 @@ import {
   MultiplierStatus,
   CertificationLevel,
   ParcelStatus,
-  ContractStatus,
   ProductionStatus,
-  ActivityType,
-  IssueType,
-  IssueSeverity,
   TestResult,
-  ReportType,
 } from "@prisma/client";
 
 export class DataTransformer {
-  // Mappings pour les statuts de lots
+  // ===== MAPPINGS BIDIRECTIONNELS =====
+
+  // Statuts de lots (DB <-> UI)
   private static readonly LOT_STATUS_DB_TO_UI: Record<LotStatus, string> = {
     PENDING: "pending",
     CERTIFIED: "certified",
@@ -38,7 +35,7 @@ export class DataTransformer {
     distributed: "DISTRIBUTED",
   };
 
-  // Mappings pour les rôles utilisateurs
+  // Rôles utilisateurs (DB <-> UI)
   private static readonly ROLE_DB_TO_UI: Record<Role, string> = {
     ADMIN: "admin",
     MANAGER: "manager",
@@ -59,7 +56,7 @@ export class DataTransformer {
     researcher: "RESEARCHER",
   };
 
-  // Mappings pour les types de cultures
+  // Types de culture (DB <-> UI)
   private static readonly CROP_TYPE_DB_TO_UI: Record<CropType, string> = {
     RICE: "rice",
     MAIZE: "maize",
@@ -77,14 +74,35 @@ export class DataTransformer {
     cowpea: "COWPEA",
     millet: "MILLET",
   };
-  // Dans backend/src/utils/transformers.ts
-  static readonly MULTIPLIER_STATUS_UI_TO_DB: Record<string, MultiplierStatus> =
-    {
-      active: "ACTIVE",
-      inactive: "INACTIVE",
-    };
 
-  static readonly CERTIFICATION_LEVEL_UI_TO_DB: Record<
+  // Statuts multiplicateurs (DB <-> UI)
+  private static readonly MULTIPLIER_STATUS_DB_TO_UI: Record<
+    MultiplierStatus,
+    string
+  > = {
+    ACTIVE: "active",
+    INACTIVE: "inactive",
+  };
+
+  private static readonly MULTIPLIER_STATUS_UI_TO_DB: Record<
+    string,
+    MultiplierStatus
+  > = {
+    active: "ACTIVE",
+    inactive: "INACTIVE",
+  };
+
+  // Niveaux de certification (DB <-> UI)
+  private static readonly CERTIFICATION_LEVEL_DB_TO_UI: Record<
+    CertificationLevel,
+    string
+  > = {
+    BEGINNER: "beginner",
+    INTERMEDIATE: "intermediate",
+    EXPERT: "expert",
+  };
+
+  private static readonly CERTIFICATION_LEVEL_UI_TO_DB: Record<
     string,
     CertificationLevel
   > = {
@@ -93,67 +111,56 @@ export class DataTransformer {
     expert: "EXPERT",
   };
 
-  static readonly TEST_RESULT_UI_TO_DB: Record<string, TestResult> = {
+  // Statuts parcelles (DB <-> UI)
+  private static readonly PARCEL_STATUS_DB_TO_UI: Record<ParcelStatus, string> =
+    {
+      AVAILABLE: "available",
+      IN_USE: "in-use",
+      RESTING: "resting",
+    };
+
+  private static readonly PARCEL_STATUS_UI_TO_DB: Record<string, ParcelStatus> =
+    {
+      available: "AVAILABLE",
+      "in-use": "IN_USE",
+      resting: "RESTING",
+    };
+
+  // Statuts production (DB <-> UI)
+  private static readonly PRODUCTION_STATUS_DB_TO_UI: Record<
+    ProductionStatus,
+    string
+  > = {
+    PLANNED: "planned",
+    IN_PROGRESS: "in-progress",
+    COMPLETED: "completed",
+    CANCELLED: "cancelled",
+  };
+
+  private static readonly PRODUCTION_STATUS_UI_TO_DB: Record<
+    string,
+    ProductionStatus
+  > = {
+    planned: "PLANNED",
+    "in-progress": "IN_PROGRESS",
+    completed: "COMPLETED",
+    cancelled: "CANCELLED",
+  };
+
+  // Résultats de test (DB <-> UI)
+  private static readonly TEST_RESULT_DB_TO_UI: Record<TestResult, string> = {
+    PASS: "pass",
+    FAIL: "fail",
+  };
+
+  private static readonly TEST_RESULT_UI_TO_DB: Record<string, TestResult> = {
     pass: "PASS",
     fail: "FAIL",
   };
 
-  static readonly PRODUCTION_STATUS_UI_TO_DB: Record<string, ProductionStatus> =
-    {
-      planned: "PLANNED",
-      "in-progress": "IN_PROGRESS",
-      completed: "COMPLETED",
-      cancelled: "CANCELLED",
-    };
+  // ===== MÉTHODES DE TRANSFORMATION =====
 
-  static readonly ACTIVITY_TYPE_UI_TO_DB: Record<string, ActivityType> = {
-    "soil-preparation": "SOIL_PREPARATION",
-    sowing: "SOWING",
-    fertilization: "FERTILIZATION",
-    irrigation: "IRRIGATION",
-    weeding: "WEEDING",
-    "pest-control": "PEST_CONTROL",
-    harvest: "HARVEST",
-    other: "OTHER",
-  };
-
-  static readonly PARCEL_STATUS_UI_TO_DB: Record<string, ParcelStatus> = {
-    available: "AVAILABLE",
-    "in-use": "IN_USE",
-    resting: "RESTING",
-  };
-
-  // Méthodes helper pour accéder aux mappings
-  static getMultiplierStatusMapping() {
-    return this.MULTIPLIER_STATUS_UI_TO_DB;
-  }
-
-  static getCertificationLevelMapping() {
-    return this.CERTIFICATION_LEVEL_UI_TO_DB;
-  }
-
-  static getTestResultMapping() {
-    return this.TEST_RESULT_UI_TO_DB;
-  }
-
-  static getProductionStatusMapping() {
-    return this.PRODUCTION_STATUS_UI_TO_DB;
-  }
-
-  static getActivityTypeMapping() {
-    return this.ACTIVITY_TYPE_UI_TO_DB;
-  }
-
-  static getParcelStatusMapping() {
-    return this.PARCEL_STATUS_UI_TO_DB;
-  }
-
-  // ✅ CORRECTION: Méthode manquante transformInputStatus
-  static transformInputStatus(status: string): LotStatus {
-    return this.transformLotStatusUIToDB(status);
-  }
-
-  // ✅ CORRECTION: Transformations spécialisées
+  // Transformation des statuts de lots
   static transformLotStatusDBToUI(status: LotStatus): string {
     return (
       this.LOT_STATUS_DB_TO_UI[status] ||
@@ -168,6 +175,12 @@ export class DataTransformer {
     );
   }
 
+  // Méthode spéciale pour l'input status (compatibilité)
+  static transformInputStatus(status: string): LotStatus {
+    return this.transformLotStatusUIToDB(status);
+  }
+
+  // Transformation des rôles
   static transformRoleDBToUI(role: Role): string {
     return this.ROLE_DB_TO_UI[role] || role.toLowerCase();
   }
@@ -176,6 +189,7 @@ export class DataTransformer {
     return this.ROLE_UI_TO_DB[role] || (role.toUpperCase() as Role);
   }
 
+  // Transformation des types de culture
   static transformCropTypeDBToUI(cropType: CropType): string {
     return this.CROP_TYPE_DB_TO_UI[cropType] || cropType.toLowerCase();
   }
@@ -186,37 +200,86 @@ export class DataTransformer {
     );
   }
 
-  // ✅ CORRECTION: Méthodes génériques de transformation
-  static transformEnumDBToUI<T extends string>(
-    value: T,
-    mapping: Record<T, string>
-  ): string {
-    return mapping[value] || value.toLowerCase().replace(/_/g, "-");
+  // Transformation des statuts multiplicateurs
+  static transformMultiplierStatusDBToUI(status: MultiplierStatus): string {
+    return this.MULTIPLIER_STATUS_DB_TO_UI[status] || status.toLowerCase();
   }
 
-  static transformEnumUIToDB<T extends string>(
-    value: string,
-    mapping: Record<string, T>
-  ): T {
-    return mapping[value] || (value.toUpperCase().replace(/-/g, "_") as T);
+  static transformMultiplierStatusUIToDB(status: string): MultiplierStatus {
+    return (
+      this.MULTIPLIER_STATUS_UI_TO_DB[status] ||
+      (status.toUpperCase() as MultiplierStatus)
+    );
   }
 
-  // ✅ CORRECTION: Transformation complète des entités
+  // Transformation des niveaux de certification
+  static transformCertificationLevelDBToUI(level: CertificationLevel): string {
+    return this.CERTIFICATION_LEVEL_DB_TO_UI[level] || level.toLowerCase();
+  }
+
+  static transformCertificationLevelUIToDB(level: string): CertificationLevel {
+    return (
+      this.CERTIFICATION_LEVEL_UI_TO_DB[level] ||
+      (level.toUpperCase() as CertificationLevel)
+    );
+  }
+
+  // Transformation des statuts parcelles
+  static transformParcelStatusDBToUI(status: ParcelStatus): string {
+    return (
+      this.PARCEL_STATUS_DB_TO_UI[status] ||
+      status.toLowerCase().replace(/_/g, "-")
+    );
+  }
+
+  static transformParcelStatusUIToDB(status: string): ParcelStatus {
+    return (
+      this.PARCEL_STATUS_UI_TO_DB[status] ||
+      (status.toUpperCase().replace(/-/g, "_") as ParcelStatus)
+    );
+  }
+
+  // Transformation des statuts production
+  static transformProductionStatusDBToUI(status: ProductionStatus): string {
+    return (
+      this.PRODUCTION_STATUS_DB_TO_UI[status] ||
+      status.toLowerCase().replace(/_/g, "-")
+    );
+  }
+
+  static transformProductionStatusUIToDB(status: string): ProductionStatus {
+    return (
+      this.PRODUCTION_STATUS_UI_TO_DB[status] ||
+      (status.toUpperCase().replace(/-/g, "_") as ProductionStatus)
+    );
+  }
+
+  // Transformation des résultats de test
+  static transformTestResultDBToUI(result: TestResult): string {
+    return this.TEST_RESULT_DB_TO_UI[result] || result.toLowerCase();
+  }
+
+  static transformTestResultUIToDB(result: string): TestResult {
+    return (
+      this.TEST_RESULT_UI_TO_DB[result] || (result.toUpperCase() as TestResult)
+    );
+  }
+
+  // ===== TRANSFORMATION D'ENTITÉS COMPLÈTES =====
+
+  // Transformation des lots de semences
   static transformSeedLot(lot: any): any {
     if (!lot) return null;
 
     return {
       ...lot,
       status: this.transformLotStatusDBToUI(lot.status),
-      // Transformer les relations
       variety: lot.variety
         ? {
             ...lot.variety,
             cropType: this.transformCropTypeDBToUI(lot.variety.cropType),
-            createdAt:
-              lot.variety.createdAt?.toISOString?.() || lot.variety.createdAt,
-            updatedAt:
-              lot.variety.updatedAt?.toISOString?.() || lot.variety.updatedAt,
+            createdAt: this.formatDate(lot.variety.createdAt),
+            updatedAt: this.formatDate(lot.variety.updatedAt),
           }
         : undefined,
       multiplier: lot.multiplier
@@ -234,91 +297,88 @@ export class DataTransformer {
         ) || [],
       productions:
         lot.productions?.map((p: any) => this.transformProduction(p)) || [],
-      // Transformer les dates
-      productionDate: lot.productionDate?.toISOString?.() || lot.productionDate,
-      expiryDate: lot.expiryDate?.toISOString?.() || lot.expiryDate,
-      createdAt: lot.createdAt?.toISOString?.() || lot.createdAt,
-      updatedAt: lot.updatedAt?.toISOString?.() || lot.updatedAt,
+      productionDate: this.formatDate(lot.productionDate),
+      expiryDate: this.formatDate(lot.expiryDate),
+      createdAt: this.formatDate(lot.createdAt),
+      updatedAt: this.formatDate(lot.updatedAt),
     };
   }
 
-  static transformUser(user: any): any {
-    if (!user) return null;
-
-    return {
-      ...user,
-      role: this.transformRoleDBToUI(user.role),
-      createdAt: user.createdAt?.toISOString?.() || user.createdAt,
-      updatedAt: user.updatedAt?.toISOString?.() || user.updatedAt,
-    };
-  }
-
+  // Transformation des variétés
   static transformVariety(variety: any): any {
     if (!variety) return null;
 
     return {
       ...variety,
       cropType: this.transformCropTypeDBToUI(variety.cropType),
-      createdAt: variety.createdAt?.toISOString?.() || variety.createdAt,
-      updatedAt: variety.updatedAt?.toISOString?.() || variety.updatedAt,
+      createdAt: this.formatDate(variety.createdAt),
+      updatedAt: this.formatDate(variety.updatedAt),
     };
   }
 
+  // Transformation des multiplicateurs
   static transformMultiplier(multiplier: any): any {
     if (!multiplier) return null;
 
     return {
       ...multiplier,
-      status: multiplier.status?.toLowerCase?.() || multiplier.status,
-      certificationLevel:
-        multiplier.certificationLevel?.toLowerCase?.() ||
-        multiplier.certificationLevel,
+      status: this.transformMultiplierStatusDBToUI(multiplier.status),
+      certificationLevel: this.transformCertificationLevelDBToUI(
+        multiplier.certificationLevel
+      ),
       specialization:
         multiplier.specialization?.map((spec: CropType) =>
           this.transformCropTypeDBToUI(spec)
         ) || [],
-      createdAt: multiplier.createdAt?.toISOString?.() || multiplier.createdAt,
-      updatedAt: multiplier.updatedAt?.toISOString?.() || multiplier.updatedAt,
+      createdAt: this.formatDate(multiplier.createdAt),
+      updatedAt: this.formatDate(multiplier.updatedAt),
     };
   }
 
+  // Transformation des parcelles
   static transformParcel(parcel: any): any {
     if (!parcel) return null;
 
     return {
       ...parcel,
-      status:
-        parcel.status?.toLowerCase?.().replace(/_/g, "-") || parcel.status,
+      status: this.transformParcelStatusDBToUI(parcel.status),
       multiplier: parcel.multiplier
         ? this.transformMultiplier(parcel.multiplier)
         : undefined,
-      createdAt: parcel.createdAt?.toISOString?.() || parcel.createdAt,
-      updatedAt: parcel.updatedAt?.toISOString?.() || parcel.updatedAt,
+      soilAnalyses:
+        parcel.soilAnalyses?.map((analysis: any) => ({
+          ...analysis,
+          analysisDate: this.formatDate(analysis.analysisDate),
+          createdAt: this.formatDate(analysis.createdAt),
+          updatedAt: this.formatDate(analysis.updatedAt),
+        })) || [],
+      createdAt: this.formatDate(parcel.createdAt),
+      updatedAt: this.formatDate(parcel.updatedAt),
     };
   }
 
+  // Transformation des contrôles qualité
   static transformQualityControl(qc: any): any {
     if (!qc) return null;
 
     return {
       ...qc,
-      result: qc.result?.toLowerCase?.() || qc.result,
+      result: this.transformTestResultDBToUI(qc.result),
       seedLot: qc.seedLot ? this.transformSeedLot(qc.seedLot) : undefined,
       inspector: qc.inspector ? this.transformUser(qc.inspector) : undefined,
-      controlDate: qc.controlDate?.toISOString?.() || qc.controlDate,
-      createdAt: qc.createdAt?.toISOString?.() || qc.createdAt,
-      updatedAt: qc.updatedAt?.toISOString?.() || qc.updatedAt,
+      controlDate: this.formatDate(qc.controlDate),
+      createdAt: this.formatDate(qc.createdAt),
+      updatedAt: this.formatDate(qc.updatedAt),
     };
   }
 
+  // Transformation des productions
   static transformProduction(production: any): any {
     if (!production) return null;
 
     return {
       ...production,
-      status:
-        production.status?.toLowerCase?.().replace(/_/g, "-") ||
-        production.status,
+      status: this.transformProductionStatusDBToUI(production.status),
       seedLot: production.seedLot
         ? this.transformSeedLot(production.seedLot)
         : undefined,
@@ -328,29 +388,90 @@ export class DataTransformer {
       parcel: production.parcel
         ? this.transformParcel(production.parcel)
         : undefined,
-      startDate: production.startDate?.toISOString?.() || production.startDate,
-      endDate: production.endDate?.toISOString?.() || production.endDate,
-      sowingDate:
-        production.sowingDate?.toISOString?.() || production.sowingDate,
-      harvestDate:
-        production.harvestDate?.toISOString?.() || production.harvestDate,
-      createdAt: production.createdAt?.toISOString?.() || production.createdAt,
-      updatedAt: production.updatedAt?.toISOString?.() || production.updatedAt,
+      activities:
+        production.activities?.map((activity: any) => ({
+          ...activity,
+          type:
+            activity.type?.toLowerCase?.().replace(/_/g, "-") || activity.type,
+          activityDate: this.formatDate(activity.activityDate),
+          createdAt: this.formatDate(activity.createdAt),
+          updatedAt: this.formatDate(activity.updatedAt),
+        })) || [],
+      issues:
+        production.issues?.map((issue: any) => ({
+          ...issue,
+          type: issue.type?.toLowerCase?.() || issue.type,
+          severity: issue.severity?.toLowerCase?.() || issue.severity,
+          issueDate: this.formatDate(issue.issueDate),
+          resolvedDate: this.formatDate(issue.resolvedDate),
+          createdAt: this.formatDate(issue.createdAt),
+          updatedAt: this.formatDate(issue.updatedAt),
+        })) || [],
+      startDate: this.formatDate(production.startDate),
+      endDate: this.formatDate(production.endDate),
+      sowingDate: this.formatDate(production.sowingDate),
+      harvestDate: this.formatDate(production.harvestDate),
+      createdAt: this.formatDate(production.createdAt),
+      updatedAt: this.formatDate(production.updatedAt),
     };
   }
 
-  // ✅ CORRECTION: Transformation des réponses API complètes
+  // Transformation des utilisateurs
+  static transformUser(user: any): any {
+    if (!user) return null;
+
+    return {
+      ...user,
+      role: this.transformRoleDBToUI(user.role),
+      createdAt: this.formatDate(user.createdAt),
+      updatedAt: this.formatDate(user.updatedAt),
+    };
+  }
+
+  // ===== MÉTHODES UTILITAIRES =====
+
+  // Formatage des dates
+  private static formatDate(date: any): string | null {
+    if (!date) return null;
+    try {
+      if (typeof date === "string") return date;
+      return date.toISOString
+        ? date.toISOString()
+        : new Date(date).toISOString();
+    } catch {
+      return null;
+    }
+  }
+
+  // Transformation générique d'énums
+  static transformEnumDBToUI<T extends string>(
+    value: T,
+    mapping: Record<T, string>
+  ): string {
+    return mapping[value] || value.toLowerCase().replace(/_/g, "-");
+  }
+
+  static transformEnumUIToDB<T extends string>(
+    value: string,
+    mapping: Record<string, T>
+  ): T {
+    return mapping[value] || (value.toUpperCase().replace(/-/g, "_") as T);
+  }
+
+  // Transformation des réponses API complètes
   static transformApiResponse(response: any, entityType: string): any {
     if (!response) return null;
 
     const transformers: Record<string, (item: any) => any> = {
-      user: this.transformUser,
-      seedlot: this.transformSeedLot,
-      variety: this.transformVariety,
-      multiplier: this.transformMultiplier,
-      parcel: this.transformParcel,
-      qualitycontrol: this.transformQualityControl,
-      production: this.transformProduction,
+      user: this.transformUser.bind(this),
+      seedlot: this.transformSeedLot.bind(this),
+      seedLot: this.transformSeedLot.bind(this),
+      variety: this.transformVariety.bind(this),
+      multiplier: this.transformMultiplier.bind(this),
+      parcel: this.transformParcel.bind(this),
+      qualitycontrol: this.transformQualityControl.bind(this),
+      qualityControl: this.transformQualityControl.bind(this),
+      production: this.transformProduction.bind(this),
     };
 
     const transformer = transformers[entityType.toLowerCase()];
@@ -359,6 +480,7 @@ export class DataTransformer {
       return response;
     }
 
+    // Transformation des données
     if (response.data) {
       if (Array.isArray(response.data)) {
         response.data = response.data.map(transformer).filter(Boolean);
@@ -367,6 +489,103 @@ export class DataTransformer {
       }
     }
 
+    // Transformation des résultats paginés
+    if (response.lots && Array.isArray(response.lots)) {
+      response.lots = response.lots
+        .map(this.transformSeedLot.bind(this))
+        .filter(Boolean);
+    }
+
+    if (response.varieties && Array.isArray(response.varieties)) {
+      response.varieties = response.varieties
+        .map(this.transformVariety.bind(this))
+        .filter(Boolean);
+    }
+
+    if (response.multipliers && Array.isArray(response.multipliers)) {
+      response.multipliers = response.multipliers
+        .map(this.transformMultiplier.bind(this))
+        .filter(Boolean);
+    }
+
+    if (response.parcels && Array.isArray(response.parcels)) {
+      response.parcels = response.parcels
+        .map(this.transformParcel.bind(this))
+        .filter(Boolean);
+    }
+
+    if (response.controls && Array.isArray(response.controls)) {
+      response.controls = response.controls
+        .map(this.transformQualityControl.bind(this))
+        .filter(Boolean);
+    }
+
+    if (response.productions && Array.isArray(response.productions)) {
+      response.productions = response.productions
+        .map(this.transformProduction.bind(this))
+        .filter(Boolean);
+    }
+
+    if (response.users && Array.isArray(response.users)) {
+      response.users = response.users
+        .map(this.transformUser.bind(this))
+        .filter(Boolean);
+    }
+
     return response;
+  }
+
+  // Validation des transformations
+  static validateTransformation(original: any, transformed: any): boolean {
+    try {
+      if (!original && !transformed) return true;
+      if (!original || !transformed) return false;
+
+      // Vérifier les champs critiques
+      const criticalFields = ["id", "name", "code"];
+      for (const field of criticalFields) {
+        if (
+          original[field] !== undefined &&
+          original[field] !== transformed[field]
+        ) {
+          console.warn(
+            `Transformation warning: ${field} changed from ${original[field]} to ${transformed[field]}`
+          );
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error("Validation transformation error:", error);
+      return false;
+    }
+  }
+
+  // Nettoyage des données
+  static sanitizeData(data: any): any {
+    if (!data || typeof data !== "object") return data;
+
+    const sanitized = Array.isArray(data) ? [] : {};
+
+    for (const [key, value] of Object.entries(data)) {
+      if (value === null || value === undefined) {
+        continue; // Supprimer les valeurs null/undefined
+      }
+
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+        if (trimmed.length > 0) {
+          (sanitized as any)[key] = trimmed;
+        }
+      } else if (typeof value === "object") {
+        const sanitizedValue = this.sanitizeData(value);
+        if (sanitizedValue !== null && Object.keys(sanitizedValue).length > 0) {
+          (sanitized as any)[key] = sanitizedValue;
+        }
+      } else {
+        (sanitized as any)[key] = value;
+      }
+    }
+
+    return sanitized;
   }
 }

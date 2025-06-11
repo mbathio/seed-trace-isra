@@ -1,4 +1,4 @@
-// frontend/src/components/layout/AppSidebar.tsx - NAVIGATION MISE À JOUR
+// frontend/src/components/layout/AppSidebar.tsx - SIDEBAR CORRIGÉE
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -35,7 +35,7 @@ const AppSidebar: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  // ✅ CORRECTION: URLs correctes pour correspondre aux routes avec nouvelles pages
+  // Routes principales avec chemins dashboard corrigés
   const navigation = [
     {
       title: "Vue d'ensemble",
@@ -52,17 +52,17 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Lots de semences",
-          url: "/seeds",
+          url: "/dashboard/seeds",
           icon: Sprout,
         },
         {
           title: "Variétés",
-          url: "/varieties",
+          url: "/dashboard/varieties",
           icon: Leaf,
         },
         {
           title: "Généalogie",
-          url: "/genealogy",
+          url: "/dashboard/genealogy",
           icon: GitBranch,
         },
       ],
@@ -72,17 +72,17 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Multiplicateurs",
-          url: "/multipliers",
+          url: "/dashboard/multipliers",
           icon: Users,
         },
         {
           title: "Parcelles",
-          url: "/parcels",
+          url: "/dashboard/parcels",
           icon: MapPin,
         },
         {
           title: "Productions",
-          url: "/productions",
+          url: "/dashboard/productions",
           icon: Tractor,
         },
       ],
@@ -92,7 +92,7 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Contrôles qualité",
-          url: "/quality",
+          url: "/dashboard/quality",
           icon: FlaskConical,
         },
       ],
@@ -102,7 +102,7 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Rapports",
-          url: "/reports",
+          url: "/dashboard/reports",
           icon: FileText,
         },
       ],
@@ -115,26 +115,29 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Utilisateurs",
-          url: "/users",
+          url: "/dashboard/users",
           icon: User,
         },
         {
           title: "Paramètres",
-          url: "/settings",
+          url: "/dashboard/settings",
           icon: Settings,
         },
       ],
     },
   ];
 
-  // ✅ CORRECTION: Fonction isActive améliorée
+  // Fonction isActive corrigée pour gérer les chemins dashboard
   const isActive = (url: string) => {
-    // Pour le dashboard, vérifier aussi la route racine
+    const currentPath = location.pathname;
+
+    // Pour le dashboard principal
     if (url === "/dashboard") {
-      return location.pathname === "/" || location.pathname === "/dashboard";
+      return currentPath === "/dashboard" || currentPath === "/dashboard/";
     }
+
     // Pour les autres routes, vérifier si l'URL commence par le chemin
-    return location.pathname.startsWith(url);
+    return currentPath.startsWith(url);
   };
 
   return (
@@ -170,7 +173,7 @@ const AppSidebar: React.FC = () => {
           </SidebarGroup>
         ))}
 
-        {/* ✅ CORRECTION: Vérification du rôle admin */}
+        {/* Section administration pour les admins */}
         {user?.role === "ADMIN" && (
           <>
             {adminNavigation.map((group, index) => (
@@ -202,12 +205,14 @@ const AppSidebar: React.FC = () => {
       <SidebarFooter className="border-t border-border p-4">
         <div className="flex items-center space-x-3 mb-2">
           <div className="h-8 w-8 rounded-full bg-green-600 flex items-center justify-center text-white text-sm font-medium">
-            {user?.name.charAt(0).toUpperCase()}
+            {user?.name?.charAt(0)?.toUpperCase() || "U"}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{user?.name}</p>
+            <p className="text-sm font-medium truncate">
+              {user?.name || "Utilisateur"}
+            </p>
             <p className="text-xs text-muted-foreground truncate">
-              {user?.email}
+              {user?.email || "email@example.com"}
             </p>
           </div>
         </div>
