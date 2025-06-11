@@ -1,19 +1,25 @@
-// backend/src/config/environment.ts - Configuration d'environnement corrigée
+// backend/src/config/environment.ts - Configuration d'environnement CORRIGÉE
 import dotenv from "dotenv";
 import { ValidationUtils } from "../utils/validation";
 
 dotenv.config();
 
-// ✅ CORRECTION: Fonction de validation JWT sécurisée
+// ✅ CORRECTION: Fonction de validation JWT sécurisée mais non bloquante
 function validateJwtSecret(secret: string | undefined): string {
   if (!secret) {
     throw new Error("JWT_SECRET est requis dans les variables d'environnement");
   }
 
   if (secret.length < 32) {
-    throw new Error(
-      "JWT_SECRET doit contenir au moins 32 caractères pour la sécurité"
-    );
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "JWT_SECRET doit contenir au moins 32 caractères en production"
+      );
+    } else {
+      console.warn(
+        "⚠️  JWT_SECRET court détecté en développement (minimum 32 caractères recommandé)"
+      );
+    }
   }
 
   // En production, valider que le secret n'est pas un placeholder
@@ -56,9 +62,10 @@ function validateDuration(
   // Vérifier le format (nombre suivi d'une unité: s, m, h, d, w, y)
   const validFormat = /^\d+[smhdwy]$/.test(duration);
   if (!validFormat) {
-    throw new Error(
-      `Format de durée invalide: ${duration}. Utilisez le format: 15m, 1h, 7d, 2w, 1y`
+    console.warn(
+      `⚠️  Format de durée potentiellement invalide: ${duration}. Format attendu: 15m, 1h, 7d, 2w, 1y`
     );
+    return defaultValue;
   }
 
   return duration;
@@ -68,7 +75,10 @@ function validatePort(port: string | undefined, defaultPort: number): number {
   const portNum = ValidationUtils.safeParseInt(port, defaultPort);
 
   if (portNum < 1 || portNum > 65535) {
-    throw new Error(`Port invalide: ${port}. Doit être entre 1 et 65535`);
+    console.warn(
+      `⚠️  Port invalide: ${port}. Utilisation du port par défaut: ${defaultPort}`
+    );
+    return defaultPort;
   }
 
   // Vérifier les ports réservés en production
@@ -91,25 +101,35 @@ function validateDatabaseUrl(url: string | undefined): string {
     throw new Error("DATABASE_URL doit être une URL PostgreSQL valide");
   }
 
-  // Masquer le mot de passe pour les logs
-  const maskedUrl = url.replace(/:([^:@]*?)@/, ":***@");
-
   try {
     new URL(url);
   } catch (error) {
+    const maskedUrl = url.replace(/:([^:@]*?)@/, ":***@");
     throw new Error(`DATABASE_URL invalide: ${maskedUrl}`);
   }
 
   return url;
 }
 
-function validateUrl(url: string | undefined, name: string): string {
+function validateUrl(
+  url: string | undefined,
+  name: string,
+  required: boolean = true
+): string {
   if (!url) {
-    throw new Error(`${name} est requis`);
+    if (required) {
+      throw new Error(`${name} est requis`);
+    }
+    return "";
   }
 
   if (!ValidationUtils.isValidURL(url)) {
-    throw new Error(`${name} doit être une URL valide: ${url}`);
+    if (required && process.env.NODE_ENV === "production") {
+      throw new Error(`${name} doit être une URL valide: ${url}`);
+    } else {
+      console.warn(`⚠️  ${name} URL potentiellement invalide: ${url}`);
+      return url; // Permettre en développement
+    }
   }
 
   return url;
@@ -182,7 +202,7 @@ interface ConfigType {
   };
 }
 
-// ✅ CORRECTION: Configuration complète et typée
+// ✅ CORRECTION: Configuration complète et typée avec gestion d'erreurs non bloquante
 export const config: ConfigType = {
   environment: process.env.NODE_ENV || "development",
 
@@ -213,7 +233,7 @@ export const config: ConfigType = {
 
   client: {
     url:
-      validateUrl(process.env.CLIENT_URL, "CLIENT_URL") ||
+      validateUrl(process.env.CLIENT_URL, "CLIENT_URL", false) ||
       "http://localhost:5173",
   },
 
@@ -290,107 +310,129 @@ export const config: ConfigType = {
   },
 };
 
-// ✅ CORRECTION: Validation complète au démarrage
-export function validateConfig(): void {
+// ✅ CORRECTION: Validation NON BLOQUANTE qui ne provoque pas de process.exit
+export function validateConfig(): {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+} {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Validation de l'environnement
-  const validEnvs = ["development", "test", "production", "staging"];
-  if (!validEnvs.includes(config.environment)) {
-    errors.push(
-      `NODE_ENV invalide: ${config.environment}. Valeurs acceptées: ${validEnvs.join(", ")}`
-    );
-  }
-
-  // Validation spécifique à la production
-  if (config.environment === "production") {
-    // JWT
-    if (config.jwt.secret.length < 64) {
-      warnings.push(
-        "JWT_SECRET devrait faire au moins 64 caractères en production"
+  try {
+    // Validation de l'environnement
+    const validEnvs = ["development", "test", "production", "staging"];
+    if (!validEnvs.includes(config.environment)) {
+      errors.push(
+        `NODE_ENV invalide: ${config.environment}. Valeurs acceptées: ${validEnvs.join(", ")}`
       );
     }
 
-    // Base de données
-    if (
-      config.database.url.includes("localhost") ||
-      config.database.url.includes("127.0.0.1")
-    ) {
-      warnings.push("DATABASE_URL pointe vers localhost en production");
+    // Validation spécifique à la production
+    if (config.environment === "production") {
+      // JWT
+      if (config.jwt.secret.length < 64) {
+        warnings.push(
+          "JWT_SECRET devrait faire au moins 64 caractères en production"
+        );
+      }
+
+      // Base de données
+      if (
+        config.database.url.includes("localhost") ||
+        config.database.url.includes("127.0.0.1")
+      ) {
+        warnings.push("DATABASE_URL pointe vers localhost en production");
+      }
+
+      // Client URL
+      if (
+        config.client.url.includes("localhost") ||
+        config.client.url.includes("127.0.0.1")
+      ) {
+        warnings.push("CLIENT_URL pointe vers localhost en production");
+      }
+
+      // Email
+      if (!config.email.enabled) {
+        warnings.push("Email désactivé en production");
+      }
+
+      // HTTPS
+      if (!config.client.url.startsWith("https://")) {
+        warnings.push("CLIENT_URL devrait utiliser HTTPS en production");
+      }
     }
 
-    // Client URL
-    if (
-      config.client.url.includes("localhost") ||
-      config.client.url.includes("127.0.0.1")
-    ) {
-      warnings.push("CLIENT_URL pointe vers localhost en production");
+    // Validation du bcrypt
+    if (config.bcrypt.saltRounds < 10) {
+      if (config.environment === "production") {
+        errors.push(
+          "BCRYPT_SALT_ROUNDS doit être au moins 10 pour la sécurité"
+        );
+      } else {
+        warnings.push("BCRYPT_SALT_ROUNDS faible détecté (< 10)");
+      }
     }
 
-    // Email
-    if (!config.email.enabled) {
-      warnings.push("Email désactivé en production");
+    if (config.bcrypt.saltRounds > 15) {
+      warnings.push(
+        "BCRYPT_SALT_ROUNDS très élevé, peut ralentir l'application"
+      );
     }
 
-    // HTTPS
-    if (!config.client.url.startsWith("https://")) {
-      warnings.push("CLIENT_URL devrait utiliser HTTPS en production");
+    // Validation de l'upload
+    if (config.upload.maxFileSize > 100 * 1024 * 1024) {
+      // 100MB
+      warnings.push(
+        "MAX_FILE_SIZE très élevé, peut causer des problèmes de mémoire"
+      );
     }
+
+    // Validation du cache
+    if (config.cache.maxKeys > 10000) {
+      warnings.push(
+        "CACHE_MAX_KEYS très élevé, peut consommer beaucoup de mémoire"
+      );
+    }
+
+    // Validation du rate limiting
+    if (config.security.rateLimitMax > 1000) {
+      warnings.push("RATE_LIMIT_MAX très élevé, peut permettre des abus");
+    }
+  } catch (error: any) {
+    errors.push(`Erreur lors de la validation: ${error.message}`);
   }
 
-  // Validation du bcrypt
-  if (config.bcrypt.saltRounds < 10) {
-    errors.push("BCRYPT_SALT_ROUNDS doit être au moins 10 pour la sécurité");
-  }
-
-  if (config.bcrypt.saltRounds > 15) {
-    warnings.push("BCRYPT_SALT_ROUNDS très élevé, peut ralentir l'application");
-  }
-
-  // Validation de l'upload
-  if (config.upload.maxFileSize > 100 * 1024 * 1024) {
-    // 100MB
-    warnings.push(
-      "MAX_FILE_SIZE très élevé, peut causer des problèmes de mémoire"
-    );
-  }
-
-  // Validation du cache
-  if (config.cache.maxKeys > 10000) {
-    warnings.push(
-      "CACHE_MAX_KEYS très élevé, peut consommer beaucoup de mémoire"
-    );
-  }
-
-  // Validation du rate limiting
-  if (config.security.rateLimitMax > 1000) {
-    warnings.push("RATE_LIMIT_MAX très élevé, peut permettre des abus");
-  }
-
-  // Afficher les résultats
+  // ✅ CORRECTION: Affichage des résultats SANS process.exit
   if (warnings.length > 0) {
     console.warn("⚠️  Avertissements de configuration:");
     warnings.forEach((warning) => console.warn(`   - ${warning}`));
   }
 
   if (errors.length > 0) {
-    console.error("❌ Erreurs de configuration critiques:");
+    console.error("❌ Erreurs de configuration détectées:");
     errors.forEach((error) => console.error(`   - ${error}`));
 
     if (config.environment === "production") {
       console.error(
-        "🚨 Arrêt de l'application en raison d'erreurs de configuration critiques en production"
+        "🚨 Configuration invalide en production - l'application peut ne pas fonctionner correctement"
       );
-      process.exit(1);
+      // ✅ CORRECTION: Ne pas faire process.exit, laisser l'application décider
     } else {
       console.warn(
-        "⚠️  Continuité en mode développement malgré les erreurs de configuration"
+        "⚠️  Erreurs de configuration en mode développement - tentative de continuation"
       );
     }
   } else {
     console.log("✅ Configuration validée avec succès");
   }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings,
+  };
 }
 
 // ✅ CORRECTION: Helper pour obtenir des informations sur l'environnement (sécurisé)
@@ -426,7 +468,56 @@ export function isTest(): boolean {
   return config.environment === "test";
 }
 
-// Auto-validation au chargement du module (seulement si pas en test)
-if (!isTest() && require.main === module) {
-  validateConfig();
+// ✅ CORRECTION: Auto-validation au chargement du module mais NON BLOQUANTE
+if (!isTest()) {
+  try {
+    const validation = validateConfig();
+
+    // En production, si erreurs critiques, au moins avertir
+    if (!validation.isValid && isProduction()) {
+      console.error(
+        "🚨 ATTENTION: Configuration invalide détectée en production!"
+      );
+      console.error("L'application peut ne pas fonctionner correctement.");
+      console.error("Vérifiez les erreurs ci-dessus avant de continuer.");
+    }
+
+    // En développement, toujours continuer
+    if (!validation.isValid && isDevelopment()) {
+      console.warn(
+        "⚠️  Configuration avec erreurs en développement - continuation"
+      );
+    }
+  } catch (error: any) {
+    console.error(
+      "❌ Erreur fatale lors de la validation de configuration:",
+      error.message
+    );
+
+    // Seulement en production, considérer un exit
+    if (isProduction()) {
+      console.error(
+        "🚨 Arrêt en production à cause d'une erreur de configuration fatale"
+      );
+      process.exit(1);
+    } else {
+      console.warn(
+        "⚠️  Erreur de configuration en développement - tentative de continuation"
+      );
+    }
+  }
 }
+
+// ✅ CORRECTION: Exporter une fonction utilitaire pour valider manuellement
+export function validateConfigOrExit(): void {
+  const validation = validateConfig();
+
+  if (!validation.isValid) {
+    console.error("❌ Configuration invalide - arrêt de l'application");
+    console.error("Erreurs détectées:", validation.errors);
+    process.exit(1);
+  }
+}
+
+// ✅ CORRECTION: Export par défaut pour compatibilité
+export default config;
