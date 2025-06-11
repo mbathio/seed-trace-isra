@@ -77,6 +77,76 @@ export class DataTransformer {
     cowpea: "COWPEA",
     millet: "MILLET",
   };
+  // Dans backend/src/utils/transformers.ts
+  static readonly MULTIPLIER_STATUS_UI_TO_DB: Record<string, MultiplierStatus> =
+    {
+      active: "ACTIVE",
+      inactive: "INACTIVE",
+    };
+
+  static readonly CERTIFICATION_LEVEL_UI_TO_DB: Record<
+    string,
+    CertificationLevel
+  > = {
+    beginner: "BEGINNER",
+    intermediate: "INTERMEDIATE",
+    expert: "EXPERT",
+  };
+
+  static readonly TEST_RESULT_UI_TO_DB: Record<string, TestResult> = {
+    pass: "PASS",
+    fail: "FAIL",
+  };
+
+  static readonly PRODUCTION_STATUS_UI_TO_DB: Record<string, ProductionStatus> =
+    {
+      planned: "PLANNED",
+      "in-progress": "IN_PROGRESS",
+      completed: "COMPLETED",
+      cancelled: "CANCELLED",
+    };
+
+  static readonly ACTIVITY_TYPE_UI_TO_DB: Record<string, ActivityType> = {
+    "soil-preparation": "SOIL_PREPARATION",
+    sowing: "SOWING",
+    fertilization: "FERTILIZATION",
+    irrigation: "IRRIGATION",
+    weeding: "WEEDING",
+    "pest-control": "PEST_CONTROL",
+    harvest: "HARVEST",
+    other: "OTHER",
+  };
+
+  static readonly PARCEL_STATUS_UI_TO_DB: Record<string, ParcelStatus> = {
+    available: "AVAILABLE",
+    "in-use": "IN_USE",
+    resting: "RESTING",
+  };
+
+  // Méthodes helper pour accéder aux mappings
+  static getMultiplierStatusMapping() {
+    return this.MULTIPLIER_STATUS_UI_TO_DB;
+  }
+
+  static getCertificationLevelMapping() {
+    return this.CERTIFICATION_LEVEL_UI_TO_DB;
+  }
+
+  static getTestResultMapping() {
+    return this.TEST_RESULT_UI_TO_DB;
+  }
+
+  static getProductionStatusMapping() {
+    return this.PRODUCTION_STATUS_UI_TO_DB;
+  }
+
+  static getActivityTypeMapping() {
+    return this.ACTIVITY_TYPE_UI_TO_DB;
+  }
+
+  static getParcelStatusMapping() {
+    return this.PARCEL_STATUS_UI_TO_DB;
+  }
 
   // ✅ CORRECTION: Méthode manquante transformInputStatus
   static transformInputStatus(status: string): LotStatus {
