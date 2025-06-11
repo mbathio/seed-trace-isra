@@ -1,8 +1,7 @@
-// ===== 2. CORRECTION: frontend/src/utils/validators.ts =====
+// ===== CORRECTION 2: frontend/src/utils/validators.ts =====
 
 import * as yup from "yup";
 
-// ✅ CORRECTION: Fonctions de test qui retournent toujours boolean
 export const seedLotValidationSchema = yup.object({
   varietyId: yup.number().required("Variété requise").positive("ID invalide"),
   level: yup
@@ -45,7 +44,50 @@ export const seedLotValidationSchema = yup.object({
   parentLotId: yup.string().optional(),
 });
 
-// ✅ CORRECTION: Validation pour contrôle qualité
+export const varietyValidationSchema = yup.object({
+  code: yup
+    .string()
+    .required("Code requis")
+    .min(2, "Code trop court")
+    .max(20, "Code trop long")
+    .matches(
+      /^[A-Z0-9]+$/,
+      "Code doit contenir uniquement des lettres majuscules et des chiffres"
+    ),
+  name: yup
+    .string()
+    .required("Nom requis")
+    .min(2, "Nom trop court")
+    .max(100, "Nom trop long"),
+  cropType: yup
+    .string()
+    .oneOf(
+      ["RICE", "MAIZE", "PEANUT", "SORGHUM", "COWPEA", "MILLET"],
+      "Type de culture invalide"
+    )
+    .required("Type de culture requis"),
+  description: yup.string().max(1000, "Description trop longue").optional(),
+  maturityDays: yup
+    .number()
+    .positive("Durée doit être positive")
+    .min(30, "Minimum 30 jours")
+    .max(365, "Maximum 365 jours")
+    .required("Durée de maturité requise"),
+  yieldPotential: yup
+    .number()
+    .positive("Rendement doit être positif")
+    .max(50, "Maximum 50 t/ha")
+    .optional(),
+  origin: yup.string().max(100, "Origine trop longue").optional(),
+  releaseYear: yup
+    .number()
+    .positive()
+    .min(1900, "Année trop ancienne")
+    .max(new Date().getFullYear(), "Année ne peut pas être dans le futur")
+    .optional(),
+  resistances: yup.array().of(yup.string()).optional(),
+});
+
 export const qualityControlValidationSchema = yup.object({
   lotId: yup.string().required("Lot requis"),
   controlDate: yup
