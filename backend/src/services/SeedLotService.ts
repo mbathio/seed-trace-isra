@@ -1,4 +1,4 @@
-// backend/src/services/SeedLotService.ts - ✅ CORRIGÉ avec gestion d'erreurs cohérente
+// ===== 1. backend/src/services/SeedLotService.ts - MISE À JOUR AVEC TRANSFORMATEURS =====
 import { prisma } from "../config/database";
 import { EncryptionService } from "../utils/encryption";
 import { QRCodeService } from "../utils/qrCode";
@@ -6,9 +6,9 @@ import { logger } from "../utils/logger";
 import { CreateSeedLotData, UpdateSeedLotData } from "../types/entities";
 import { PaginationQuery } from "../types/api";
 import { SeedLevel, LotStatus } from "@prisma/client";
-import { DataTransformer } from "../utils/transformers";
+import { DataTransformer } from "../utils/transformers"; // ✅ AJOUTÉ
 
-// ✅ CORRECTION: Classe d'erreur personnalisée pour une meilleure gestion
+// ✅ MISE À JOUR : Classe d'erreur personnalisée
 export class SeedLotError extends Error {
   constructor(
     message: string,
@@ -28,12 +28,10 @@ export class SeedLotService {
       // Gestion correcte de varietyId (number ou string)
       let varietyId: number;
       if (typeof data.varietyId === "string") {
-        // Si c'est un string, essayer de le parser comme nombre
         const parsedId = parseInt(data.varietyId);
         if (!isNaN(parsedId)) {
           varietyId = parsedId;
         } else {
-          // Si ce n'est pas un nombre, chercher par code
           const variety = await prisma.variety.findFirst({
             where: { code: data.varietyId, isActive: true },
           });
@@ -75,7 +73,7 @@ export class SeedLotService {
         }
       }
 
-      // Transformer le statut du frontend vers la DB
+      // ✅ TRANSFORMATION : Transformer le statut du frontend vers la DB
       const dbStatus = data.status
         ? (DataTransformer.transformInputStatus(data.status) as LotStatus)
         : LotStatus.PENDING;
@@ -134,11 +132,10 @@ export class SeedLotService {
 
       logger.info(`Lot de semences créé avec succès: ${lotId}`);
 
-      // Transformer les données pour le frontend
+      // ✅ TRANSFORMATION : Transformer les données pour le frontend
       return DataTransformer.transformSeedLot(updatedSeedLot);
     } catch (error) {
       logger.error("Erreur lors de la création du lot:", error);
-      // ✅ CORRECTION: Re-throw l'erreur pour le middleware d'erreur
       throw error;
     }
   }
@@ -159,7 +156,6 @@ export class SeedLotService {
         sortOrder = "desc",
       } = query;
 
-      // ✅ CORRECTION: Conversion explicite en entiers
       const pageNum = parseInt(page.toString());
       const pageSizeNum = parseInt(pageSize.toString());
       const skip = (pageNum - 1) * pageSizeNum;
@@ -183,7 +179,7 @@ export class SeedLotService {
       }
 
       if (status) {
-        // ✅ CORRECTION: Transformer le statut du frontend vers la DB
+        // ✅ TRANSFORMATION : Transformer le statut du frontend vers la DB
         where.status = DataTransformer.transformInputStatus(
           status
         ) as LotStatus;
@@ -244,7 +240,7 @@ export class SeedLotService {
 
       const totalPages = Math.ceil(total / pageSizeNum);
 
-      // Transformer les données pour le frontend
+      // ✅ TRANSFORMATION : Transformer tous les lots pour le frontend
       const transformedLots = lots.map((lot) =>
         DataTransformer.transformSeedLot(lot)
       );
@@ -267,7 +263,6 @@ export class SeedLotService {
     }
   }
 
-  // ✅ CORRECTION: Gestion d'erreurs cohérente - retourne null si non trouvé, throw en cas d'erreur technique
   static async getSeedLotById(id: string): Promise<any | null> {
     try {
       const seedLot = await prisma.seedLot.findUnique({
@@ -325,12 +320,11 @@ export class SeedLotService {
         },
       });
 
-      // ✅ CORRECTION: Retourner null si non trouvé (comportement cohérent)
       if (!seedLot) {
         return null;
       }
 
-      // Transformer les données pour le frontend
+      // ✅ TRANSFORMATION : Transformer les données pour le frontend
       return DataTransformer.transformSeedLot(seedLot);
     } catch (error) {
       logger.error("Erreur lors de la récupération du lot:", error);
@@ -343,7 +337,6 @@ export class SeedLotService {
     data: UpdateSeedLotData
   ): Promise<any> {
     try {
-      // ✅ CORRECTION: Vérifier d'abord si le lot existe
       const existingLot = await prisma.seedLot.findUnique({
         where: { id, isActive: true },
       });
@@ -359,7 +352,7 @@ export class SeedLotService {
       }
 
       if (data.status) {
-        // Transformer le statut du frontend vers la DB
+        // ✅ TRANSFORMATION : Transformer le statut du frontend vers la DB
         updateData.status = DataTransformer.transformInputStatus(
           data.status
         ) as LotStatus;
@@ -407,7 +400,7 @@ export class SeedLotService {
 
       logger.info(`Lot de semences mis à jour: ${id}`);
 
-      // Transformer les données pour le frontend
+      // ✅ TRANSFORMATION : Transformer les données pour le frontend
       return DataTransformer.transformSeedLot(seedLot);
     } catch (error) {
       logger.error("Erreur lors de la mise à jour du lot:", error);
@@ -417,7 +410,6 @@ export class SeedLotService {
 
   static async deleteSeedLot(id: string): Promise<void> {
     try {
-      // ✅ CORRECTION: Vérifier d'abord si le lot existe
       const existingLot = await prisma.seedLot.findUnique({
         where: { id, isActive: true },
       });
@@ -454,7 +446,6 @@ export class SeedLotService {
     }
   }
 
-  // ✅ CORRECTION: Gestion d'erreurs cohérente
   static async getGenealogyTree(lotId: string): Promise<any | null> {
     try {
       const lot = await this.getSeedLotById(lotId);
@@ -504,7 +495,7 @@ export class SeedLotService {
           break;
         }
 
-        // Transformer et ajouter le lot parent
+        // ✅ TRANSFORMATION : Transformer et ajouter le lot parent
         ancestors.push(DataTransformer.transformSeedLot(lot.parentLot));
         currentLotId = lot.parentLotId;
       }
@@ -538,6 +529,7 @@ export class SeedLotService {
       // Récupérer récursivement les descendants de chaque descendant
       const transformedDescendants = [];
       for (const descendant of descendants) {
+        // ✅ TRANSFORMATION : Transformer chaque descendant
         const transformed = DataTransformer.transformSeedLot(descendant);
         transformed.childLots = await this.getDescendants(descendant.id);
         transformedDescendants.push(transformed);
@@ -571,7 +563,7 @@ export class SeedLotService {
     return maxDepth;
   }
 
-  // Méthodes supplémentaires avec gestion d'erreurs cohérente
+  // ✅ NOUVEAUX MÉTHODES AVEC TRANSFORMATIONS
 
   static async getStatsByVariety(varietyId: number): Promise<any> {
     try {
@@ -589,10 +581,10 @@ export class SeedLotService {
         },
       });
 
-      // Transformer les données pour le frontend
+      // ✅ TRANSFORMATION : Transformer les données pour le frontend
       const transformedStats = stats.map((stat) => ({
         level: stat.level,
-        status: stat.status.toLowerCase().replace("_", "-"),
+        status: DataTransformer.transformLotStatusDBToUI(stat.status),
         count: stat._count.id,
         totalQuantity: stat._sum.quantity || 0,
       }));
@@ -632,7 +624,7 @@ export class SeedLotService {
         },
       });
 
-      // Transformer les données pour le frontend
+      // ✅ TRANSFORMATION : Transformer les données pour le frontend
       return expiringLots.map((lot) => DataTransformer.transformSeedLot(lot));
     } catch (error) {
       logger.error("Erreur lors de la vérification des lots expirants:", error);
@@ -724,7 +716,7 @@ export class SeedLotService {
         `Transfert de lot réussi: ${quantity}kg de ${lotId} vers ${result.newLot.id}`
       );
 
-      // Transformer les données pour le frontend
+      // ✅ TRANSFORMATION : Transformer les données pour le frontend
       return {
         updatedSourceLot: DataTransformer.transformSeedLot(
           result.updatedSourceLot

@@ -1,9 +1,10 @@
-// backend/src/services/QualityControlService.ts - CORRECTION
+// ===== 4. backend/src/services/QualityControlService.ts - MISE À JOUR AVEC TRANSFORMATEURS =====
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { CreateQualityControlData } from "../types/entities";
 import { PaginationQuery } from "../types/api";
 import { TestResult, LotStatus } from "@prisma/client";
+import { DataTransformer } from "../utils/transformers"; // ✅ AJOUTÉ
 
 export class QualityControlService {
   static async createQualityControl(
@@ -62,7 +63,8 @@ export class QualityControlService {
         });
       }
 
-      return qualityControl;
+      // ✅ TRANSFORMATION : Transformer le contrôle qualité pour le frontend
+      return DataTransformer.transformQualityControl(qualityControl);
     } catch (error) {
       logger.error("Erreur lors de la création du contrôle qualité:", error);
       throw error;
@@ -109,7 +111,6 @@ export class QualityControlService {
         sortOrder = "desc",
       } = query;
 
-      // ✅ CORRECTION: Conversion explicite en entiers
       const pageNum = parseInt(page.toString());
       const pageSizeNum = parseInt(pageSize.toString());
       const skip = (pageNum - 1) * pageSizeNum;
@@ -124,7 +125,8 @@ export class QualityControlService {
       }
 
       if (result) {
-        where.result = result;
+        // ✅ TRANSFORMATION : Transformer le résultat UI vers DB
+        where.result = DataTransformer.transformTestResultUIToDB(result);
       }
 
       if (lotId) {
@@ -151,15 +153,20 @@ export class QualityControlService {
           },
           orderBy: { [sortBy]: sortOrder },
           skip,
-          take: pageSizeNum, // ✅ CORRECTION: Entier au lieu de string
+          take: pageSizeNum,
         }),
         prisma.qualityControl.count({ where }),
       ]);
 
       const totalPages = Math.ceil(total / pageSizeNum);
 
+      // ✅ TRANSFORMATION : Transformer tous les contrôles pour le frontend
+      const transformedControls = controls.map((control) =>
+        DataTransformer.transformQualityControl(control)
+      );
+
       return {
-        controls,
+        controls: transformedControls,
         total,
         meta: {
           page: pageNum,
@@ -197,7 +204,12 @@ export class QualityControlService {
         },
       });
 
-      return qualityControl;
+      if (!qualityControl) {
+        return null;
+      }
+
+      // ✅ TRANSFORMATION : Transformer le contrôle qualité pour le frontend
+      return DataTransformer.transformQualityControl(qualityControl);
     } catch (error) {
       logger.error(
         "Erreur lors de la récupération du contrôle qualité:",
@@ -261,7 +273,8 @@ export class QualityControlService {
         },
       });
 
-      return qualityControl;
+      // ✅ TRANSFORMATION : Transformer le contrôle qualité pour le frontend
+      return DataTransformer.transformQualityControl(qualityControl);
     } catch (error) {
       logger.error("Erreur lors de la mise à jour du contrôle qualité:", error);
       throw error;
