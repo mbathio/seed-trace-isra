@@ -1,4 +1,4 @@
-// frontend/src/pages/multipliers/Multipliers.tsx - CORRIGÉ
+// frontend/src/pages/multipliers/Multipliers.tsx - VERSION CORRIGÉE AVEC CONSTANTES
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -33,6 +33,13 @@ import { Input } from "../../components/ui/input";
 import { api } from "../../services/api";
 import { Multiplier } from "../../types/entities";
 import { ApiResponse } from "../../types/api";
+import {
+  MULTIPLIER_STATUSES,
+  CERTIFICATION_LEVELS,
+  CROP_TYPES,
+  getStatusConfig,
+} from "../../constants"; // ✅ AJOUTÉ: Import des constantes
+import { DataTransformer } from "../../utils/transformers"; // ✅ AJOUTÉ: Import du transformateur
 import { useDebounce } from "../../hooks/useDebounce";
 
 const Multipliers: React.FC = () => {
@@ -41,6 +48,7 @@ const Multipliers: React.FC = () => {
   const [certificationFilter, setCertificationFilter] = useState("");
   const debouncedSearch = useDebounce(search, 300);
 
+  // ✅ CORRIGÉ: Query avec transformation automatique
   const { data, isLoading, error } = useQuery<ApiResponse<Multiplier[]>>({
     queryKey: [
       "multipliers",
@@ -56,60 +64,65 @@ const Multipliers: React.FC = () => {
         params.append("certificationLevel", certificationFilter);
 
       const response = await api.get(`/multipliers?${params.toString()}`);
-      return response.data;
+
+      // ✅ Transformer les données reçues de l'API
+      const transformedData = {
+        ...response.data,
+        data: response.data.data.map((multiplier) =>
+          DataTransformer.transformMultiplierFromAPI(multiplier)
+        ),
+      };
+
+      return transformedData;
     },
   });
 
+  // ✅ CORRIGÉ: Utilisation des constantes pour les badges de statut
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      ACTIVE: { color: "bg-green-100 text-green-800", label: "Actif" },
-      INACTIVE: { color: "bg-gray-100 text-gray-800", label: "Inactif" },
+    const config = getStatusConfig(status, MULTIPLIER_STATUSES);
+    const colorClasses = {
+      green: "bg-green-100 text-green-800 border-green-200",
+      gray: "bg-gray-100 text-gray-800 border-gray-200",
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || {
-      color: "bg-gray-100 text-gray-800",
-      label: status,
-    };
-
-    return <Badge className={config.color}>{config.label}</Badge>;
-  };
-
-  const getCertificationBadge = (level: string) => {
-    const levelConfig = {
-      BEGINNER: {
-        color: "bg-blue-100 text-blue-800",
-        label: "Débutant",
-        stars: 1,
-      },
-      INTERMEDIATE: {
-        color: "bg-orange-100 text-orange-800",
-        label: "Intermédiaire",
-        stars: 2,
-      },
-      EXPERT: {
-        color: "bg-purple-100 text-purple-800",
-        label: "Expert",
-        stars: 3,
-      },
-    };
-
-    const config = levelConfig[level as keyof typeof levelConfig] || {
-      color: "bg-gray-100 text-gray-800",
-      label: level,
-      stars: 0,
-    };
+    const colorClass =
+      colorClasses[config.color as keyof typeof colorClasses] ||
+      colorClasses.gray;
 
     return (
-      <div className="flex items-center space-x-1">
-        <Badge className={config.color}>{config.label}</Badge>
+      <Badge className={`${colorClass} font-medium`}>{config.label}</Badge>
+    );
+  };
+
+  // ✅ CORRIGÉ: Utilisation des constantes pour les badges de certification
+  const getCertificationBadge = (level: string) => {
+    const config = getStatusConfig(level, CERTIFICATION_LEVELS);
+
+    const colorClasses = {
+      yellow: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      blue: "bg-blue-100 text-blue-800 border-blue-200",
+      green: "bg-green-100 text-green-800 border-green-200",
+    };
+
+    const colorClass =
+      colorClasses[config.color as keyof typeof colorClasses] ||
+      colorClasses.blue;
+    const stars =
+      config.experience === "0-2 ans"
+        ? 1
+        : config.experience === "2-5 ans"
+        ? 2
+        : 3;
+
+    return (
+      <div className="flex items-center space-x-2">
+        <Badge className={`${colorClass} font-medium`}>{config.label}</Badge>
         <div className="flex">
           {Array.from({ length: 3 }).map((_, i) => (
             <Star
               key={i}
               className={`h-3 w-3 ${
-                i < config.stars
-                  ? "text-yellow-400 fill-current"
-                  : "text-gray-300"
+                i < stars ? "text-yellow-400 fill-current" : "text-gray-300"
               }`}
             />
           ))}
@@ -118,14 +131,25 @@ const Multipliers: React.FC = () => {
     );
   };
 
+  // ✅ CORRIGÉ: Badge pour spécialisations utilisant les constantes
+  const getSpecializationBadge = (specialization: string) => {
+    const config = getStatusConfig(specialization, CROP_TYPES);
+    return (
+      <Badge variant="outline" className="text-xs">
+        <span className="mr-1">{config.icon}</span>
+        {config.label}
+      </Badge>
+    );
+  };
+
   // ✅ CORRECTION: Fonctions utilitaires pour les calculs sécurisés
   const getActiveMultipliers = () => {
-    return data?.data?.filter((m) => m.status === "ACTIVE").length || 0;
+    return data?.data?.filter((m) => m.status === "active").length || 0;
   };
 
   const getExpertMultipliers = () => {
     return (
-      data?.data?.filter((m) => m.certificationLevel === "EXPERT").length || 0
+      data?.data?.filter((m) => m.certificationLevel === "expert").length || 0
     );
   };
 
@@ -195,8 +219,12 @@ const Multipliers: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Tous les statuts</SelectItem>
-                <SelectItem value="ACTIVE">Actif</SelectItem>
-                <SelectItem value="INACTIVE">Inactif</SelectItem>
+                {/* ✅ CORRIGÉ: Utilisation des constantes */}
+                {MULTIPLIER_STATUSES.map((status) => (
+                  <SelectItem key={status.value} value={status.value}>
+                    {status.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -209,9 +237,12 @@ const Multipliers: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Toutes les certifications</SelectItem>
-                <SelectItem value="BEGINNER">Débutant</SelectItem>
-                <SelectItem value="INTERMEDIATE">Intermédiaire</SelectItem>
-                <SelectItem value="EXPERT">Expert</SelectItem>
+                {/* ✅ CORRIGÉ: Utilisation des constantes */}
+                {CERTIFICATION_LEVELS.map((cert) => (
+                  <SelectItem key={cert.value} value={cert.value}>
+                    {cert.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -369,13 +400,9 @@ const Multipliers: React.FC = () => {
                           {multiplier.specialization
                             .slice(0, 2)
                             .map((spec, index) => (
-                              <Badge
-                                key={index}
-                                variant="outline"
-                                className="text-xs"
-                              >
-                                {spec}
-                              </Badge>
+                              <span key={index}>
+                                {getSpecializationBadge(spec)}
+                              </span>
                             ))}
                           {multiplier.specialization.length > 2 && (
                             <Badge variant="outline" className="text-xs">

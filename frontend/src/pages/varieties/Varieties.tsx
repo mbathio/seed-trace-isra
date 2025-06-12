@@ -1,4 +1,4 @@
-// frontend/src/pages/varieties/Varieties.tsx
+// frontend/src/pages/varieties/Varieties.tsx - VERSION CORRIGÉE AVEC CONSTANTES
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -31,7 +31,8 @@ import { api } from "../../services/api";
 import { Variety } from "../../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
 import { formatNumber } from "../../utils/formatters";
-import { CROP_TYPES } from "../../constants";
+import { CROP_TYPES, getStatusConfig } from "../../constants"; // ✅ AJOUTÉ: Import des constantes
+import { DataTransformer } from "../../utils/transformers"; // ✅ AJOUTÉ: Import du transformateur
 import { useDebounce } from "../../hooks/useDebounce";
 import { usePagination } from "../../hooks/usePagination";
 
@@ -41,6 +42,7 @@ const Varieties: React.FC = () => {
   const debouncedSearch = useDebounce(search, 300);
   const { pagination, actions } = usePagination({ initialPageSize: 10 });
 
+  // ✅ CORRIGÉ: Query avec transformation automatique
   const { data, isLoading, error } = useQuery<ApiResponse<Variety[]>>({
     queryKey: [
       "varieties",
@@ -58,28 +60,43 @@ const Varieties: React.FC = () => {
       };
 
       const response = await api.get("/varieties", { params });
-      return response.data;
+
+      // ✅ Transformer les données reçues de l'API
+      const transformedData = {
+        ...response.data,
+        data: response.data.data.map((variety) =>
+          DataTransformer.transformVarietyFromAPI(variety)
+        ),
+      };
+
+      return transformedData;
     },
   });
 
+  // ✅ CORRIGÉ: Utilisation des constantes pour les badges de type de culture
   const getCropTypeBadge = (cropType: string) => {
-    const typeMap: Record<
-      string,
-      {
-        variant: "default" | "secondary" | "destructive" | "outline";
-        label: string;
-      }
-    > = {
-      RICE: { variant: "default", label: "Riz" },
-      MAIZE: { variant: "secondary", label: "Maïs" },
-      PEANUT: { variant: "outline", label: "Arachide" },
-      SORGHUM: { variant: "destructive", label: "Sorgho" },
-      COWPEA: { variant: "default", label: "Niébé" },
-      MILLET: { variant: "secondary", label: "Mil" },
+    const typeConfig = getStatusConfig(cropType, CROP_TYPES);
+
+    // Couleurs spécifiques pour les types de culture
+    const colorClasses = {
+      rice: "bg-green-100 text-green-800 border-green-200",
+      maize: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      peanut: "bg-orange-100 text-orange-800 border-orange-200",
+      sorghum: "bg-red-100 text-red-800 border-red-200",
+      cowpea: "bg-purple-100 text-purple-800 border-purple-200",
+      millet: "bg-blue-100 text-blue-800 border-blue-200",
     };
 
-    const config = typeMap[cropType] || { variant: "outline", label: cropType };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    const colorClass =
+      colorClasses[cropType as keyof typeof colorClasses] ||
+      "bg-gray-100 text-gray-800 border-gray-200";
+
+    return (
+      <Badge className={`${colorClass} font-medium`}>
+        <span className="mr-1">{typeConfig.icon}</span>
+        {typeConfig.label}
+      </Badge>
+    );
   };
 
   if (error) {
@@ -106,7 +123,7 @@ const Varieties: React.FC = () => {
             Exporter
           </Button>
           <Button asChild>
-            <Link to="/varieties/create">
+            <Link to="/dashboard/varieties/create">
               <Plus className="h-4 w-4 mr-2" />
               Nouvelle variété
             </Link>
@@ -135,14 +152,18 @@ const Varieties: React.FC = () => {
                 }))
               }
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Type de culture" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Tous les types</SelectItem>
+                {/* ✅ CORRIGÉ: Utilisation des constantes */}
                 {CROP_TYPES.map((type) => (
                   <SelectItem key={type.value} value={type.value}>
-                    {type.label}
+                    <span className="flex items-center space-x-2">
+                      <span>{type.icon}</span>
+                      <span>{type.label}</span>
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -161,6 +182,7 @@ const Varieties: React.FC = () => {
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
               <p>Chargement...</p>
             </div>
           ) : (
@@ -206,7 +228,7 @@ const Varieties: React.FC = () => {
                           size="icon"
                           className="h-8 w-8"
                         >
-                          <Link to={`/varieties/${variety.code}`}>
+                          <Link to={`/dashboard/varieties/${variety.code}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
@@ -221,8 +243,29 @@ const Varieties: React.FC = () => {
             </Table>
           )}
 
+          {/* Empty state */}
+          {!isLoading && (!data?.data || data.data.length === 0) && (
+            <div className="text-center py-12">
+              <Leaf className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">
+                Aucune variété trouvée
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {search || filters.cropType
+                  ? "Aucune variété ne correspond à vos critères de recherche."
+                  : "Commencez par ajouter votre première variété."}
+              </p>
+              <Button asChild>
+                <Link to="/dashboard/varieties/create">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter une variété
+                </Link>
+              </Button>
+            </div>
+          )}
+
           {/* Pagination */}
-          {data?.meta && (
+          {data?.meta && data.meta.totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-muted-foreground">
                 Page {data.meta.page} sur {data.meta.totalPages}

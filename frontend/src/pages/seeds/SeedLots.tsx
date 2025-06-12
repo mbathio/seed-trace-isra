@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE
+// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE AVEC CONSTANTES
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -27,11 +27,12 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { SearchInput } from "../../components/forms/SearchInput";
-import { seedLotService } from "../../services/seedLotService"; // ✅ CORRIGÉ: Service spécialisé
+import { seedLotService } from "../../services/seedLotService";
 import { SeedLot } from "../../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
 import { formatDate, formatNumber } from "../../utils/formatters";
-import { SEED_LEVELS, LOT_STATUSES } from "../../constants";
+import { SEED_LEVELS, LOT_STATUSES, getStatusConfig } from "../../constants"; // ✅ AJOUTÉ: Import des constantes et utilitaires
+import { DataTransformer } from "../../utils/transformers"; // ✅ AJOUTÉ: Import du transformateur
 import { useDebounce } from "../../hooks/useDebounce";
 import { usePagination } from "../../hooks/usePagination";
 
@@ -41,10 +42,10 @@ const SeedLots: React.FC = () => {
   const debouncedSearch = useDebounce(search, 300);
   const { pagination, actions } = usePagination({ initialPageSize: 10 });
 
-  // ✅ CORRIGÉ: Utiliser le service seedLotService
+  // ✅ CORRIGÉ: Query avec transformation automatique
   const { data, isLoading, error } = useQuery<ApiResponse<SeedLot[]>>({
     queryKey: [
-      "seed-lots", // ✅ CORRIGÉ: Clé de cache cohérente
+      "seed-lots",
       pagination.page,
       pagination.pageSize,
       debouncedSearch,
@@ -58,48 +59,59 @@ const SeedLots: React.FC = () => {
         ...filters,
       };
 
-      const response = await seedLotService.getAll(params); // ✅ CORRIGÉ: Service unifié
-      return response.data;
+      const response = await seedLotService.getAll(params);
+
+      // ✅ Transformer les données reçues de l'API
+      const transformedData = {
+        ...response.data,
+        data: response.data.data.map((lot) =>
+          DataTransformer.transformSeedLotFromAPI(lot)
+        ),
+      };
+
+      return transformedData;
     },
   });
 
-  // ✅ CORRIGÉ: Utiliser les valeurs exactes de la DB pour le mapping
+  // ✅ CORRIGÉ: Utilisation des constantes pour les badges de statut
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<
-      string,
-      {
-        variant: "default" | "secondary" | "destructive" | "outline";
-        label: string;
-      }
-    > = {
-      PENDING: { variant: "secondary", label: "En attente" },
-      CERTIFIED: { variant: "default", label: "Certifié" },
-      REJECTED: { variant: "destructive", label: "Rejeté" },
-      IN_STOCK: { variant: "outline", label: "En stock" },
-      ACTIVE: { variant: "default", label: "Actif" },
-      DISTRIBUTED: { variant: "secondary", label: "Distribué" },
-      SOLD: { variant: "outline", label: "Vendu" },
+    const config = getStatusConfig(status, LOT_STATUSES);
+    const colorClasses = {
+      orange: "bg-orange-100 text-orange-800 border-orange-200",
+      green: "bg-green-100 text-green-800 border-green-200",
+      red: "bg-red-100 text-red-800 border-red-200",
+      blue: "bg-blue-100 text-blue-800 border-blue-200",
+      emerald: "bg-emerald-100 text-emerald-800 border-emerald-200",
+      purple: "bg-purple-100 text-purple-800 border-purple-200",
+      gray: "bg-gray-100 text-gray-800 border-gray-200",
     };
 
-    const config = statusMap[status] || { variant: "secondary", label: status };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  const getLevelBadge = (level: string) => {
-    const colors: Record<string, string> = {
-      GO: "bg-red-100 text-red-800",
-      G1: "bg-orange-100 text-orange-800",
-      G2: "bg-yellow-100 text-yellow-800",
-      G3: "bg-green-100 text-green-800",
-      G4: "bg-blue-100 text-blue-800",
-      R1: "bg-purple-100 text-purple-800",
-      R2: "bg-pink-100 text-pink-800",
-    };
+    const colorClass =
+      colorClasses[config.color as keyof typeof colorClasses] ||
+      colorClasses.gray;
 
     return (
-      <Badge className={colors[level] || "bg-gray-100 text-gray-800"}>
-        {level}
-      </Badge>
+      <Badge className={`${colorClass} font-medium`}>{config.label}</Badge>
+    );
+  };
+
+  // ✅ CORRIGÉ: Fonction pour les badges de niveau (niveaux restent identiques UI/DB)
+  const getLevelBadge = (level: string) => {
+    const colors: Record<string, string> = {
+      GO: "bg-red-100 text-red-800 border-red-200",
+      G1: "bg-orange-100 text-orange-800 border-orange-200",
+      G2: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      G3: "bg-green-100 text-green-800 border-green-200",
+      G4: "bg-blue-100 text-blue-800 border-blue-200",
+      R1: "bg-purple-100 text-purple-800 border-purple-200",
+      R2: "bg-pink-100 text-pink-800 border-pink-200",
+    };
+
+    const colorClass =
+      colors[level] || "bg-gray-100 text-gray-800 border-gray-200";
+
+    return (
+      <Badge className={`${colorClass} font-medium font-mono`}>{level}</Badge>
     );
   };
 
@@ -161,9 +173,10 @@ const SeedLots: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Tous les niveaux</SelectItem>
+                {/* ✅ CORRIGÉ: Utilisation des constantes */}
                 {SEED_LEVELS.map((level) => (
                   <SelectItem key={level.value} value={level.value}>
-                    {level.value}
+                    {level.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -180,6 +193,7 @@ const SeedLots: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Tous les statuts</SelectItem>
+                {/* ✅ CORRIGÉ: Utilisation des constantes */}
                 {LOT_STATUSES.map((status) => (
                   <SelectItem key={status.value} value={status.value}>
                     {status.label}
