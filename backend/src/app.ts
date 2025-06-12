@@ -1,5 +1,5 @@
-// backend/src/app.ts - ✅ CORRIGÉ avec routes standardisées
-import express, { Application, Request, Response, NextFunction } from "express";
+// backend/src/app.ts - VERSION CORRIGÉE
+import express, { Express, Request, Response, NextFunction } from "express"; // ✅ CORRECTION: Express au lieu d'Application
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -28,7 +28,7 @@ import { errorHandler } from "./middleware/errorHandler";
 dotenv.config();
 
 class App {
-  public app: Application;
+  public app: Express; // ✅ CORRECTION: Express au lieu d'Application
 
   constructor() {
     this.app = express();
@@ -151,7 +151,7 @@ class App {
   }
 
   // Méthode pour obtenir l'application Express
-  public getApp(): Application {
+  public getApp(): Express { // ✅ CORRECTION: Express au lieu d'Application
     return this.app;
   }
 }

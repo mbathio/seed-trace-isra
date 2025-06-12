@@ -2,12 +2,12 @@
 import { Router } from "express";
 import authRoutes from "./auth";
 import userRoutes from "./users";
-import seedLotRoutes from "./seedLots";
+import seedLotRoutes from "./seed-lots";
 import varietyRoutes from "./varieties";
 import multiplierRoutes from "./multipliers";
 import parcelRoutes from "./parcels";
 import productionRoutes from "./productions";
-import qualityControlRoutes from "./qualityControls";
+import qualityControlRoutes from "./quality-controls";
 import reportRoutes from "./reports";
 import statisticsRoutes from "./statistics";
 import exportRoutes from "./export";
