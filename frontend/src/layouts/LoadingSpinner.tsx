@@ -1,6 +1,6 @@
 import React from "react";
 import { Loader2 } from "lucide-react";
-import { cn } from "../../lib/utils";
+import { cn } from "../lib/utils"; // ✅ CORRIGÉ: Chemin d'importation fixé
 
 interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";

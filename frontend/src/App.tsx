@@ -1,4 +1,4 @@
-// frontend/src/App.tsx - ✅ ROUTER PRINCIPAL CORRIGÉ avec routes standardisées
+// frontend/src/App.tsx - ✅ ROUTES ENTIÈREMENT CORRIGÉES ET STANDARDISÉES
 import {
   BrowserRouter as Router,
   Routes,
@@ -21,28 +21,42 @@ import RegisterPage from "./pages/auth/Register";
 
 // Pages principales
 import DashboardPage from "./pages/Dashboard";
+import LandingPage from "./pages/LandingPage";
+
+// ✅ CORRECTION: Routes des semences standardisées
 import SeedLotsPage from "./pages/seeds/SeedLots";
 import SeedLotDetailsPage from "./pages/seeds/SeedLotDetail";
 import CreateSeedLotPage from "./pages/seeds/CreateSeedLot";
+
+// ✅ Routes des variétés
 import VarietiesPage from "./pages/varieties/Varieties";
 import VarietyDetailsPage from "./pages/varieties/VarietyDetail";
 import CreateVarietyPage from "./pages/varieties/CreateVariety";
+
+// ✅ Routes des multiplicateurs
 import MultipliersPage from "./pages/multipliers/Multipliers";
 import MultiplierDetailsPage from "./pages/multipliers/MultiplierDetail";
 import CreateMultiplierPage from "./pages/multipliers/CreateMultiplier";
+
+// ✅ Routes des contrôles qualité
 import QualityControlsPage from "./pages/quality/QualityControls";
 import QualityControlDetailsPage from "./pages/quality/QualityControlDetail";
 import CreateQualityControlPage from "./pages/quality/CreateQualityControl";
+
+// ✅ Routes des productions
 import ProductionsPage from "./pages/productions/Productions";
 import ProductionDetailsPage from "./pages/productions/ProductionDetail";
 import CreateProductionPage from "./pages/productions/CreateProduction";
+
+// ✅ Routes des parcelles
 import ParcelsPage from "./pages/parcels/Parcels";
 import ParcelDetailsPage from "./pages/parcels/ParcelDetail";
 import CreateParcelPage from "./pages/parcels/CreateParcel";
+
+// ✅ Autres pages
+import GenealogyPage from "./pages/genealogy/Genealogy";
 import ReportsPage from "./pages/reports/Reports";
 import UsersPage from "./pages/users/Users";
-import LandingPage from "./pages/LandingPage";
-import GenealogyPage from "./pages/genealogy/Genealogy";
 
 // Configuration React Query
 const queryClient = new QueryClient({
@@ -65,16 +79,16 @@ function App() {
       <AuthProvider>
         <Router>
           <Routes>
-            {/* Page d'accueil publique */}
+            {/* ✅ Page d'accueil publique */}
             <Route path="/" element={<LandingPage />} />
 
-            {/* Routes d'authentification */}
+            {/* ✅ Routes d'authentification */}
             <Route path="/auth" element={<AuthLayout />}>
               <Route path="login" element={<LoginPage />} />
               <Route path="register" element={<RegisterPage />} />
             </Route>
 
-            {/* Routes protégées avec layout dashboard */}
+            {/* ✅ Routes protégées avec layout dashboard - STRUCTURE UNIFIÉE */}
             <Route
               path="/dashboard"
               element={
@@ -86,21 +100,17 @@ function App() {
               {/* Dashboard principal */}
               <Route index element={<DashboardPage />} />
 
-              {/* ✅ CORRECTION: Routes des semences standardisées */}
+              {/* ✅ SECTION SEEDS: Routes des semences */}
               <Route path="seed-lots" element={<SeedLotsPage />} />
               <Route path="seed-lots/create" element={<CreateSeedLotPage />} />
               <Route path="seed-lots/:id" element={<SeedLotDetailsPage />} />
 
-              {/* ✅ Variétés - déjà standardisé */}
+              {/* ✅ SECTION VARIETIES: Routes des variétés */}
               <Route path="varieties" element={<VarietiesPage />} />
               <Route path="varieties/create" element={<CreateVarietyPage />} />
               <Route path="varieties/:id" element={<VarietyDetailsPage />} />
 
-              {/* ✅ Généalogie - déjà standardisé */}
-              <Route path="genealogy" element={<GenealogyPage />} />
-              <Route path="genealogy/:lotId" element={<GenealogyPage />} />
-
-              {/* ✅ Multiplicateurs - déjà standardisé */}
+              {/* ✅ SECTION MULTIPLIERS: Routes des multiplicateurs */}
               <Route path="multipliers" element={<MultipliersPage />} />
               <Route
                 path="multipliers/create"
@@ -111,12 +121,12 @@ function App() {
                 element={<MultiplierDetailsPage />}
               />
 
-              {/* ✅ Parcelles - déjà standardisé */}
+              {/* ✅ SECTION PARCELS: Routes des parcelles */}
               <Route path="parcels" element={<ParcelsPage />} />
               <Route path="parcels/create" element={<CreateParcelPage />} />
               <Route path="parcels/:id" element={<ParcelDetailsPage />} />
 
-              {/* ✅ Productions - déjà standardisé */}
+              {/* ✅ SECTION PRODUCTIONS: Routes des productions */}
               <Route path="productions" element={<ProductionsPage />} />
               <Route
                 path="productions/create"
@@ -127,7 +137,7 @@ function App() {
                 element={<ProductionDetailsPage />}
               />
 
-              {/* ✅ CORRECTION: Routes contrôles qualité standardisées */}
+              {/* ✅ SECTION QUALITY: Routes des contrôles qualité */}
               <Route
                 path="quality-controls"
                 element={<QualityControlsPage />}
@@ -141,10 +151,14 @@ function App() {
                 element={<QualityControlDetailsPage />}
               />
 
-              {/* ✅ Rapports - déjà standardisé */}
+              {/* ✅ SECTION GENEALOGY: Route de généalogie */}
+              <Route path="genealogy" element={<GenealogyPage />} />
+              <Route path="genealogy/:lotId" element={<GenealogyPage />} />
+
+              {/* ✅ SECTION REPORTS: Routes des rapports */}
               <Route path="reports" element={<ReportsPage />} />
 
-              {/* ✅ Administration - déjà standardisé */}
+              {/* ✅ SECTION ADMIN: Routes d'administration */}
               <Route
                 path="users"
                 element={
@@ -155,7 +169,8 @@ function App() {
               />
             </Route>
 
-            {/* ✅ CORRECTION: Redirections pour compatibilité avec anciennes routes */}
+            {/* ✅ REDIRECTIONS POUR COMPATIBILITÉ: Support des anciennes URLs */}
+            {/* Redirections pour seeds */}
             <Route
               path="/seeds"
               element={<Navigate to="/dashboard/seed-lots" replace />}
@@ -164,6 +179,8 @@ function App() {
               path="/seeds/*"
               element={<Navigate to="/dashboard/seed-lots" replace />}
             />
+
+            {/* Redirections pour quality */}
             <Route
               path="/quality"
               element={<Navigate to="/dashboard/quality-controls" replace />}
@@ -172,8 +189,14 @@ function App() {
               path="/quality/*"
               element={<Navigate to="/dashboard/quality-controls" replace />}
             />
+
+            {/* Redirections pour autres sections */}
             <Route
               path="/varieties"
+              element={<Navigate to="/dashboard/varieties" replace />}
+            />
+            <Route
+              path="/varieties/*"
               element={<Navigate to="/dashboard/varieties" replace />}
             />
             <Route
@@ -181,7 +204,15 @@ function App() {
               element={<Navigate to="/dashboard/multipliers" replace />}
             />
             <Route
+              path="/multipliers/*"
+              element={<Navigate to="/dashboard/multipliers" replace />}
+            />
+            <Route
               path="/parcels"
+              element={<Navigate to="/dashboard/parcels" replace />}
+            />
+            <Route
+              path="/parcels/*"
               element={<Navigate to="/dashboard/parcels" replace />}
             />
             <Route
@@ -189,7 +220,15 @@ function App() {
               element={<Navigate to="/dashboard/productions" replace />}
             />
             <Route
+              path="/productions/*"
+              element={<Navigate to="/dashboard/productions" replace />}
+            />
+            <Route
               path="/genealogy"
+              element={<Navigate to="/dashboard/genealogy" replace />}
+            />
+            <Route
+              path="/genealogy/*"
               element={<Navigate to="/dashboard/genealogy" replace />}
             />
             <Route
@@ -197,11 +236,19 @@ function App() {
               element={<Navigate to="/dashboard/reports" replace />}
             />
             <Route
+              path="/reports/*"
+              element={<Navigate to="/dashboard/reports" replace />}
+            />
+            <Route
               path="/users"
               element={<Navigate to="/dashboard/users" replace />}
             />
+            <Route
+              path="/users/*"
+              element={<Navigate to="/dashboard/users" replace />}
+            />
 
-            {/* Route de fallback */}
+            {/* ✅ FALLBACK: Route par défaut pour les URLs non trouvées */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>

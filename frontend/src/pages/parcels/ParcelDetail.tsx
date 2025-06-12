@@ -553,7 +553,7 @@ const ParcelDetail: React.FC = () => {
                     </div>
                   </div>
 
-                  {soilAnalyses?.map((analysis: any, index: number) => (
+                  {soilAnalyses?.map((analysis: any) => (
                     <div key={analysis.id} className="relative">
                       <div className="absolute -left-6 w-4 h-4 bg-blue-500 rounded-full"></div>
                       <div className="bg-blue-50 p-4 rounded-lg">
