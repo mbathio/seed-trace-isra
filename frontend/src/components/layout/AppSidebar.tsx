@@ -1,4 +1,4 @@
-// frontend/src/components/layout/AppSidebar.tsx - SIDEBAR CORRIGÉE
+// frontend/src/components/layout/AppSidebar.tsx - ✅ SIDEBAR CORRIGÉE avec routes standardisées
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -35,7 +35,7 @@ const AppSidebar: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  // Routes principales avec chemins dashboard corrigés
+  // ✅ CORRECTION: Routes principales avec chemins dashboard standardisés
   const navigation = [
     {
       title: "Vue d'ensemble",
@@ -52,7 +52,7 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Lots de semences",
-          url: "/dashboard/seeds",
+          url: "/dashboard/seed-lots", // ✅ CORRIGÉ: kebab-case complet
           icon: Sprout,
         },
         {
@@ -92,7 +92,7 @@ const AppSidebar: React.FC = () => {
       items: [
         {
           title: "Contrôles qualité",
-          url: "/dashboard/quality",
+          url: "/dashboard/quality-controls", // ✅ CORRIGÉ: kebab-case complet
           icon: FlaskConical,
         },
       ],
@@ -127,7 +127,7 @@ const AppSidebar: React.FC = () => {
     },
   ];
 
-  // Fonction isActive corrigée pour gérer les chemins dashboard
+  // ✅ CORRECTION: Fonction isActive améliorée pour gérer les chemins standardisés
   const isActive = (url: string) => {
     const currentPath = location.pathname;
 

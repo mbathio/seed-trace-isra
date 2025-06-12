@@ -1,4 +1,4 @@
-// backend/src/app.ts - ✅ CORRIGÉ
+// backend/src/app.ts - ✅ CORRIGÉ avec routes standardisées
 import express, { Application, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -8,15 +8,15 @@ import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
 import path from "path";
 
-// Import des routes
+// Import des routes - ✅ CORRECTION: Noms de fichiers standardisés
 import authRoutes from "./routes/auth";
 import userRoutes from "./routes/users";
-import seedLotRoutes from "./routes/seedLots";
+import seedLotRoutes from "./routes/seed-lots"; // ✅ CORRIGÉ: kebab-case
 import varietyRoutes from "./routes/varieties";
 import multiplierRoutes from "./routes/multipliers";
 import parcelRoutes from "./routes/parcels";
 import productionRoutes from "./routes/productions";
-import qualityControlRoutes from "./routes/qualityControls";
+import qualityControlRoutes from "./routes/quality-controls"; // ✅ CORRIGÉ: kebab-case
 import reportRoutes from "./routes/reports";
 import statisticsRoutes from "./routes/statistics";
 import exportRoutes from "./routes/export";
@@ -99,20 +99,20 @@ class App {
       });
     });
 
-    // Routes API - ✅ CORRECTION: Routes uniformisées
+    // ✅ CORRECTION: Routes API uniformisées avec kebab-case
     this.app.use("/api/auth", authRoutes);
     this.app.use("/api/users", userRoutes);
-    this.app.use("/api/seed-lots", seedLotRoutes); // ✅ CORRIGÉ: était /api/seeds
+    this.app.use("/api/seed-lots", seedLotRoutes); // ✅ CORRIGÉ: kebab-case consistant
     this.app.use("/api/varieties", varietyRoutes);
     this.app.use("/api/multipliers", multiplierRoutes);
     this.app.use("/api/parcels", parcelRoutes);
     this.app.use("/api/productions", productionRoutes);
-    this.app.use("/api/quality-controls", qualityControlRoutes);
+    this.app.use("/api/quality-controls", qualityControlRoutes); // ✅ CORRIGÉ: kebab-case consistant
     this.app.use("/api/reports", reportRoutes);
     this.app.use("/api/statistics", statisticsRoutes);
     this.app.use("/api/export", exportRoutes);
 
-    // Route de base
+    // Route de base avec documentation des endpoints corrigés
     this.app.get("/", (req: Request, res: Response) => {
       res.json({
         message: "🌾 ISRA Seed Trace API",
@@ -121,12 +121,12 @@ class App {
         health: "/api/health",
         endpoints: {
           auth: "/api/auth",
-          seedLots: "/api/seed-lots", // ✅ CORRIGÉ: cohérent avec les routes
+          seedLots: "/api/seed-lots", // ✅ CORRIGÉ: kebab-case
           varieties: "/api/varieties",
           multipliers: "/api/multipliers",
           parcels: "/api/parcels",
           productions: "/api/productions",
-          qualityControls: "/api/quality-controls",
+          qualityControls: "/api/quality-controls", // ✅ CORRIGÉ: kebab-case
           reports: "/api/reports",
           statistics: "/api/statistics",
           export: "/api/export",
@@ -140,6 +140,7 @@ class App {
         success: false,
         message: `Endpoint non trouvé: ${req.method} ${req.originalUrl}`,
         data: null,
+        suggestion: "Vérifiez la documentation des endpoints disponibles à /",
       });
     });
   }

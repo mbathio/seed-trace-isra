@@ -1,5 +1,4 @@
-// backend/src/routes/qualityControls.ts - Version corrigée
-
+// backend/src/routes/quality-controls.ts - ✅ RENOMMÉ ET CORRIGÉ
 import { Router } from "express";
 import { QualityControlController } from "../controllers/QualityControlController";
 import { validateRequest } from "../middleware/validation";
@@ -11,21 +10,21 @@ import {
 
 const router = Router();
 
-// GET /api/quality-controls
+// ✅ GET /api/quality-controls - Liste des contrôles qualité
 router.get("/", QualityControlController.getQualityControls);
 
-// GET /api/quality-controls/:id
+// ✅ GET /api/quality-controls/:id - Détails d'un contrôle
 router.get("/:id", QualityControlController.getQualityControlById);
 
-// POST /api/quality-controls
+// ✅ POST /api/quality-controls - Créer un nouveau contrôle
 router.post(
   "/",
-  requireRole("TECHNICIAN", "INSPECTOR", "ADMIN"), // ✅ Majuscules
+  requireRole("TECHNICIAN", "INSPECTOR", "ADMIN"),
   validateRequest({ body: createQualityControlSchema }),
   QualityControlController.createQualityControl
 );
 
-// PUT /api/quality-controls/:id
+// ✅ PUT /api/quality-controls/:id - Mettre à jour un contrôle
 router.put(
   "/:id",
   requireRole("TECHNICIAN", "INSPECTOR", "ADMIN"),
@@ -33,7 +32,7 @@ router.put(
   QualityControlController.updateQualityControl
 );
 
-// DELETE /api/quality-controls/:id
+// ✅ DELETE /api/quality-controls/:id - Supprimer un contrôle
 router.delete(
   "/:id",
   requireRole("ADMIN"),

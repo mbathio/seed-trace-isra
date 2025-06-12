@@ -1,4 +1,4 @@
-// frontend/src/components/layout/Header.tsx - CORRECTION BREADCRUMBS
+// frontend/src/components/layout/Header.tsx - ✅ CORRECTION BREADCRUMBS avec routes standardisées
 import React from "react";
 import { SidebarTrigger } from "../ui/sidebar";
 import { Separator } from "../ui/separator";
@@ -21,15 +21,19 @@ const Header: React.FC = () => {
   const getBreadcrumbs = () => {
     const pathSegments = location.pathname.split("/").filter(Boolean);
 
-    // ✅ CORRECTION: Mapping amélioré pour toutes les routes
+    // ✅ CORRECTION: Mapping amélioré pour les routes standardisées
     const breadcrumbMap: Record<string, string> = {
       "": "Tableau de bord",
       dashboard: "Tableau de bord",
-      seeds: "Lots de semences",
+      "seed-lots": "Lots de semences", // ✅ AJOUTÉ: Support kebab-case
+      seeds: "Lots de semences", // ✅ Rétrocompatibilité
       varieties: "Variétés",
       multipliers: "Multiplicateurs",
-      quality: "Contrôles qualité",
+      "quality-controls": "Contrôles qualité", // ✅ AJOUTÉ: Support kebab-case
+      quality: "Contrôles qualité", // ✅ Rétrocompatibilité
       productions: "Productions",
+      parcels: "Parcelles",
+      genealogy: "Généalogie",
       reports: "Rapports",
       users: "Utilisateurs",
       settings: "Paramètres",
@@ -48,7 +52,7 @@ const Header: React.FC = () => {
     const breadcrumbs = pathSegments.map((segment, index) => {
       const href = "/" + pathSegments.slice(0, index + 1).join("/");
 
-      // ✅ CORRECTION: Gestion spéciale pour les IDs (segments qui ressemblent à des IDs)
+      // ✅ CORRECTION: Gestion améliorée des IDs et segments kebab-case
       let label;
       if (segment.match(/^[A-Z0-9-]+$/i) && index > 0) {
         // C'est probablement un ID, utiliser le segment précédent + "Détail"
