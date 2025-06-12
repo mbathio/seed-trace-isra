@@ -1,5 +1,4 @@
 // frontend/src/App.tsx - ✅ ROUTER PRINCIPAL CORRIGÉ avec routes standardisées
-import React from "react";
 import {
   BrowserRouter as Router,
   Routes,

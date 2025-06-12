@@ -1,4 +1,4 @@
-// frontend/src/pages/quality/QualityControlDetail.tsx
+// frontend/src/pages/quality/QualityControlDetail.tsx - VERSION CORRIGÉE
 import React from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -8,7 +8,6 @@ import {
   FileText,
   FlaskConical,
   User,
-  Calendar,
   CheckCircle,
   XCircle,
   Download,
@@ -317,6 +316,83 @@ const QualityControlDetail: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Certificat et documents */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Documents et certificats</CardTitle>
+          <CardDescription>
+            Certificats et documents associés à ce contrôle qualité
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {qualityControl.certificateUrl ? (
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <FileText className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <p className="font-medium">Certificat de qualité</p>
+                    <p className="text-sm text-muted-foreground">
+                      Généré le {formatDate(qualityControl.createdAt)}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Télécharger
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">
+                  Aucun certificat disponible
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  Le certificat pour ce contrôle qualité n'a pas encore été
+                  généré.
+                </p>
+                <Button>
+                  <Download className="h-4 w-4 mr-2" />
+                  Générer le certificat
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Métadonnées */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Métadonnées</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <label className="text-muted-foreground">Créé le</label>
+              <p className="font-medium">
+                {formatDate(qualityControl.createdAt)}
+              </p>
+            </div>
+            <div>
+              <label className="text-muted-foreground">Modifié le</label>
+              <p className="font-medium">
+                {formatDate(qualityControl.updatedAt)}
+              </p>
+            </div>
+            <div>
+              <label className="text-muted-foreground">ID du contrôle</label>
+              <p className="font-mono">{qualityControl.id}</p>
+            </div>
+            <div>
+              <label className="text-muted-foreground">Inspecteur ID</label>
+              <p className="font-mono">{qualityControl.inspectorId}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -1,7 +1,7 @@
-// frontend/src/pages/auth/Register.tsx
+// frontend/src/pages/auth/Register.tsx - VERSION CORRIGÉE
 import React, { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { Button } from "../../components/ui/button";
@@ -23,6 +23,7 @@ import {
 } from "../../components/ui/card";
 import { toast } from "react-toastify";
 import { USER_ROLES } from "../../constants";
+import { apiService } from "../../services/api";
 
 interface RegisterForm {
   name: string;
@@ -32,9 +33,16 @@ interface RegisterForm {
   role: string;
 }
 
+interface RegisterData {
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+}
+
 const Register: React.FC = () => {
   const navigate = useNavigate();
-  const { register: registerUser, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +51,7 @@ const Register: React.FC = () => {
     register,
     handleSubmit,
     watch,
+    control,
     formState: { errors },
   } = useForm<RegisterForm>();
 
@@ -60,14 +69,17 @@ const Register: React.FC = () => {
 
     try {
       setIsLoading(true);
-      await registerUser({
+
+      const registerData: RegisterData = {
         name: data.name,
         email: data.email,
         password: data.password,
         role: data.role,
-      });
+      };
+
+      await apiService.auth.register(registerData);
       toast.success("Compte créé avec succès !");
-      navigate("/dashboard");
+      navigate("/auth/login");
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.message ||
@@ -129,20 +141,29 @@ const Register: React.FC = () => {
 
           <div className="space-y-2">
             <Label htmlFor="role">Rôle</Label>
-            <Select {...register("role", { required: "Le rôle est requis" })}>
-              <SelectTrigger className={errors.role ? "border-red-500" : ""}>
-                <SelectValue placeholder="Sélectionner un rôle" />
-              </SelectTrigger>
-              <SelectContent>
-                {USER_ROLES.filter((role) => role.value !== "admin").map(
-                  (role) => (
-                    <SelectItem key={role.value} value={role.value}>
-                      {role.label}
-                    </SelectItem>
-                  )
-                )}
-              </SelectContent>
-            </Select>
+            <Controller
+              name="role"
+              control={control}
+              rules={{ required: "Le rôle est requis" }}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger
+                    className={errors.role ? "border-red-500" : ""}
+                  >
+                    <SelectValue placeholder="Sélectionner un rôle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {USER_ROLES.filter((role) => role.value !== "admin").map(
+                      (role) => (
+                        <SelectItem key={role.value} value={role.value}>
+                          {role.label}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {errors.role && (
               <p className="text-sm text-red-500">{errors.role.message}</p>
             )}
@@ -227,6 +248,19 @@ const Register: React.FC = () => {
             Créer le compte
           </Button>
         </form>
+
+        <div className="mt-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            Déjà un compte ?{" "}
+            <Button
+              variant="link"
+              className="p-0"
+              onClick={() => navigate("/auth/login")}
+            >
+              Se connecter
+            </Button>
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

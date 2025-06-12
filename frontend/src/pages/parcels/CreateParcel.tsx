@@ -1,7 +1,7 @@
-// frontend/src/pages/parcels/CreateParcel.tsx - CORRIGÉ
+// frontend/src/pages/parcels/CreateParcel.tsx - PAGE DE CRÉATION PARCELLE
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, SubmitHandler } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Save, Loader2, MapPin } from "lucide-react";
 import {
@@ -28,7 +28,6 @@ import { ApiResponse } from "../../types/api";
 import { PARCEL_STATUSES, SENEGAL_BOUNDS } from "../../constants";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { parcelValidationSchema } from "../../utils/validators";
-import { DataTransformer } from "../../utils/transformers";
 
 interface CreateParcelForm {
   name?: string;
@@ -76,9 +75,7 @@ const CreateParcel: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateParcelForm) => {
-      // Transformer les données pour l'API
-      const transformedData = DataTransformer.transformParcelForAPI(data);
-      const response = await api.post("/parcels", transformedData);
+      const response = await api.post("/parcels", data);
       return response.data;
     },
     onSuccess: (data) => {
@@ -93,7 +90,7 @@ const CreateParcel: React.FC = () => {
     },
   });
 
-  const onSubmit = async (data: CreateParcelForm) => {
+  const onSubmit: SubmitHandler<CreateParcelForm> = async (data) => {
     setIsSubmitting(true);
     try {
       await createMutation.mutateAsync(data);
