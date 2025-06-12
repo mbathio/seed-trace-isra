@@ -1,4 +1,4 @@
-// frontend/src/pages/DashboardPage.tsx - PAGE DASHBOARD COMPLÈTE
+// frontend/src/pages/DashboardPage.tsx - PAGE DASHBOARD CORRIGÉE
 import React from "react";
 import { Link } from "react-router-dom";
 import {
@@ -29,6 +29,13 @@ import { useApiQuery } from "../hooks/useApi";
 import { LoadingSpinner } from "../layouts/LoadingSpinner";
 import { DashboardStats } from "../types/entities";
 
+// ✅ CORRECTION: Type pour les données de graphique
+interface ChartDataPoint {
+  month: string;
+  productions: number;
+  yield: number;
+}
+
 const DashboardPage: React.FC = () => {
   // Récupération des statistiques du dashboard
   const {
@@ -45,14 +52,12 @@ const DashboardPage: React.FC = () => {
   );
 
   // Récupération des tendances mensuelles
-  const { data: trends, isLoading: trendsLoading } = useApiQuery(
-    ["dashboard", "trends"],
-    "/statistics/trends",
-    { months: 6 }
-  );
+  const { data: trends, isLoading: trendsLoading } = useApiQuery<
+    ChartDataPoint[]
+  >(["dashboard", "trends"], "/statistics/trends", { months: 6 });
 
-  // Données factices pour les graphiques si les vraies données ne sont pas disponibles
-  const chartData = trends || [
+  // ✅ CORRECTION: Données factices typées correctement
+  const defaultChartData: ChartDataPoint[] = [
     { month: "Jan", productions: 12, yield: 8.5 },
     { month: "Fév", productions: 15, yield: 9.2 },
     { month: "Mar", productions: 18, yield: 9.8 },
@@ -60,6 +65,9 @@ const DashboardPage: React.FC = () => {
     { month: "Mai", productions: 25, yield: 9.9 },
     { month: "Jun", productions: 28, yield: 10.3 },
   ];
+
+  // ✅ CORRECTION: Gestion des données du graphique avec type correct
+  const chartData = trends || defaultChartData;
 
   if (statsLoading) {
     return (
@@ -286,9 +294,10 @@ const DashboardPage: React.FC = () => {
           <CardContent>
             <div className="space-y-3">
               {dashboardData.distribution.topVarieties.length > 0 ? (
-                dashboardData.distribution.topVarieties
-                  .slice(0, 5)
-                  .map((item, index) => (
+                dashboardData.distribution.topVarieties.slice(0, 5).map(
+                  (
+                    item // ✅ CORRECTION: Suppression du paramètre index inutilisé
+                  ) => (
                     <div
                       key={item.variety.id}
                       className="flex items-center justify-between"
@@ -308,7 +317,8 @@ const DashboardPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  ))
+                  )
+                )
               ) : (
                 <div className="text-center py-8">
                   <Leaf className="h-8 w-8 text-muted-foreground mx-auto mb-2" />

@@ -17,34 +17,33 @@ import AuthLayout from "./layouts/AuthLayout";
 import DashboardLayout from "./layouts/DashboardLayout";
 
 // Pages d'authentification
-import LoginPage from "./pages/auth/LoginPage";
-import RegisterPage from "./pages/auth/RegisterPage";
+import LoginPage from "./pages/auth/Login";
+import RegisterPage from "./pages/auth/Register";
 
 // Pages principales
-import DashboardPage from "./pages/DashboardPage";
-import SeedLotsPage from "./pages/seeds/SeedLotsPage";
-import SeedLotDetailsPage from "./pages/seeds/SeedLotDetailsPage";
-import CreateSeedLotPage from "./pages/seeds/CreateSeedLotPage";
-import VarietiesPage from "./pages/varieties/VarietiesPage";
-import VarietyDetailsPage from "./pages/varieties/VarietyDetailsPage";
-import CreateVarietyPage from "./pages/varieties/CreateVarietyPage";
-import MultipliersPage from "./pages/multipliers/MultipliersPage";
-import MultiplierDetailsPage from "./pages/multipliers/MultiplierDetailsPage";
-import CreateMultiplierPage from "./pages/multipliers/CreateMultiplierPage";
-import QualityControlsPage from "./pages/quality/QualityControlsPage";
-import QualityControlDetailsPage from "./pages/quality/QualityControlDetailsPage";
-import CreateQualityControlPage from "./pages/quality/CreateQualityControlPage";
-import ProductionsPage from "./pages/productions/ProductionsPage";
-import ProductionDetailsPage from "./pages/productions/ProductionDetailsPage";
-import CreateProductionPage from "./pages/productions/CreateProductionPage";
-import ParcelsPage from "./pages/parcels/ParcelsPage";
-import ParcelDetailsPage from "./pages/parcels/ParcelDetailsPage";
-import CreateParcelPage from "./pages/parcels/CreateParcelPage";
-import ReportsPage from "./pages/reports/ReportsPage";
-import UsersPage from "./pages/users/UsersPage";
-import SettingsPage from "./pages/settings/SettingsPage";
+import DashboardPage from "./pages/Dashboard";
+import SeedLotsPage from "./pages/seeds/SeedLots";
+import SeedLotDetailsPage from "./pages/seeds/SeedLotDetail";
+import CreateSeedLotPage from "./pages/seeds/CreateSeedLot";
+import VarietiesPage from "./pages/varieties/Varieties";
+import VarietyDetailsPage from "./pages/varieties/VarietyDetail";
+import CreateVarietyPage from "./pages/varieties/CreateVariety";
+import MultipliersPage from "./pages/multipliers/Multipliers";
+import MultiplierDetailsPage from "./pages/multipliers/MultiplierDetail";
+import CreateMultiplierPage from "./pages/multipliers/CreateMultiplier";
+import QualityControlsPage from "./pages/quality/QualityControls";
+import QualityControlDetailsPage from "./pages/quality/QualityControlDetail";
+import CreateQualityControlPage from "./pages/quality/CreateQualityControl";
+import ProductionsPage from "./pages/productions/Productions";
+import ProductionDetailsPage from "./pages/productions/ProductionDetail";
+import CreateProductionPage from "./pages/productions/CreateProduction";
+import ParcelsPage from "./pages/parcels/Parcels";
+import ParcelDetailsPage from "./pages/parcels/ParcelDetail";
+import CreateParcelPage from "./pages/parcels/CreateParcel";
+import ReportsPage from "./pages/reports/Reports";
+import UsersPage from "./pages/users/Users";
 import LandingPage from "./pages/LandingPage";
-import GenealogyPage from "./pages/genealogy/GenealogyPage";
+import GenealogyPage from "./pages/genealogy/Genealogy";
 
 // Configuration React Query
 const queryClient = new QueryClient({
