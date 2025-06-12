@@ -16,7 +16,10 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "security:audit": "npm audit --audit-level=moderate",
+    "security:fix": "npm audit fix",
+    "postinstall": "npm run security:audit"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
@@ -29,7 +32,7 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "multer": "^1.4.5-lts.1",
+    "multer": "^1.4.5-lts.2",
     "node-cache": "^5.1.2",
     "nodemailer": "^6.9.7",
     "pdfkit": "^0.14.0",
