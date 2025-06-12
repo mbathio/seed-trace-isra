@@ -51,7 +51,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 3,
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes
+      gcTime: 10 * 60 * 1000, // ✅ CORRIGÉ: gcTime au lieu de cacheTime
       refetchOnWindowFocus: false,
     },
     mutations: {
@@ -129,7 +129,10 @@ function App() {
               />
 
               {/* ✅ CORRECTION: Routes contrôles qualité standardisées */}
-              <Route path="quality-controls" element={<QualityControlsPage />} />
+              <Route
+                path="quality-controls"
+                element={<QualityControlsPage />}
+              />
               <Route
                 path="quality-controls/create"
                 element={<CreateQualityControlPage />}
