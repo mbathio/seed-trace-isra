@@ -7,7 +7,6 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import { Button } from "../ui/button";
 
 interface Column<T> {
   key: keyof T | string;

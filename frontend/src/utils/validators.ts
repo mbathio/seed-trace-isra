@@ -184,6 +184,9 @@ export const multiplierValidationSchema = yup.object({
 });
 
 // ✅ AJOUTÉ: Validation pour parcel avec valeurs UI
+// frontend/src/utils/validators.ts - SECTION CORRIGÉE
+// Remplacer les lignes 564-573 par:
+
 export const parcelValidationSchema = yup.object({
   name: yup.string().max(100, "Nom trop long").optional(),
   area: yup
@@ -202,23 +205,14 @@ export const parcelValidationSchema = yup.object({
     .min(-180, "Longitude invalide")
     .max(180, "Longitude invalide")
     .required("Longitude requise"),
-  // ✅ CORRIGÉ: Utiliser les valeurs UI (kebab-case)
   status: yup
     .string()
-    .oneOf(["planned", "in-progress", "completed", "cancelled"], "Statut invalide")
+    .oneOf(["available", "in-use", "resting"], "Statut invalide")
     .required("Statut requis"),
-  multiplierId: yup.number().positive().required("Multiplicateur requis"),
-  parcelId: yup.number().positive().required("Parcelle requise"),
-  plannedQuantity: yup
-    .number()
-    .positive("Quantité planifiée doit être positive")
-    .optional(),
-  actualYield: yup
-    .number()
-    .positive("Rendement réel doit être positif")
-    .optional(),
-  notes: yup.string().max(1000, "Notes trop longues").optional(),
-  weatherConditions: yup.string().max(500, "Conditions météo trop longues").optional(),
+  soilType: yup.string().max(100, "Type de sol trop long").optional(),
+  irrigationSystem: yup.string().max(100, "Système d'irrigation trop long").optional(),
+  address: yup.string().max(255, "Adresse trop longue").optional(),
+  multiplierId: yup.number().positive().optional(),
 });
 
 // ✅ AJOUTÉ: Validation pour user avec valeurs UI

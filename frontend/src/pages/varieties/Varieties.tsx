@@ -64,7 +64,7 @@ const Varieties: React.FC = () => {
       // ✅ Transformer les données reçues de l'API
       const transformedData = {
         ...response.data,
-        data: response.data.data.map((variety) =>
+        data: response.data.data.map((variety: Variety) =>
           DataTransformer.transformVarietyFromAPI(variety)
         ),
       };

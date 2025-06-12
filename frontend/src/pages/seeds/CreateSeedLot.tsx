@@ -1,9 +1,9 @@
-// frontend/src/pages/varieties/CreateVariety.tsx - VERSION CORRIGÉE
+// frontend/src/pages/seeds/CreateSeedLot.tsx - CORRIGÉ
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm, Controller } from "react-hook-form";
-import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { useForm, Controller, SubmitHandler } from "react-hook-form";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Save, Loader2, Sprout } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -22,88 +22,71 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Label } from "../../components/ui/label";
-import { Badge } from "../../components/ui/badge";
 import { toast } from "react-toastify";
-import { api } from "../../services/api";
-import { CROP_TYPES } from "../../constants"; // ✅ AJOUTÉ: Import des constantes
-import { DataTransformer } from "../../utils/transformers"; // ✅ AJOUTÉ: Import du transformateur
+import { seedLotService } from "../../services/seedLotService";
+import { Variety } from "../../types/entities";
+import { SEED_LEVELS } from "../../constants";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { varietyValidationSchema } from "../../utils/validators";
+import { seedLotValidationSchema } from "../../utils/validators";
 
-// ✅ CORRIGÉ: Interface avec valeurs UI (minuscules)
-interface CreateVarietyForm {
-  code: string;
-  name: string;
-  cropType: "rice" | "maize" | "peanut" | "sorghum" | "cowpea" | "millet"; // ✅ Valeurs UI
-  description?: string;
-  maturityDays: number;
-  yieldPotential?: number;
-  resistances: string[];
-  origin?: string;
-  releaseYear?: number;
+// ✅ CORRIGÉ: Interface avec types explicites
+interface CreateSeedLotForm {
+  varietyId: number;
+  level: "GO" | "G1" | "G2" | "G3" | "G4" | "R1" | "R2";
+  quantity: number;
+  productionDate: string;
+  expiryDate?: string;
+  notes?: string;
+  batchNumber?: string;
+  multiplierId?: number;
+  parentLotId?: string;
 }
 
-const CreateVariety: React.FC = () => {
+const CreateSeedLot: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newResistance, setNewResistance] = useState("");
 
+  // ✅ CORRIGÉ: Resolver typé correctement
   const {
     control,
     handleSubmit,
-    watch,
-    setValue,
     formState: { errors },
-  } = useForm<CreateVarietyForm>({
-    resolver: yupResolver(varietyValidationSchema),
+  } = useForm<CreateSeedLotForm>({
+    resolver: yupResolver(seedLotValidationSchema),
     defaultValues: {
-      maturityDays: 90,
-      resistances: [],
-      cropType: "rice", // ✅ CORRIGÉ: Valeur UI par défaut
+      quantity: 0,
+      level: "G1",
+      productionDate: new Date().toISOString().split("T")[0],
     },
   });
 
-  const resistances = watch("resistances") || [];
+  // Récupération des variétés
+  const { data: varieties } = useQuery<Variety[]>({
+    queryKey: ["varieties-for-seed-lot"],
+    queryFn: async () => {
+      const response = await seedLotService.getAll({ pageSize: 100 });
+      return response.data.data;
+    },
+  });
 
-  // ✅ CORRIGÉ: Mutation avec transformation automatique
   const createMutation = useMutation({
-    mutationFn: async (data: CreateVarietyForm) => {
-      // ✅ Transformer les données UI vers API
-      const transformedData = DataTransformer.transformVarietyForAPI(data);
-      const response = await api.post("/varieties", transformedData);
+    mutationFn: async (data: CreateSeedLotForm) => {
+      const response = await seedLotService.create(data);
       return response.data;
     },
     onSuccess: (data) => {
-      // ✅ Transformer les données API vers UI
-      const transformedData = DataTransformer.transformVarietyFromAPI(
-        data.data
-      );
-      toast.success("Variété créée avec succès !");
-      navigate(`/dashboard/varieties/${transformedData.code}`);
+      toast.success("Lot de semences créé avec succès !");
+      navigate(`/dashboard/seed-lots/${data.data.id}`);
     },
     onError: (error: any) => {
       const errorMessage =
-        error?.response?.data?.message ||
-        "Erreur lors de la création de la variété";
+        error?.response?.data?.message || "Erreur lors de la création du lot";
       toast.error(errorMessage);
     },
   });
 
-  const addResistance = () => {
-    if (newResistance.trim() && !resistances.includes(newResistance.trim())) {
-      setValue("resistances", [...resistances, newResistance.trim()]);
-      setNewResistance("");
-    }
-  };
-
-  const removeResistance = (index: number) => {
-    setValue(
-      "resistances",
-      resistances.filter((_, i) => i !== index)
-    );
-  };
-
-  const onSubmit = async (data: CreateVarietyForm) => {
+  // ✅ CORRIGÉ: SubmitHandler typé correctement
+  const onSubmit: SubmitHandler<CreateSeedLotForm> = async (data) => {
     setIsSubmitting(true);
     try {
       await createMutation.mutateAsync(data);
@@ -118,270 +101,213 @@ const CreateVariety: React.FC = () => {
       <div className="flex items-center space-x-4">
         <Button
           variant="ghost"
-          onClick={() => navigate("/dashboard/varieties")}
+          onClick={() => navigate("/dashboard/seed-lots")}
           className="flex items-center"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Retour
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Créer une variété</h1>
+          <h1 className="text-3xl font-bold flex items-center">
+            <Sprout className="h-8 w-8 mr-3 text-green-600" />
+            Nouveau lot de semences
+          </h1>
           <p className="text-muted-foreground">
-            Ajouter une nouvelle variété au catalogue
+            Créer un nouveau lot pour le suivi et la traçabilité
           </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Informations principales */}
+          {/* Informations de base */}
           <Card>
             <CardHeader>
-              <CardTitle>Informations principales</CardTitle>
+              <CardTitle>Informations de base</CardTitle>
               <CardDescription>
-                Détails essentiels de la variété
+                Détails essentiels du lot de semences
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="code">Code variété *</Label>
+                <Label htmlFor="varietyId">Variété *</Label>
                 <Controller
-                  name="code"
+                  name="varietyId"
                   control={control}
                   render={({ field }) => (
-                    <Input
-                      placeholder="ex: SAHEL108"
-                      className="uppercase"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(e.target.value.toUpperCase())
-                      }
-                    />
-                  )}
-                />
-                {errors.code && (
-                  <p className="text-sm text-red-500">{errors.code.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="name">Nom *</Label>
-                <Controller
-                  name="name"
-                  control={control}
-                  render={({ field }) => (
-                    <Input placeholder="ex: Sahel 108" {...field} />
-                  )}
-                />
-                {errors.name && (
-                  <p className="text-sm text-red-500">{errors.name.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cropType">Type de culture *</Label>
-                <Controller
-                  name="cropType"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value?.toString()}
+                      onValueChange={(value) => field.onChange(parseInt(value))}
+                    >
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un type" />
+                        <SelectValue placeholder="Sélectionner une variété" />
                       </SelectTrigger>
                       <SelectContent>
-                        {/* ✅ CORRIGÉ: Utilisation des constantes */}
-                        {CROP_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            <span className="flex items-center space-x-2">
-                              <span>{type.icon}</span>
-                              <span>{type.label}</span>
-                            </span>
+                        {varieties?.map((variety) => (
+                          <SelectItem
+                            key={variety.id}
+                            value={variety.id.toString()}
+                          >
+                            {variety.name} ({variety.code})
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   )}
                 />
-                {errors.cropType && (
+                {errors.varietyId && (
                   <p className="text-sm text-red-500">
-                    {errors.cropType.message}
+                    {errors.varietyId.message}
                   </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="level">Niveau *</Label>
                 <Controller
-                  name="description"
+                  name="level"
                   control={control}
                   render={({ field }) => (
-                    <Textarea
-                      placeholder="Description de la variété..."
-                      className="min-h-[80px]"
-                      {...field}
-                    />
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un niveau" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SEED_LEVELS.map((level) => (
+                          <SelectItem key={level.value} value={level.value}>
+                            {level.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
                 />
-                {errors.description && (
-                  <p className="text-sm text-red-500">
-                    {errors.description.message}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Caractéristiques agronomiques */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Caractéristiques agronomiques</CardTitle>
-              <CardDescription>
-                Propriétés techniques de la variété
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="maturityDays">
-                  Durée de maturité (jours) *
-                </Label>
-                <Controller
-                  name="maturityDays"
-                  control={control}
-                  render={({ field }) => (
-                    <Input
-                      type="number"
-                      placeholder="90"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(parseInt(e.target.value) || 0)
-                      }
-                    />
-                  )}
-                />
-                {errors.maturityDays && (
-                  <p className="text-sm text-red-500">
-                    {errors.maturityDays.message}
-                  </p>
+                {errors.level && (
+                  <p className="text-sm text-red-500">{errors.level.message}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="yieldPotential">
-                  Potentiel de rendement (t/ha)
-                </Label>
+                <Label htmlFor="quantity">Quantité (kg) *</Label>
                 <Controller
-                  name="yieldPotential"
+                  name="quantity"
                   control={control}
                   render={({ field }) => (
                     <Input
                       type="number"
                       step="0.1"
-                      placeholder="5.5"
+                      placeholder="100"
                       {...field}
                       onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value) || undefined)
+                        field.onChange(parseFloat(e.target.value) || 0)
                       }
                     />
                   )}
                 />
-                {errors.yieldPotential && (
+                {errors.quantity && (
                   <p className="text-sm text-red-500">
-                    {errors.yieldPotential.message}
+                    {errors.quantity.message}
                   </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="origin">Origine</Label>
+                <Label htmlFor="batchNumber">Numéro de lot</Label>
                 <Controller
-                  name="origin"
+                  name="batchNumber"
                   control={control}
                   render={({ field }) => (
-                    <Input placeholder="ex: ISRA, ICRISAT..." {...field} />
+                    <Input placeholder="ex: 2024-001" {...field} />
                   )}
                 />
-                {errors.origin && (
+                {errors.batchNumber && (
                   <p className="text-sm text-red-500">
-                    {errors.origin.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="releaseYear">Année de création</Label>
-                <Controller
-                  name="releaseYear"
-                  control={control}
-                  render={({ field }) => (
-                    <Input
-                      type="number"
-                      placeholder="2024"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(parseInt(e.target.value) || undefined)
-                      }
-                    />
-                  )}
-                />
-                {errors.releaseYear && (
-                  <p className="text-sm text-red-500">
-                    {errors.releaseYear.message}
+                    {errors.batchNumber.message}
                   </p>
                 )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Résistances */}
-          <Card className="lg:col-span-2">
+          {/* Informations de production */}
+          <Card>
             <CardHeader>
-              <CardTitle>Résistances</CardTitle>
-              <CardDescription>
-                Maladies et stress auxquels la variété résiste
-              </CardDescription>
+              <CardTitle>Informations de production</CardTitle>
+              <CardDescription>Dates et détails de production</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex space-x-2">
-                <Input
-                  placeholder="ex: Sécheresse, Pyriculariose..."
-                  value={newResistance}
-                  onChange={(e) => setNewResistance(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addResistance();
-                    }
-                  }}
+              <div className="space-y-2">
+                <Label htmlFor="productionDate">Date de production *</Label>
+                <Controller
+                  name="productionDate"
+                  control={control}
+                  render={({ field }) => <Input type="date" {...field} />}
                 />
-                <Button type="button" onClick={addResistance}>
-                  Ajouter
-                </Button>
+                {errors.productionDate && (
+                  <p className="text-sm text-red-500">
+                    {errors.productionDate.message}
+                  </p>
+                )}
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                {resistances.map((resistance, index) => (
-                  <Badge
-                    key={index}
-                    variant="outline"
-                    className="flex items-center gap-1"
-                  >
-                    {resistance}
-                    <button
-                      type="button"
-                      onClick={() => removeResistance(index)}
-                      className="ml-1 text-red-500 hover:text-red-700"
-                    >
-                      ×
-                    </button>
-                  </Badge>
-                ))}
+              <div className="space-y-2">
+                <Label htmlFor="expiryDate">Date d'expiration</Label>
+                <Controller
+                  name="expiryDate"
+                  control={control}
+                  render={({ field }) => <Input type="date" {...field} />}
+                />
+                {errors.expiryDate && (
+                  <p className="text-sm text-red-500">
+                    {errors.expiryDate.message}
+                  </p>
+                )}
               </div>
 
-              {resistances.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Aucune résistance ajoutée
-                </p>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="parentLotId">Lot parent (optionnel)</Label>
+                <Controller
+                  name="parentLotId"
+                  control={control}
+                  render={({ field }) => (
+                    <Input placeholder="ID du lot parent" {...field} />
+                  )}
+                />
+                {errors.parentLotId && (
+                  <p className="text-sm text-red-500">
+                    {errors.parentLotId.message}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Notes */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Notes et observations</CardTitle>
+              <CardDescription>
+                Informations complémentaires sur le lot
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Controller
+                  name="notes"
+                  control={control}
+                  render={({ field }) => (
+                    <Textarea
+                      placeholder="Notes sur le lot, conditions de stockage, observations..."
+                      className="min-h-[100px]"
+                      {...field}
+                    />
+                  )}
+                />
+                {errors.notes && (
+                  <p className="text-sm text-red-500">{errors.notes.message}</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -391,14 +317,14 @@ const CreateVariety: React.FC = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/dashboard/varieties")}
+            onClick={() => navigate("/dashboard/seed-lots")}
           >
             Annuler
           </Button>
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Save className="mr-2 h-4 w-4" />
-            Créer la variété
+            Créer le lot
           </Button>
         </div>
       </form>
@@ -406,4 +332,4 @@ const CreateVariety: React.FC = () => {
   );
 };
 
-export default CreateVariety;
+export default CreateSeedLot;

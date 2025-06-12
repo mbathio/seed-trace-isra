@@ -359,16 +359,20 @@ export const apiService = {
 
   // Export
   export: {
-    getFormats: () => apiService.get("/export/formats"),
-    seedLots: (params?: any) =>
-      apiService.downloadFile("/export/seed-lots", "lots_semences.csv"),
-    qualityReport: (params?: any) =>
-      apiService.downloadFile("/export/quality-report", "rapport_qualite.pdf"),
-    productionStats: (params?: any) =>
-      apiService.downloadFile(
-        "/export/production-stats",
-        "stats_production.xlsx"
-      ),
+    async getFormats() {
+      return apiService.get("/export/formats");
+    },
+
+    async seedLots() {
+      return apiService.downloadFile("/export/seed-lots", "lots_semences.csv");
+    },
+
+    async qualityReport() {
+      return apiService.downloadFile(
+        "/export/quality-report",
+        "rapport_qualite.pdf"
+      );
+    },
   },
 };
 
