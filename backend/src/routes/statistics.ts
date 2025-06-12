@@ -1,21 +1,23 @@
+// ===== 10. backend/src/routes/statistics.ts - AVEC TRANSFORMATION =====
 import { Router } from "express";
 import { StatisticsController } from "../controllers/StatisticsController";
-import { authMiddleware, requireRole } from "../middleware/auth"; // ✅ Import authMiddleware
+import { authMiddleware, requireRole } from "../middleware/auth";
+import { fullTransformation } from "../middleware/transformationMiddleware"; // ✅ AJOUTÉ
 
 const router = Router();
 
-// ✅ CORRECTION: Ajouter authMiddleware avant requireRole
+// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
+router.use(fullTransformation);
+
 router.get(
   "/dashboard",
-  authMiddleware, // ✅ AJOUTÉ: Middleware d'authentification
+  authMiddleware,
   requireRole("MANAGER", "ADMIN", "RESEARCHER"),
   StatisticsController.getDashboardStats
 );
-
-// ✅ CORRECTION: Ajouter authMiddleware avant requireRole
 router.get(
   "/trends",
-  authMiddleware, // ✅ AJOUTÉ: Middleware d'authentification
+  authMiddleware,
   requireRole("MANAGER", "ADMIN", "RESEARCHER"),
   StatisticsController.getMonthlyTrends
 );

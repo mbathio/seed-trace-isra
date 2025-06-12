@@ -1,12 +1,15 @@
-// backend/src/routes/productions.ts - Version corrigée
-
+// ===== 5. backend/src/routes/productions.ts - AVEC TRANSFORMATION =====
 import { Router } from "express";
 import { ProductionController } from "../controllers/ProductionController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole } from "../middleware/auth";
+import { productionTransformation } from "../middleware/transformationMiddleware"; // ✅ AJOUTÉ
 import { z } from "zod";
 
 const router = Router();
+
+// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
+router.use(productionTransformation);
 
 const createProductionSchema = z.object({
   lotId: z.string().min(1),
@@ -38,14 +41,14 @@ const updateProductionSchema = createProductionSchema.partial().omit({
 
 const activitySchema = z.object({
   type: z.enum([
-    "SOIL_PREPARATION", // ✅ Majuscules cohérentes
-    "SOWING",
-    "FERTILIZATION",
-    "IRRIGATION",
-    "WEEDING",
-    "PEST_CONTROL",
-    "HARVEST",
-    "OTHER",
+    "soil-preparation", // ✅ VALEURS UI (kebab-case)
+    "sowing",
+    "fertilization",
+    "irrigation",
+    "weeding",
+    "pest-control",
+    "harvest",
+    "other",
   ]),
   activityDate: z.string().refine((date) => !isNaN(Date.parse(date))),
   description: z.string().min(1),
@@ -65,9 +68,9 @@ const activitySchema = z.object({
 
 const issueSchema = z.object({
   issueDate: z.string().refine((date) => !isNaN(Date.parse(date))),
-  type: z.enum(["DISEASE", "PEST", "WEATHER", "MANAGEMENT", "OTHER"]), // ✅ Majuscules
+  type: z.enum(["disease", "pest", "weather", "management", "other"]), // ✅ VALEURS UI
   description: z.string().min(1),
-  severity: z.enum(["LOW", "MEDIUM", "HIGH"]), // ✅ Majuscules
+  severity: z.enum(["low", "medium", "high"]), // ✅ VALEURS UI
   actions: z.string().min(1),
   cost: z.number().optional(),
 });
@@ -82,52 +85,38 @@ const weatherDataSchema = z.object({
   source: z.string().optional(),
 });
 
-// GET /api/productions
+// Routes...
 router.get("/", ProductionController.getProductions);
-
-// GET /api/productions/:id
 router.get("/:id", ProductionController.getProductionById);
-
-// POST /api/productions
 router.post(
   "/",
-  requireRole("TECHNICIAN", "MANAGER", "ADMIN"), // ✅ Majuscules
+  requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: createProductionSchema }),
   ProductionController.createProduction
 );
-
-// PUT /api/productions/:id
 router.put(
   "/:id",
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: updateProductionSchema }),
   ProductionController.updateProduction
 );
-
-// DELETE /api/productions/:id
 router.delete(
   "/:id",
   requireRole("ADMIN"),
   ProductionController.deleteProduction
 );
-
-// POST /api/productions/:id/activities
 router.post(
   "/:id/activities",
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: activitySchema }),
   ProductionController.addActivity
 );
-
-// POST /api/productions/:id/issues
 router.post(
   "/:id/issues",
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: issueSchema }),
   ProductionController.addIssue
 );
-
-// POST /api/productions/:id/weather-data
 router.post(
   "/:id/weather-data",
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),

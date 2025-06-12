@@ -1,11 +1,15 @@
-// backend/src/routes/multipliers.ts
+// ===== 3. backend/src/routes/multipliers.ts - AVEC TRANSFORMATION =====
 import { Router } from "express";
 import { MultiplierController } from "../controllers/MultiplierController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole } from "../middleware/auth";
+import { multiplierTransformation } from "../middleware/transformationMiddleware"; // ✅ AJOUTÉ
 import { z } from "zod";
 
 const router = Router();
+
+// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
+router.use(multiplierTransformation);
 
 const createMultiplierSchema = z.object({
   name: z.string().min(1),
@@ -13,66 +17,53 @@ const createMultiplierSchema = z.object({
   latitude: z.number(),
   longitude: z.number(),
   yearsExperience: z.number().min(0),
-  certificationLevel: z.enum(["BEGINNER", "INTERMEDIATE", "EXPERT"]), // ✅ MAJUSCULES
-  specialization: z.array(z.string()),
+  certificationLevel: z.enum(["beginner", "intermediate", "expert"]), // ✅ VALEURS UI
+  specialization: z.array(
+    z.enum(["rice", "maize", "peanut", "sorghum", "cowpea", "millet"])
+  ), // ✅ VALEURS UI
   phone: z.string().optional(),
   email: z.string().email().optional(),
-  status: z.enum(["ACTIVE", "INACTIVE"]).optional(), // ✅ MAJUSCULES
+  status: z.enum(["active", "inactive"]).optional(), // ✅ VALEURS UI
 });
 
 const updateMultiplierSchema = createMultiplierSchema.partial();
 
 const contractSchema = z.object({
-  varietyId: z.union([
-    z.number().positive(),
-    z.string(), // ✅ Accepte number ou string (code)
-  ]),
+  varietyId: z.union([z.number().positive(), z.string()]),
   startDate: z.string().refine((date: string) => !isNaN(Date.parse(date))),
   endDate: z.string().refine((date: string) => !isNaN(Date.parse(date))),
-  seedLevel: z.enum(["GO", "G1", "G2", "G3", "G4", "R1", "R2"]), // ✅ MAJUSCULES
+  seedLevel: z.enum(["GO", "G1", "G2", "G3", "G4", "R1", "R2"]),
   expectedQuantity: z.number().positive(),
   parcelId: z.number().optional(),
   paymentTerms: z.string().optional(),
   notes: z.string().optional(),
-  status: z.enum(["DRAFT", "ACTIVE", "COMPLETED", "CANCELLED"]).optional(), // ✅ MAJUSCULES
+  status: z.enum(["draft", "active", "completed", "cancelled"]).optional(), // ✅ VALEURS UI
 });
 
-// GET /api/multipliers
+// Routes...
 router.get("/", MultiplierController.getMultipliers);
-
-// GET /api/multipliers/:id
 router.get("/:id", MultiplierController.getMultiplierById);
-
-// POST /api/multipliers
 router.post(
   "/",
-  requireRole("MANAGER", "ADMIN"), // ✅ MAJUSCULES
+  requireRole("MANAGER", "ADMIN"),
   validateRequest({ body: createMultiplierSchema }),
   MultiplierController.createMultiplier
 );
-
-// PUT /api/multipliers/:id
 router.put(
   "/:id",
-  requireRole("MANAGER", "ADMIN"), // ✅ MAJUSCULES
+  requireRole("MANAGER", "ADMIN"),
   validateRequest({ body: updateMultiplierSchema }),
   MultiplierController.updateMultiplier
 );
-
-// DELETE /api/multipliers/:id
 router.delete(
   "/:id",
-  requireRole("ADMIN"), // ✅ MAJUSCULES
+  requireRole("ADMIN"),
   MultiplierController.deleteMultiplier
 );
-
-// GET /api/multipliers/:id/contracts
 router.get("/:id/contracts", MultiplierController.getContracts);
-
-// POST /api/multipliers/:id/contracts
 router.post(
   "/:id/contracts",
-  requireRole("MANAGER", "ADMIN"), // ✅ MAJUSCULES
+  requireRole("MANAGER", "ADMIN"),
   validateRequest({ body: contractSchema }),
   MultiplierController.createContract
 );

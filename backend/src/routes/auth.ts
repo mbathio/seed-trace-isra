@@ -1,8 +1,9 @@
-// backend/src/routes/auth.ts
+// ===== 9. backend/src/routes/auth.ts - AVEC TRANSFORMATION =====
 import { Router } from "express";
 import { AuthController } from "../controllers/AuthController";
 import { validateRequest } from "../middleware/validation";
 import { authMiddleware } from "../middleware/auth";
+import { userTransformation } from "../middleware/transformationMiddleware"; // ✅ AJOUTÉ
 import {
   loginSchema,
   registerSchema,
@@ -11,31 +12,24 @@ import {
 
 const router = Router();
 
-// POST /api/auth/login
+// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION pour transformer les rôles
+router.use(userTransformation);
+
+// Routes...
 router.post(
   "/login",
   validateRequest({ body: loginSchema }),
   AuthController.login
 );
-
-// POST /api/auth/register
 router.post(
   "/register",
   validateRequest({ body: registerSchema }),
   AuthController.register
 );
-
-// POST /api/auth/refresh
 router.post(
   "/refresh",
   validateRequest({ body: refreshTokenSchema }),
   AuthController.refreshToken
 );
-
-// POST /api/auth/logout
 router.post("/logout", AuthController.logout);
-
-// GET /api/auth/me
 router.get("/me", authMiddleware, AuthController.getCurrentUser);
-
-export default router;

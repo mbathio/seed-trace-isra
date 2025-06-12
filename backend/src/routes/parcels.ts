@@ -1,18 +1,22 @@
-// backend/src/routes/parcels.ts (corrigé)
+// ===== 6. backend/src/routes/parcels.ts - AVEC TRANSFORMATION =====
 import { Router } from "express";
 import { ParcelController } from "../controllers/ParcelController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole } from "../middleware/auth";
+import { parcelTransformation } from "../middleware/transformationMiddleware"; // ✅ AJOUTÉ
 import { z } from "zod";
 
 const router = Router();
+
+// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
+router.use(parcelTransformation);
 
 const createParcelSchema = z.object({
   name: z.string().optional(),
   area: z.number().positive(),
   latitude: z.number(),
   longitude: z.number(),
-  status: z.enum(["AVAILABLE", "IN_USE", "RESTING"]).optional(),
+  status: z.enum(["available", "in-use", "resting"]).optional(), // ✅ VALEURS UI
   soilType: z.string().optional(),
   irrigationSystem: z.string().optional(),
   address: z.string().optional(),
@@ -31,32 +35,22 @@ const soilAnalysisSchema = z.object({
   notes: z.string().optional(),
 });
 
-// GET /api/parcels
+// Routes...
 router.get("/", ParcelController.getParcels);
-
-// GET /api/parcels/:id
 router.get("/:id", ParcelController.getParcelById);
-
-// POST /api/parcels
 router.post(
   "/",
   requireRole("MANAGER", "ADMIN"),
   validateRequest({ body: createParcelSchema }),
   ParcelController.createParcel
 );
-
-// PUT /api/parcels/:id
 router.put(
   "/:id",
   requireRole("MANAGER", "ADMIN"),
   validateRequest({ body: updateParcelSchema }),
   ParcelController.updateParcel
 );
-
-// DELETE /api/parcels/:id
 router.delete("/:id", requireRole("ADMIN"), ParcelController.deleteParcel);
-
-// POST /api/parcels/:id/soil-analysis
 router.post(
   "/:id/soil-analysis",
   requireRole("TECHNICIAN", "INSPECTOR", "ADMIN"),
