@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/CreateSeedLot.tsx - CORRIGÉ
+// frontend/src/pages/seeds/CreateSeedLot.tsx - VERSION CORRIGÉE
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller, SubmitHandler } from "react-hook-form";
@@ -23,8 +23,9 @@ import {
 } from "../../components/ui/select";
 import { Label } from "../../components/ui/label";
 import { toast } from "react-toastify";
-import { seedLotService } from "../../services/seedLotService";
+import { api } from "../../services/api"; // ✅ CORRIGÉ: Utiliser l'API directement
 import { Variety } from "../../types/entities";
+import { ApiResponse } from "../../types/api";
 import { SEED_LEVELS } from "../../constants";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { seedLotValidationSchema } from "../../utils/validators";
@@ -60,18 +61,25 @@ const CreateSeedLot: React.FC = () => {
     },
   });
 
-  // Récupération des variétés
-  const { data: varieties } = useQuery<Variety[]>({
+  // ✅ CORRIGÉ: Récupération des variétés avec le bon type de retour
+  const { data: varietiesResponse, isLoading: varietiesLoading } = useQuery<
+    ApiResponse<Variety[]>
+  >({
     queryKey: ["varieties-for-seed-lot"],
     queryFn: async () => {
-      const response = await seedLotService.getAll({ pageSize: 100 });
-      return response.data.data;
+      const response = await api.get("/varieties", {
+        params: { pageSize: 100 },
+      });
+      return response.data;
     },
   });
 
+  // ✅ CORRIGÉ: Extraire les variétés de la réponse
+  const varieties = varietiesResponse?.data || [];
+
   const createMutation = useMutation({
     mutationFn: async (data: CreateSeedLotForm) => {
-      const response = await seedLotService.create(data);
+      const response = await api.post("/seed-lots", data);
       return response.data;
     },
     onSuccess: (data) => {
@@ -138,12 +146,19 @@ const CreateSeedLot: React.FC = () => {
                     <Select
                       value={field.value?.toString()}
                       onValueChange={(value) => field.onChange(parseInt(value))}
+                      disabled={varietiesLoading}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une variété" />
+                        <SelectValue
+                          placeholder={
+                            varietiesLoading
+                              ? "Chargement des variétés..."
+                              : "Sélectionner une variété"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        {varieties?.map((variety) => (
+                        {varieties.map((variety) => (
                           <SelectItem
                             key={variety.id}
                             value={variety.id.toString()}
@@ -321,7 +336,7 @@ const CreateSeedLot: React.FC = () => {
           >
             Annuler
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting || varietiesLoading}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Save className="mr-2 h-4 w-4" />
             Créer le lot

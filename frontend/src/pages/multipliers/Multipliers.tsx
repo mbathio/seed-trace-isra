@@ -1,4 +1,4 @@
-// frontend/src/pages/multipliers/Multipliers.tsx - VERSION CORRIGÉE AVEC CONSTANTES
+// frontend/src/pages/multipliers/Multipliers.tsx - VERSION CORRIGÉE
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -38,8 +38,8 @@ import {
   CERTIFICATION_LEVELS,
   CROP_TYPES,
   getStatusConfig,
-} from "../../constants"; // ✅ AJOUTÉ: Import des constantes
-import { DataTransformer } from "../../utils/transformers"; // ✅ AJOUTÉ: Import du transformateur
+} from "../../constants";
+import { DataTransformer } from "../../utils/transformers";
 import { useDebounce } from "../../hooks/useDebounce";
 
 const Multipliers: React.FC = () => {
@@ -48,7 +48,7 @@ const Multipliers: React.FC = () => {
   const [certificationFilter, setCertificationFilter] = useState("");
   const debouncedSearch = useDebounce(search, 300);
 
-  // ✅ CORRIGÉ: Query avec transformation automatique
+  // ✅ CORRIGÉ: Query avec gestion de la transformation
   const { data, isLoading, error } = useQuery<ApiResponse<Multiplier[]>>({
     queryKey: [
       "multipliers",
@@ -68,7 +68,7 @@ const Multipliers: React.FC = () => {
       // ✅ Transformer les données reçues de l'API
       const transformedData = {
         ...response.data,
-        data: response.data.data.map((multiplier) =>
+        data: response.data.data.map((multiplier: any) =>
           DataTransformer.transformMultiplierFromAPI(multiplier)
         ),
       };
@@ -142,26 +142,35 @@ const Multipliers: React.FC = () => {
     );
   };
 
-  // ✅ CORRECTION: Fonctions utilitaires pour les calculs sécurisés
+  // ✅ CORRECTION: Fonctions utilitaires pour les calculs sécurisés avec transformation
   const getActiveMultipliers = () => {
-    return data?.data?.filter((m) => m.status === "active").length || 0;
+    return (
+      data?.data?.filter((m: Multiplier) => m.status === "active").length || 0
+    );
   };
 
   const getExpertMultipliers = () => {
     return (
-      data?.data?.filter((m) => m.certificationLevel === "expert").length || 0
+      data?.data?.filter((m: Multiplier) => m.certificationLevel === "expert")
+        .length || 0
     );
   };
 
   const getAverageExperience = () => {
     if (!data?.data || data.data.length === 0) return 0;
-    const total = data.data.reduce((avg, m) => avg + m.yearsExperience, 0);
+    const total = data.data.reduce(
+      (avg: number, m: Multiplier) => avg + m.yearsExperience,
+      0
+    );
     return Math.round(total / data.data.length);
   };
 
   const getTotalParcels = () => {
     return (
-      data?.data?.reduce((sum, m) => sum + (m._count?.parcels || 0), 0) || 0
+      data?.data?.reduce(
+        (sum: number, m: Multiplier) => sum + (m._count?.parcels || 0),
+        0
+      ) || 0
     );
   };
 
@@ -219,7 +228,6 @@ const Multipliers: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Tous les statuts</SelectItem>
-                {/* ✅ CORRIGÉ: Utilisation des constantes */}
                 {MULTIPLIER_STATUSES.map((status) => (
                   <SelectItem key={status.value} value={status.value}>
                     {status.label}
@@ -237,7 +245,6 @@ const Multipliers: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Toutes les certifications</SelectItem>
-                {/* ✅ CORRIGÉ: Utilisation des constantes */}
                 {CERTIFICATION_LEVELS.map((cert) => (
                   <SelectItem key={cert.value} value={cert.value}>
                     {cert.label}
@@ -310,7 +317,7 @@ const Multipliers: React.FC = () => {
                 </CardContent>
               </Card>
             ))
-          : data?.data?.map((multiplier) => (
+          : data?.data?.map((multiplier: Multiplier) => (
               <Card
                 key={multiplier.id}
                 className="border-0 shadow-sm hover:shadow-md transition-shadow"
@@ -399,7 +406,7 @@ const Multipliers: React.FC = () => {
                         <div className="flex flex-wrap gap-1">
                           {multiplier.specialization
                             .slice(0, 2)
-                            .map((spec, index) => (
+                            .map((spec: string, index: number) => (
                               <span key={index}>
                                 {getSpecializationBadge(spec)}
                               </span>
