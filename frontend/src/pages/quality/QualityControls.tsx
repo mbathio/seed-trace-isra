@@ -1,4 +1,4 @@
-// frontend/src/pages/quality/QualityControls.tsx
+// frontend/src/pages/quality/QualityControls.tsx - VERSION CORRIGÉE AVEC CONSTANTES
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -31,7 +31,8 @@ import { api } from "../../services/api";
 import { QualityControl } from "../../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
 import { formatDate } from "../../utils/formatters";
-import { QUALITY_TEST_RESULTS } from "../../constants";
+import { QUALITY_TEST_RESULTS, getStatusConfig } from "../../constants"; // ✅ AJOUTÉ: Import des constantes
+import { DataTransformer } from "../../utils/transformers"; // ✅ AJOUTÉ: Import du transformateur
 import { useDebounce } from "../../hooks/useDebounce";
 import { usePagination } from "../../hooks/usePagination";
 
@@ -41,6 +42,7 @@ const QualityControls: React.FC = () => {
   const debouncedSearch = useDebounce(search, 300);
   const { pagination, actions } = usePagination({ initialPageSize: 10 });
 
+  // ✅ CORRIGÉ: Query avec gestion de la transformation
   const { data, isLoading, error } = useQuery<ApiResponse<QualityControl[]>>({
     queryKey: [
       "quality-controls",
@@ -58,20 +60,35 @@ const QualityControls: React.FC = () => {
       };
 
       const response = await api.get("/quality-controls", { params });
-      return response.data;
+
+      // ✅ Transformer les données reçues de l'API
+      const transformedData = {
+        ...response.data,
+        data: response.data.data.map((qc: any) =>
+          DataTransformer.transformQualityControlFromAPI(qc)
+        ),
+      };
+
+      return transformedData;
     },
   });
 
+  // ✅ CORRIGÉ: Utilisation des constantes pour les badges de résultat
   const getResultBadge = (result: string) => {
-    const badgeMap = {
-      PASS: { variant: "default" as const, label: "Réussi" },
-      FAIL: { variant: "destructive" as const, label: "Échec" },
+    const config = getStatusConfig(result, QUALITY_TEST_RESULTS);
+
+    const colorClasses = {
+      green: "bg-green-100 text-green-800 border-green-200",
+      red: "bg-red-100 text-red-800 border-red-200",
     };
-    const config = badgeMap[result as keyof typeof badgeMap] || {
-      variant: "secondary" as const,
-      label: result,
-    };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+
+    const colorClass =
+      colorClasses[config.color as keyof typeof colorClasses] ||
+      colorClasses.green;
+
+    return (
+      <Badge className={`${colorClass} font-medium`}>{config.label}</Badge>
+    );
   };
 
   if (error) {
@@ -98,7 +115,7 @@ const QualityControls: React.FC = () => {
             Exporter
           </Button>
           <Button asChild>
-            <Link to="/quality/create">
+            <Link to="/dashboard/quality-controls/create">
               <Plus className="h-4 w-4 mr-2" />
               Nouveau contrôle
             </Link>
@@ -129,6 +146,7 @@ const QualityControls: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Tous les résultats</SelectItem>
+                {/* ✅ CORRIGÉ: Utilisation des constantes */}
                 {QUALITY_TEST_RESULTS.map((result) => (
                   <SelectItem key={result.value} value={result.value}>
                     {result.label}
@@ -151,6 +169,7 @@ const QualityControls: React.FC = () => {
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
               <p>Chargement...</p>
             </div>
           ) : (
@@ -190,7 +209,9 @@ const QualityControls: React.FC = () => {
                           size="icon"
                           className="h-8 w-8"
                         >
-                          <Link to={`/quality/${control.id}`}>
+                          <Link
+                            to={`/dashboard/quality-controls/${control.id}`}
+                          >
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
@@ -205,8 +226,29 @@ const QualityControls: React.FC = () => {
             </Table>
           )}
 
+          {/* Empty state */}
+          {!isLoading && (!data?.data || data.data.length === 0) && (
+            <div className="text-center py-12">
+              <FlaskConical className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">
+                Aucun contrôle qualité trouvé
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {search || filters.result
+                  ? "Aucun contrôle ne correspond à vos critères de recherche."
+                  : "Commencez par effectuer votre premier contrôle qualité."}
+              </p>
+              <Button asChild>
+                <Link to="/dashboard/quality-controls/create">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouveau contrôle
+                </Link>
+              </Button>
+            </div>
+          )}
+
           {/* Pagination */}
-          {data?.meta && (
+          {data?.meta && data.meta.totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-muted-foreground">
                 Page {data.meta.page} sur {data.meta.totalPages}

@@ -1,7 +1,7 @@
 // frontend/src/pages/parcels/CreateParcel.tsx - PAGE DE CRÉATION PARCELLE
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm, Controller, SubmitHandler } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Save, Loader2, MapPin } from "lucide-react";
 import {
@@ -93,7 +93,7 @@ const CreateParcel: React.FC = () => {
     },
   });
 
-  const onSubmit: SubmitHandler<CreateParcelForm> = async (data) => {
+  const onSubmit = async (data: CreateParcelForm) => {
     setIsSubmitting(true);
     try {
       await createMutation.mutateAsync(data);
