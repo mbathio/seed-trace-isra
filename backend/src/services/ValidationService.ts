@@ -4,7 +4,7 @@ import {
   CreateQualityControlData,
   CreateMultiplierData,
 } from "../types/entities";
-import { ValidationUtils } from "../utils/validatiors";
+import { ValidationUtils } from "../utils/validators";
 
 export interface ValidationResult {
   isValid: boolean;

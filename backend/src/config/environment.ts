@@ -1,6 +1,6 @@
 // backend/src/config/environment.ts - Configuration d'environnement CORRIGÉE
 import dotenv from "dotenv";
-import { ValidationUtils } from "../utils/validatiors";
+import { ValidationUtils } from "../utils/validators";
 
 dotenv.config();
 

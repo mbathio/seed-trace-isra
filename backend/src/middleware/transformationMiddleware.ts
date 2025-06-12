@@ -1,164 +1,386 @@
-// backend/src/middleware/transformationMiddleware.ts - NOUVEAU SYSTÈME DE TRANSFORMATION
+// backend/src/middleware/transformationMiddleware.ts - ✅ SYSTÈME DE TRANSFORMATION STANDARDISÉ COMPLET
 import { Request, Response, NextFunction } from "express";
 import { DataTransformer } from "../utils/transformers";
 
+export interface TransformationMiddlewareOptions {
+  direction: "ui-to-db" | "db-to-ui" | "both";
+  entityType?:
+    | "user"
+    | "seedLot"
+    | "variety"
+    | "multiplier"
+    | "parcel"
+    | "qualityControl"
+    | "production";
+  strict?: boolean; // Si true, throw en cas d'erreur de transformation
+  logTransformations?: boolean; // Si true, log les transformations
+}
+
+// ===== FONCTIONS UTILITAIRES POUR LES TRANSFORMATIONS =====
+
+function getUIToDBTransformer(entityType: string) {
+  const transformers: Record<string, (data: any) => any> = {
+    user: (data: any) => {
+      if (data.role) {
+        data.role = DataTransformer.transformRoleUIToDB(data.role);
+      }
+      return data;
+    },
+    seedLot: (data: any) => {
+      if (data.status) {
+        data.status = DataTransformer.transformLotStatusUIToDB(data.status);
+      }
+      if (data.variety?.cropType) {
+        data.variety.cropType = DataTransformer.transformCropTypeUIToDB(
+          data.variety.cropType
+        );
+      }
+      return data;
+    },
+    variety: (data: any) => {
+      if (data.cropType) {
+        data.cropType = DataTransformer.transformCropTypeUIToDB(data.cropType);
+      }
+      return data;
+    },
+    multiplier: (data: any) => {
+      if (data.status) {
+        data.status = DataTransformer.transformMultiplierStatusUIToDB(
+          data.status
+        );
+      }
+      if (data.certificationLevel) {
+        data.certificationLevel =
+          DataTransformer.transformCertificationLevelUIToDB(
+            data.certificationLevel
+          );
+      }
+      if (data.specialization && Array.isArray(data.specialization)) {
+        data.specialization = data.specialization.map((spec: string) =>
+          DataTransformer.transformCropTypeUIToDB(spec)
+        );
+      }
+      return data;
+    },
+    parcel: (data: any) => {
+      if (data.status) {
+        data.status = DataTransformer.transformParcelStatusUIToDB(data.status);
+      }
+      return data;
+    },
+    qualityControl: (data: any) => {
+      if (data.result) {
+        data.result = DataTransformer.transformTestResultUIToDB(data.result);
+      }
+      return data;
+    },
+    production: (data: any) => {
+      if (data.status) {
+        data.status = DataTransformer.transformProductionStatusUIToDB(
+          data.status
+        );
+      }
+      if (data.activities && Array.isArray(data.activities)) {
+        data.activities = data.activities.map((activity: any) => ({
+          ...activity,
+          type: activity.type
+            ? activity.type.toUpperCase().replace(/-/g, "_")
+            : activity.type,
+        }));
+      }
+      return data;
+    },
+  };
+
+  return transformers[entityType] || ((data: any) => data);
+}
+
+function getDBToUITransformer(entityType: string) {
+  const transformers: Record<string, (data: any) => any> = {
+    user: (data: any) => DataTransformer.transformUser(data),
+    seedLot: (data: any) => DataTransformer.transformSeedLot(data),
+    variety: (data: any) => DataTransformer.transformVariety(data),
+    multiplier: (data: any) => DataTransformer.transformMultiplier(data),
+    parcel: (data: any) => DataTransformer.transformParcel(data),
+    qualityControl: (data: any) =>
+      DataTransformer.transformQualityControl(data),
+    production: (data: any) => DataTransformer.transformProduction(data),
+  };
+
+  return transformers[entityType] || ((data: any) => data);
+}
+
+function autoTransformUIToDB(data: any): any {
+  if (!data || typeof data !== "object") return data;
+
+  // Transformation automatique basée sur les noms de champs
+  const transformed = { ...data };
+
+  // Statuts courants
+  if (transformed.status && typeof transformed.status === "string") {
+    if (transformed.status.includes("-")) {
+      // Convertir kebab-case vers UPPER_CASE
+      transformed.status = transformed.status.toUpperCase().replace(/-/g, "_");
+    }
+  }
+
+  // Types de culture
+  if (transformed.cropType && typeof transformed.cropType === "string") {
+    transformed.cropType = transformed.cropType.toUpperCase();
+  }
+
+  // Rôles
+  if (transformed.role && typeof transformed.role === "string") {
+    transformed.role = transformed.role.toUpperCase();
+  }
+
+  return transformed;
+}
+
+function autoTransformDBToUI(data: any): any {
+  if (!data || typeof data !== "object") return data;
+
+  const transformed = { ...data };
+
+  // Transformation automatique des statuts
+  if (transformed.status && typeof transformed.status === "string") {
+    transformed.status = transformed.status.toLowerCase().replace(/_/g, "-");
+  }
+
+  // Types de culture
+  if (transformed.cropType && typeof transformed.cropType === "string") {
+    transformed.cropType = transformed.cropType.toLowerCase();
+  }
+
+  // Rôles
+  if (transformed.role && typeof transformed.role === "string") {
+    transformed.role = transformed.role.toLowerCase();
+  }
+
+  return transformed;
+}
+
+// ===== MIDDLEWARE PRINCIPAL =====
+
 export const transformMiddleware = {
-  // Transformation pour les lots de semences
+  // ===== MIDDLEWARE GÉNÉRIQUE =====
+
+  /**
+   * Middleware de transformation générique
+   */
+  generic: (options: TransformationMiddlewareOptions) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const {
+          direction,
+          entityType,
+          strict = false,
+          logTransformations = false,
+        } = options;
+
+        // Transformation des données entrantes (UI → DB)
+        if ((direction === "ui-to-db" || direction === "both") && req.body) {
+          if (logTransformations) {
+            console.log(
+              `🔄 Transforming ${entityType || "unknown"} UI→DB:`,
+              req.body
+            );
+          }
+
+          if (entityType) {
+            const transformer = getUIToDBTransformer(entityType);
+            req.body = transformer(req.body);
+          } else {
+            req.body = autoTransformUIToDB(req.body);
+          }
+
+          if (logTransformations) {
+            console.log(
+              `✅ Transformed ${entityType || "unknown"} UI→DB:`,
+              req.body
+            );
+          }
+        }
+
+        // Transformation des données sortantes (DB → UI) - intercepter res.json
+        if (direction === "db-to-ui" || direction === "both") {
+          const originalSend = res.json;
+
+          res.json = function (data: any) {
+            try {
+              if (data && typeof data === "object") {
+                if (logTransformations) {
+                  console.log(
+                    `🔄 Transforming ${entityType || "unknown"} DB→UI:`,
+                    data
+                  );
+                }
+
+                let transformedData = data;
+
+                if (data.success && data.data) {
+                  // Réponse API standard
+                  if (Array.isArray(data.data)) {
+                    transformedData = {
+                      ...data,
+                      data: entityType
+                        ? data.data.map((item: any) =>
+                            getDBToUITransformer(entityType)(item)
+                          )
+                        : data.data.map((item: any) =>
+                            autoTransformDBToUI(item)
+                          ),
+                    };
+                  } else {
+                    const transformer = entityType
+                      ? getDBToUITransformer(entityType)
+                      : autoTransformDBToUI;
+                    transformedData = {
+                      ...data,
+                      data: transformer(data.data),
+                    };
+                  }
+                } else {
+                  // Transformation directe
+                  if (Array.isArray(data)) {
+                    transformedData = entityType
+                      ? data.map((item: any) =>
+                          getDBToUITransformer(entityType)(item)
+                        )
+                      : data.map((item: any) => autoTransformDBToUI(item));
+                  } else {
+                    const transformer = entityType
+                      ? getDBToUITransformer(entityType)
+                      : autoTransformDBToUI;
+                    transformedData = transformer(data);
+                  }
+                }
+
+                if (logTransformations) {
+                  console.log(
+                    `✅ Transformed ${entityType || "unknown"} DB→UI:`,
+                    transformedData
+                  );
+                }
+
+                data = transformedData;
+              }
+            } catch (error) {
+              console.error(
+                `❌ Transformation error for ${entityType}:`,
+                error
+              );
+              if (strict) {
+                return originalSend.call(this, {
+                  success: false,
+                  message: "Transformation error",
+                  data: null,
+                  errors: [(error as Error).message],
+                });
+              }
+              // En mode non-strict, continuer avec les données originales
+            }
+
+            return originalSend.call(this, data);
+          };
+        }
+
+        next();
+      } catch (error) {
+        console.error("Transformation middleware error:", error);
+        if (strict) {
+          return next(error);
+        }
+        // En mode non-strict, continuer sans transformation
+        next();
+      }
+    };
+  },
+
+  // ===== MIDDLEWARES SPÉCIALISÉS =====
+
   seedLots: (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (req.body) {
-        // Transformation des données entrantes (UI vers DB)
-        if (req.body.status) {
-          req.body.status = DataTransformer.transformLotStatusUIToDB(
-            req.body.status
-          );
-        }
-        if (req.body.variety && req.body.variety.cropType) {
-          req.body.variety.cropType = DataTransformer.transformCropTypeUIToDB(
-            req.body.variety.cropType
-          );
-        }
-      }
-      next();
-    } catch (error) {
-      next(error);
-    }
+    return transformMiddleware.generic({
+      direction: "both",
+      entityType: "seedLot",
+      logTransformations: process.env.NODE_ENV === "development",
+    })(req, res, next);
   },
 
-  // Transformation pour les variétés
   varieties: (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (req.body && req.body.cropType) {
-        req.body.cropType = DataTransformer.transformCropTypeUIToDB(
-          req.body.cropType
-        );
-      }
-      next();
-    } catch (error) {
-      next(error);
-    }
+    return transformMiddleware.generic({
+      direction: "both",
+      entityType: "variety",
+      logTransformations: process.env.NODE_ENV === "development",
+    })(req, res, next);
   },
 
-  // Transformation pour les multiplicateurs
   multipliers: (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (req.body) {
-        if (req.body.status) {
-          req.body.status = DataTransformer.transformEnumUIToDB(
-            req.body.status,
-            DataTransformer["MULTIPLIER_STATUS_UI_TO_DB"]
-          );
-        }
-        if (req.body.certificationLevel) {
-          req.body.certificationLevel = DataTransformer.transformEnumUIToDB(
-            req.body.certificationLevel,
-            DataTransformer["CERTIFICATION_LEVEL_UI_TO_DB"]
-          );
-        }
-        if (req.body.specialization && Array.isArray(req.body.specialization)) {
-          req.body.specialization = req.body.specialization.map(
-            (spec: string) => DataTransformer.transformCropTypeUIToDB(spec)
-          );
-        }
-      }
-      next();
-    } catch (error) {
-      next(error);
-    }
+    return transformMiddleware.generic({
+      direction: "both",
+      entityType: "multiplier",
+      logTransformations: process.env.NODE_ENV === "development",
+    })(req, res, next);
   },
 
-  // Transformation pour les utilisateurs
   users: (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (req.body && req.body.role) {
-        req.body.role = DataTransformer.transformRoleUIToDB(req.body.role);
-      }
-      next();
-    } catch (error) {
-      next(error);
-    }
+    return transformMiddleware.generic({
+      direction: "both",
+      entityType: "user",
+      logTransformations: process.env.NODE_ENV === "development",
+    })(req, res, next);
   },
 
-  // Transformation pour les contrôles qualité
   qualityControls: (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (req.body && req.body.result) {
-        req.body.result = DataTransformer.transformEnumUIToDB(
-          req.body.result,
-          DataTransformer["TEST_RESULT_UI_TO_DB"]
-        );
-      }
-      next();
-    } catch (error) {
-      next(error);
-    }
+    return transformMiddleware.generic({
+      direction: "both",
+      entityType: "qualityControl",
+      logTransformations: process.env.NODE_ENV === "development",
+    })(req, res, next);
   },
 
-  // Transformation pour les productions
   productions: (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (req.body) {
-        if (req.body.status) {
-          req.body.status = DataTransformer.transformEnumUIToDB(
-            req.body.status,
-            DataTransformer["PRODUCTION_STATUS_UI_TO_DB"]
-          );
-        }
-
-        // Transformation des activités
-        if (req.body.activities && Array.isArray(req.body.activities)) {
-          req.body.activities = req.body.activities.map((activity: any) => ({
-            ...activity,
-            type: activity.type
-              ? DataTransformer.transformEnumUIToDB(
-                  activity.type,
-                  DataTransformer["ACTIVITY_TYPE_UI_TO_DB"]
-                )
-              : activity.type,
-          }));
-        }
-      }
-      next();
-    } catch (error) {
-      next(error);
-    }
+    return transformMiddleware.generic({
+      direction: "both",
+      entityType: "production",
+      logTransformations: process.env.NODE_ENV === "development",
+    })(req, res, next);
   },
 
-  // Transformation pour les parcelles
   parcels: (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (req.body && req.body.status) {
-        req.body.status = DataTransformer.transformEnumUIToDB(
-          req.body.status,
-          DataTransformer["PARCEL_STATUS_UI_TO_DB"]
-        );
-      }
-      next();
-    } catch (error) {
-      next(error);
-    }
+    return transformMiddleware.generic({
+      direction: "both",
+      entityType: "parcel",
+      logTransformations: process.env.NODE_ENV === "development",
+    })(req, res, next);
   },
 
-  // Transformation générale pour les filtres de recherche
+  // ===== MIDDLEWARE POUR FILTRES DE RECHERCHE =====
+
   searchFilters: (req: Request, res: Response, next: NextFunction) => {
     try {
       if (req.query) {
         const query = req.query as any;
 
-        // Transformation des filtres de statut
+        // Transformation des filtres de statut selon l'URL
         if (query.status && typeof query.status === "string") {
-          // Déterminer le type d'entité en fonction de l'URL
           if (req.path.includes("seed-lots")) {
             query.status = DataTransformer.transformLotStatusUIToDB(
               query.status
             );
           } else if (req.path.includes("multipliers")) {
-            query.status = DataTransformer.transformEnumUIToDB(
-              query.status,
-              DataTransformer["MULTIPLIER_STATUS_UI_TO_DB"]
+            query.status = DataTransformer.transformMultiplierStatusUIToDB(
+              query.status
+            );
+          } else if (req.path.includes("parcels")) {
+            query.status = DataTransformer.transformParcelStatusUIToDB(
+              query.status
+            );
+          } else if (req.path.includes("productions")) {
+            query.status = DataTransformer.transformProductionStatusUIToDB(
+              query.status
             );
           }
-          // Ajouter d'autres types selon nécessaire
         }
 
         // Transformation des types de culture
@@ -168,77 +390,84 @@ export const transformMiddleware = {
           );
         }
 
-        // Transformation des niveaux de semence (généralement déjà en bon format)
-        // Les niveaux GO, G1, etc. sont identiques entre UI et DB
-
         // Transformation des résultats de test
         if (query.result && typeof query.result === "string") {
-          query.result = DataTransformer.transformEnumUIToDB(
-            query.result,
-            DataTransformer["TEST_RESULT_UI_TO_DB"]
+          query.result = DataTransformer.transformTestResultUIToDB(
+            query.result
           );
+        }
+
+        // Transformation des niveaux de certification
+        if (
+          query.certificationLevel &&
+          typeof query.certificationLevel === "string"
+        ) {
+          query.certificationLevel =
+            DataTransformer.transformCertificationLevelUIToDB(
+              query.certificationLevel
+            );
+        }
+
+        // Transformation des rôles
+        if (query.role && typeof query.role === "string") {
+          query.role = DataTransformer.transformRoleUIToDB(query.role);
         }
       }
       next();
     } catch (error) {
-      next(error);
+      console.error("Search filters transformation error:", error);
+      next(); // Continue même en cas d'erreur
     }
   },
 
-  // Transformation des réponses sortantes (DB vers UI)
-  transformResponse: (entityType: string) => {
+  // ===== MIDDLEWARE POUR RÉPONSES SEULEMENT =====
+
+  responseOnly: (entityType: string) => {
     return (req: Request, res: Response, next: NextFunction) => {
-      const originalSend = res.send;
+      return transformMiddleware.generic({
+        direction: "db-to-ui",
+        entityType: entityType as any,
+        logTransformations: process.env.NODE_ENV === "development",
+      })(req, res, next);
+    };
+  },
 
-      res.send = function (data: any) {
-        try {
-          if (data && typeof data === "object") {
-            const parsedData =
-              typeof data === "string" ? JSON.parse(data) : data;
+  // ===== MIDDLEWARE POUR REQUÊTES SEULEMENT =====
 
-            if (parsedData.success && parsedData.data) {
-              // Transformer les données selon le type d'entité
-              if (Array.isArray(parsedData.data)) {
-                parsedData.data = parsedData.data.map(
-                  (item: any) =>
-                    DataTransformer.transformApiResponse(
-                      { data: item },
-                      entityType
-                    ).data
-                );
-              } else {
-                parsedData.data = DataTransformer.transformApiResponse(
-                  { data: parsedData.data },
-                  entityType
-                ).data;
-              }
+  requestOnly: (entityType: string) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      return transformMiddleware.generic({
+        direction: "ui-to-db",
+        entityType: entityType as any,
+        logTransformations: process.env.NODE_ENV === "development",
+      })(req, res, next);
+    };
+  },
 
-              // Si c'est une réponse paginée
-              if (
-                parsedData.data &&
-                parsedData.data.data &&
-                Array.isArray(parsedData.data.data)
-              ) {
-                parsedData.data.data = parsedData.data.data.map(
-                  (item: any) =>
-                    DataTransformer.transformApiResponse(
-                      { data: item },
-                      entityType
-                    ).data
-                );
-              }
-            }
+  // ===== MIDDLEWARE POUR TRANSFORMATION PERSONNALISÉE =====
 
-            data = JSON.stringify(parsedData);
-          }
-        } catch (error) {
-          console.error("Erreur lors de la transformation de réponse:", error);
+  custom: (transformFunction: (data: any) => any) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (req.body) {
+          req.body = transformFunction(req.body);
         }
-
-        return originalSend.call(this, data);
-      };
-
-      next();
+        next();
+      } catch (error) {
+        console.error("Custom transformation error:", error);
+        next(error);
+      }
     };
   },
 };
+
+// Export des types pour réutilisation
+export type TransformationDirection = "ui-to-db" | "db-to-ui" | "both";
+export type EntityType =
+  | "user"
+  | "seedLot"
+  | "variety"
+  | "multiplier"
+  | "parcel"
+  | "qualityControl"
+  | "production";
