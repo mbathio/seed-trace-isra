@@ -15,21 +15,17 @@ export class MultiplierService {
   static async createMultiplier(data: any): Promise<any> {
     try {
       // ✅ TRANSFORMATION : Transformer les données UI vers DB
-      const transformedStatus = data.status
-        ? (DataTransformer.transformMultiplierStatusUIToDB(
-            data.status
-          ) as MultiplierStatus)
+      const transformedStatus = data.status 
+        ? DataTransformer.transformMultiplierStatusUIToDB(data.status) as MultiplierStatus
         : MultiplierStatus.ACTIVE;
 
-      const transformedCertificationLevel =
-        DataTransformer.transformCertificationLevelUIToDB(
-          data.certificationLevel
-        ) as CertificationLevel;
+      const transformedCertificationLevel = DataTransformer.transformCertificationLevelUIToDB(
+        data.certificationLevel
+      ) as CertificationLevel;
 
-      const transformedSpecialization =
-        data.specialization?.map((spec: string) =>
-          DataTransformer.transformCropTypeUIToDB(spec)
-        ) || [];
+      const transformedSpecialization = data.specialization?.map((spec: string) =>
+        DataTransformer.transformCropTypeUIToDB(spec)
+      ) || [];
 
       const multiplier = await prisma.multiplier.create({
         data: {
@@ -84,17 +80,14 @@ export class MultiplierService {
 
       if (status) {
         // ✅ TRANSFORMATION : Transformer le statut UI vers DB
-        where.status = DataTransformer.transformMultiplierStatusUIToDB(
-          status
-        ) as MultiplierStatus;
+        where.status = DataTransformer.transformMultiplierStatusUIToDB(status) as MultiplierStatus;
       }
 
       if (certificationLevel) {
         // ✅ TRANSFORMATION : Transformer le niveau de certification UI vers DB
-        where.certificationLevel =
-          DataTransformer.transformCertificationLevelUIToDB(
-            certificationLevel
-          ) as CertificationLevel;
+        where.certificationLevel = DataTransformer.transformCertificationLevelUIToDB(
+          certificationLevel
+        ) as CertificationLevel;
       }
 
       const [multipliers, total] = await Promise.all([
@@ -135,10 +128,7 @@ export class MultiplierService {
         },
       };
     } catch (error) {
-      logger.error(
-        "Erreur lors de la récupération des multiplicateurs:",
-        error
-      );
+      logger.error("Erreur lors de la récupération des multiplicateurs:", error);
       throw error;
     }
   }
@@ -193,33 +183,27 @@ export class MultiplierService {
       }
 
       // ✅ TRANSFORMATION : Transformer le multiplicateur et ses relations
-      const transformedMultiplier =
-        DataTransformer.transformMultiplier(multiplier);
-
+      const transformedMultiplier = DataTransformer.transformMultiplier(multiplier);
+      
       // Transformer les relations
       if (transformedMultiplier.contracts) {
-        transformedMultiplier.contracts = transformedMultiplier.contracts.map(
-          (contract: any) => ({
-            ...contract,
-            variety: DataTransformer.transformVariety(contract.variety),
-            status:
-              contract.status?.toLowerCase().replace(/_/g, "-") ||
-              contract.status,
-          })
-        );
+        transformedMultiplier.contracts = transformedMultiplier.contracts.map((contract: any) => ({
+          ...contract,
+          variety: DataTransformer.transformVariety(contract.variety),
+          status: contract.status?.toLowerCase().replace(/_/g, "-") || contract.status,
+        }));
       }
 
       if (transformedMultiplier.seedLots) {
-        transformedMultiplier.seedLots = transformedMultiplier.seedLots.map(
-          (lot: any) => DataTransformer.transformSeedLot(lot)
+        transformedMultiplier.seedLots = transformedMultiplier.seedLots.map((lot: any) =>
+          DataTransformer.transformSeedLot(lot)
         );
       }
 
       if (transformedMultiplier.productions) {
-        transformedMultiplier.productions =
-          transformedMultiplier.productions.map((production: any) =>
-            DataTransformer.transformProduction(production)
-          );
+        transformedMultiplier.productions = transformedMultiplier.productions.map((production: any) =>
+          DataTransformer.transformProduction(production)
+        );
       }
 
       return transformedMultiplier;
@@ -237,23 +221,19 @@ export class MultiplierService {
       if (data.address !== undefined) updateData.address = data.address;
       if (data.latitude !== undefined) updateData.latitude = data.latitude;
       if (data.longitude !== undefined) updateData.longitude = data.longitude;
-      if (data.yearsExperience !== undefined)
-        updateData.yearsExperience = data.yearsExperience;
+      if (data.yearsExperience !== undefined) updateData.yearsExperience = data.yearsExperience;
       if (data.phone !== undefined) updateData.phone = data.phone;
       if (data.email !== undefined) updateData.email = data.email;
 
       // ✅ TRANSFORMATION : Transformer les enums si fournis
       if (data.status !== undefined) {
-        updateData.status = DataTransformer.transformMultiplierStatusUIToDB(
-          data.status
-        );
+        updateData.status = DataTransformer.transformMultiplierStatusUIToDB(data.status);
       }
 
       if (data.certificationLevel !== undefined) {
-        updateData.certificationLevel =
-          DataTransformer.transformCertificationLevelUIToDB(
-            data.certificationLevel
-          );
+        updateData.certificationLevel = DataTransformer.transformCertificationLevelUIToDB(
+          data.certificationLevel
+        );
       }
 
       if (data.specialization !== undefined) {
@@ -302,8 +282,7 @@ export class MultiplierService {
       // ✅ TRANSFORMATION : Transformer les contrats pour le frontend
       return contracts.map((contract) => ({
         ...contract,
-        status:
-          contract.status?.toLowerCase().replace(/_/g, "-") || contract.status,
+        status: contract.status?.toLowerCase().replace(/_/g, "-") || contract.status,
         variety: DataTransformer.transformVariety(contract.variety),
         startDate: contract.startDate?.toISOString().split("T")[0],
         endDate: contract.endDate?.toISOString().split("T")[0],
@@ -328,9 +307,7 @@ export class MultiplierService {
             where: { code: data.varietyId },
           });
           if (!variety) {
-            throw new Error(
-              `Variété non trouvée avec le code: ${data.varietyId}`
-            );
+            throw new Error(`Variété non trouvée avec le code: ${data.varietyId}`);
           }
           varietyId = variety.id;
         }
@@ -339,13 +316,13 @@ export class MultiplierService {
       }
 
       // ✅ TRANSFORMATION : Transformer le statut du contrat UI vers DB
-      const transformedStatus = data.status
-        ? (DataTransformer.transformEnumUIToDB(data.status, {
+      const transformedStatus = data.status 
+        ? DataTransformer.transformEnumUIToDB(data.status, {
             draft: "DRAFT",
-            active: "ACTIVE",
+            active: "ACTIVE", 
             completed: "COMPLETED",
-            cancelled: "CANCELLED",
-          }) as ContractStatus)
+            cancelled: "CANCELLED"
+          }) as ContractStatus
         : ContractStatus.DRAFT;
 
       const contract = await prisma.contract.create({
