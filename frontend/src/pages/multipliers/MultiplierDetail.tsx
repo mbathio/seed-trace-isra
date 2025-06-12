@@ -9,7 +9,6 @@ import {
   Phone,
   Mail,
   Star,
-  Calendar,
   Package,
   Tractor,
   FileText,

@@ -1,4 +1,4 @@
-// frontend/src/pages/parcels/CreateParcel.tsx - PAGE DE CRÉATION PARCELLE
+// frontend/src/pages/parcels/CreateParcel.tsx - CORRIGÉ
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";

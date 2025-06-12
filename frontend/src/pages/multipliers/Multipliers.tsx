@@ -30,7 +30,6 @@ import { SearchInput } from "../../components/forms/SearchInput";
 import { api } from "../../services/api";
 import { Multiplier } from "../../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
-import { formatNumber } from "../../utils/formatters";
 import {
   MULTIPLIER_STATUSES,
   CERTIFICATION_LEVELS,
