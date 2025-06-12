@@ -1,6 +1,17 @@
-// backend/src/validators/auth.ts - Validateurs d'authentification CORRIGÉS
+// backend/src/validators/auth.ts - Validateurs d'authentification CORRIGÉS AVEC VALEURS UI
 import { z } from "zod";
-import { RoleEnum, emailSchema } from "./common";
+import { emailSchema } from "./common";
+
+// ✅ CORRECTION: RoleEnum avec valeurs UI (minuscules)
+const RoleEnum = z.enum([
+  "admin",
+  "manager",
+  "inspector",
+  "multiplier",
+  "guest",
+  "technician",
+  "researcher",
+]);
 
 // ✅ CORRECTION: Schéma de connexion sécurisé
 export const loginSchema = z.object({
@@ -11,7 +22,7 @@ export const loginSchema = z.object({
     .max(128, "Mot de passe trop long"),
 });
 
-// ✅ CORRECTION: Schéma d'inscription avec validation renforcée
+// ✅ CORRECTION: Schéma d'inscription avec validation renforcée et rôle UI
 export const registerSchema = z.object({
   name: z
     .string()
@@ -29,7 +40,7 @@ export const registerSchema = z.object({
       "Le mot de passe doit contenir au moins une minuscule, une majuscule et un chiffre"
     )
     .refine((password) => {
-      // ✅ CORRECTION: Vérification de mots de passe faibles
+      // Vérification de mots de passe faibles
       const weakPasswords = [
         "password",
         "123456",
@@ -42,7 +53,7 @@ export const registerSchema = z.object({
       ];
       return !weakPasswords.includes(password.toLowerCase());
     }, "Mot de passe trop faible - évitez les mots de passe communs"),
-  role: RoleEnum,
+  role: RoleEnum, // ✅ CORRECTION: Accepte valeurs UI minuscules
   avatar: z
     .string()
     .url("URL d'avatar invalide")
@@ -50,7 +61,7 @@ export const registerSchema = z.object({
     .transform((val) => val || undefined),
 });
 
-// ✅ CORRECTION: Schéma de refresh token sécurisé
+// Schéma de refresh token sécurisé
 export const refreshTokenSchema = z.object({
   refreshToken: z
     .string()
@@ -59,7 +70,7 @@ export const refreshTokenSchema = z.object({
     .regex(/^[A-Za-z0-9_-]+$/, "Format de refresh token invalide"),
 });
 
-// ✅ CORRECTION: Schéma de changement de mot de passe
+// Schéma de changement de mot de passe
 export const changePasswordSchema = z
   .object({
     currentPassword: z
@@ -85,12 +96,12 @@ export const changePasswordSchema = z
     path: ["newPassword"],
   });
 
-// ✅ CORRECTION: Schéma de mot de passe oublié
+// Schéma de mot de passe oublié
 export const forgotPasswordSchema = z.object({
   email: emailSchema,
 });
 
-// ✅ CORRECTION: Schéma de réinitialisation de mot de passe
+// Schéma de réinitialisation de mot de passe
 export const resetPasswordSchema = z
   .object({
     token: z
@@ -113,17 +124,17 @@ export const resetPasswordSchema = z
     path: ["confirmPassword"],
   });
 
-// ✅ CORRECTION: Schéma de validation de token
+// Schéma de validation de token
 export const validateTokenSchema = z.object({
   token: z.string().min(1, "Token requis").max(1000, "Token trop long"),
 });
 
-// ✅ CORRECTION: Schéma de déconnexion
+// Schéma de déconnexion
 export const logoutSchema = z.object({
   refreshToken: z.string().optional(), // Optionnel car peut être fourni via cookie
 });
 
-// ✅ CORRECTION: Schéma de mise à jour de profil
+// ✅ CORRECTION: Schéma de mise à jour de profil avec rôle UI
 export const updateProfileSchema = z.object({
   name: z
     .string()
@@ -137,9 +148,10 @@ export const updateProfileSchema = z.object({
     .string()
     .regex(/^(\+221)?[0-9]{8,9}$/, "Numéro de téléphone sénégalais invalide")
     .optional(),
+  role: RoleEnum.optional(), // ✅ CORRECTION: Accepte valeurs UI minuscules
 });
 
-// ✅ CORRECTION: Schéma de vérification d'email
+// Schéma de vérification d'email
 export const verifyEmailSchema = z.object({
   token: z
     .string()
@@ -148,12 +160,12 @@ export const verifyEmailSchema = z.object({
   email: emailSchema,
 });
 
-// ✅ CORRECTION: Schéma de renvoi de vérification d'email
+// Schéma de renvoi de vérification d'email
 export const resendVerificationSchema = z.object({
   email: emailSchema,
 });
 
-// ✅ CORRECTION: Schéma d'activation de compte
+// Schéma d'activation de compte
 export const activateAccountSchema = z.object({
   token: z
     .string()
@@ -162,7 +174,7 @@ export const activateAccountSchema = z.object({
   userId: z.number().positive("ID utilisateur invalide"),
 });
 
-// ✅ CORRECTION: Schéma de désactivation de compte
+// Schéma de désactivation de compte
 export const deactivateAccountSchema = z.object({
   reason: z
     .string()
@@ -174,7 +186,7 @@ export const deactivateAccountSchema = z.object({
     .min(1, "Mot de passe actuel requis pour confirmation"),
 });
 
-// ✅ CORRECTION: Schéma de double authentification
+// Schéma de double authentification
 export const twoFactorAuthSchema = z.object({
   enable: z.boolean(),
   code: z
@@ -184,7 +196,7 @@ export const twoFactorAuthSchema = z.object({
   backupCodes: z.array(z.string()).optional(),
 });
 
-// ✅ CORRECTION: Schéma de connexion avec 2FA
+// Schéma de connexion avec 2FA
 export const loginWith2FASchema = loginSchema.extend({
   twoFactorCode: z
     .string()
@@ -194,7 +206,7 @@ export const loginWith2FASchema = loginSchema.extend({
   backupCode: z.string().min(8, "Code de sauvegarde invalide").optional(),
 });
 
-// ✅ CORRECTION: Schéma de session
+// Schéma de session
 export const sessionSchema = z.object({
   deviceInfo: z
     .object({
@@ -206,7 +218,7 @@ export const sessionSchema = z.object({
   rememberMe: z.boolean().optional().default(false),
 });
 
-// ✅ CORRECTION: Schéma de révocation de sessions
+// Schéma de révocation de sessions
 export const revokeSessionSchema = z.object({
   sessionId: z.string().min(1, "ID de session requis").optional(),
   revokeAll: z.boolean().optional().default(false),

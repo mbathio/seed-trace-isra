@@ -1,91 +1,91 @@
-// backend/src/validators/common.ts - VERSION CORRIGÉE COMPLÈTE
+// backend/src/validators/common.ts - VERSION CORRIGÉE AVEC VALEURS UI
 import { z } from "zod";
 
-// Enums avec validation stricte - VALEURS DB
+// ✅ CORRECTION: Enums avec validation stricte - VALEURS UI (format frontend)
 export const RoleEnum = z.enum([
-  "ADMIN",
-  "MANAGER",
-  "INSPECTOR",
-  "MULTIPLIER",
-  "GUEST",
-  "TECHNICIAN",
-  "RESEARCHER",
+  "admin",
+  "manager",
+  "inspector",
+  "multiplier",
+  "guest",
+  "technician",
+  "researcher",
 ]);
 
 export const SeedLevelEnum = z.enum(["GO", "G1", "G2", "G3", "G4", "R1", "R2"]);
 
 export const CropTypeEnum = z.enum([
-  "RICE",
-  "MAIZE",
-  "PEANUT",
-  "SORGHUM",
-  "COWPEA",
-  "MILLET",
+  "rice",
+  "maize",
+  "peanut",
+  "sorghum",
+  "cowpea",
+  "millet",
 ]);
 
 export const LotStatusEnum = z.enum([
-  "PENDING",
-  "CERTIFIED",
-  "REJECTED",
-  "IN_STOCK",
-  "SOLD",
-  "ACTIVE",
-  "DISTRIBUTED",
+  "pending",
+  "certified",
+  "rejected",
+  "in-stock", // ✅ CORRECTION: kebab-case pour UI
+  "sold",
+  "active",
+  "distributed",
 ]);
 
-export const MultiplierStatusEnum = z.enum(["ACTIVE", "INACTIVE"]);
+export const MultiplierStatusEnum = z.enum(["active", "inactive"]);
 
 export const CertificationLevelEnum = z.enum([
-  "BEGINNER",
-  "INTERMEDIATE",
-  "EXPERT",
+  "beginner",
+  "intermediate",
+  "expert",
 ]);
 
-export const ParcelStatusEnum = z.enum(["AVAILABLE", "IN_USE", "RESTING"]);
+export const ParcelStatusEnum = z.enum(["available", "in-use", "resting"]); // ✅ CORRECTION: kebab-case
 
 export const ContractStatusEnum = z.enum([
-  "DRAFT",
-  "ACTIVE",
-  "COMPLETED",
-  "CANCELLED",
+  "draft",
+  "active",
+  "completed",
+  "cancelled",
 ]);
 
 export const ProductionStatusEnum = z.enum([
-  "PLANNED",
-  "IN_PROGRESS",
-  "COMPLETED",
-  "CANCELLED",
+  "planned",
+  "in-progress", // ✅ CORRECTION: kebab-case
+  "completed",
+  "cancelled",
 ]);
 
 export const ActivityTypeEnum = z.enum([
-  "SOIL_PREPARATION",
-  "SOWING",
-  "FERTILIZATION",
-  "IRRIGATION",
-  "WEEDING",
-  "PEST_CONTROL",
-  "HARVEST",
-  "OTHER",
+  "soil-preparation", // ✅ CORRECTION: kebab-case pour tous
+  "sowing",
+  "fertilization",
+  "irrigation",
+  "weeding",
+  "pest-control",
+  "harvest",
+  "other",
 ]);
 
 export const IssueTypeEnum = z.enum([
-  "DISEASE",
-  "PEST",
-  "WEATHER",
-  "MANAGEMENT",
-  "OTHER",
+  "disease",
+  "pest",
+  "weather",
+  "management",
+  "other",
 ]);
 
-export const IssueSeverityEnum = z.enum(["LOW", "MEDIUM", "HIGH"]);
+export const IssueSeverityEnum = z.enum(["low", "medium", "high"]);
 
-export const TestResultEnum = z.enum(["PASS", "FAIL"]);
+export const TestResultEnum = z.enum(["pass", "fail"]);
 
 export const ReportTypeEnum = z.enum([
-  "PRODUCTION",
-  "QUALITY",
-  "INVENTORY",
-  "MULTIPLIER_PERFORMANCE",
-  "CUSTOM",
+  "production",
+  "quality",
+  "inventory",
+  "multiplier-performance", // ✅ CORRECTION: kebab-case
+  "custom",
 ]);
 
 // Schémas de base réutilisables

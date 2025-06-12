@@ -1,21 +1,21 @@
-// backend/src/validators/seedLot.ts - VALIDATEURS CORRIGÉS
+// backend/src/validators/seedLot.ts - VALIDATEURS CORRIGÉS AVEC VALEURS UI
 import { z } from "zod";
 
-// Validation des niveaux de semences
+// ✅ CORRECTION: Validation des niveaux de semences (identiques UI/DB)
 const SeedLevelEnum = z.enum(["GO", "G1", "G2", "G3", "G4", "R1", "R2"]);
 
-// Validation des statuts de lots (valeurs DB)
+// ✅ CORRECTION: Validation des statuts de lots - VALEURS UI (kebab-case)
 const LotStatusEnum = z.enum([
-  "PENDING",
-  "CERTIFIED",
-  "REJECTED",
-  "IN_STOCK",
-  "SOLD",
-  "ACTIVE",
-  "DISTRIBUTED",
+  "pending",
+  "certified",
+  "rejected",
+  "in-stock", // ✅ kebab-case pour UI
+  "sold",
+  "active",
+  "distributed",
 ]);
 
-// Validation du varietyId flexible (peut être un nombre ou un string)
+// ✅ CORRECTION: Validation du varietyId flexible (peut être un nombre ou un string)
 const varietyIdSchema = z.union([
   z.number().positive(),
   z
@@ -44,7 +44,7 @@ const quantitySchema = z
   .min(1, "Quantité minimum 1kg")
   .max(1000000, "Quantité maximum 1,000,000kg");
 
-// Schéma de création de lot de semences
+// ✅ CORRECTION: Schéma de création de lot de semences - accepte valeurs UI
 export const createSeedLotSchema = z
   .object({
     varietyId: varietyIdSchema,
@@ -76,7 +76,7 @@ export const createSeedLotSchema = z
       .optional()
       .transform((val) => val?.trim() || undefined),
     notes: notesSchema,
-    status: LotStatusEnum.optional(),
+    status: LotStatusEnum.optional(), // ✅ CORRECTION: Accepte valeurs UI
   })
   .refine(
     (data) => {
@@ -91,10 +91,10 @@ export const createSeedLotSchema = z
     }
   );
 
-// Schéma de mise à jour de lot de semences
+// ✅ CORRECTION: Schéma de mise à jour de lot de semences - accepte valeurs UI
 export const updateSeedLotSchema = z.object({
   quantity: quantitySchema.optional(),
-  status: LotStatusEnum.optional(),
+  status: LotStatusEnum.optional(), // ✅ CORRECTION: Accepte valeurs UI
   expiryDate: z
     .string()
     .optional()
@@ -110,7 +110,7 @@ export const updateSeedLotSchema = z.object({
   notes: notesSchema,
 });
 
-// Schéma de requête/filtres pour les lots de semences
+// ✅ CORRECTION: Schéma de requête/filtres pour les lots de semences - accepte valeurs UI
 export const seedLotQuerySchema = z.object({
   page: z
     .union([z.string(), z.number()])
@@ -131,7 +131,7 @@ export const seedLotQuerySchema = z.object({
     .optional()
     .transform((val) => val?.trim() || undefined),
   level: SeedLevelEnum.optional(),
-  status: LotStatusEnum.optional(),
+  status: LotStatusEnum.optional(), // ✅ CORRECTION: Accepte valeurs UI
   varietyId: varietyIdSchema.optional(),
   multiplierId: z
     .union([z.string(), z.number()])
