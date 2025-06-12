@@ -30,7 +30,7 @@ import { Input } from "../../components/ui/input";
 import { api } from "../../services/api";
 import { Parcel } from "../../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
-import { formatDate, formatNumber } from "../../utils/formatters";
+import { formatNumber } from "../../utils/formatters";
 import { PARCEL_STATUSES, getStatusConfig } from "../../constants";
 import { useDebounce } from "../../hooks/useDebounce";
 import { usePagination } from "../../hooks/usePagination";

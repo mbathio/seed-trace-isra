@@ -73,16 +73,6 @@ const ParcelDetail: React.FC = () => {
     enabled: !!id,
   });
 
-  // Données des lots de semences
-  const { data: seedLots } = useQuery({
-    queryKey: ["parcel-seed-lots", id],
-    queryFn: async () => {
-      const response = await api.get(`/seed-lots?parcelId=${id}`);
-      return response.data.data;
-    },
-    enabled: !!id,
-  });
-
   // Données des productions
   const { data: productions } = useQuery({
     queryKey: ["parcel-productions", id],
