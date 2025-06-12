@@ -1,9 +1,9 @@
-// backend/src/middleware/transformationMiddleware.ts - ✅ MIDDLEWARE DE TRANSFORMATION AUTOMATIQUE AMÉLIORÉ
+// backend/src/middleware/transformationMiddleware.ts - ✅ MIDDLEWARE DE TRANSFORMATION AUTOMATIQUE CORRIGÉ
 
 import { Request, Response, NextFunction } from "express";
 import { logger } from "../utils/logger";
 
-// ===== MAPPINGS DE TRANSFORMATION CENTRALISÉS =====
+// ===== MAPPINGS DE TRANSFORMATION CENTRALISÉS AVEC TYPES STRICTS =====
 
 const ENUM_MAPPINGS = {
   // Statuts de lots (UI ↔ DB)
@@ -16,7 +16,7 @@ const ENUM_MAPPINGS = {
       sold: "SOLD",
       active: "ACTIVE",
       distributed: "DISTRIBUTED",
-    },
+    } as Record<string, string>,
     dbToUi: {
       PENDING: "pending",
       CERTIFIED: "certified",
@@ -25,7 +25,7 @@ const ENUM_MAPPINGS = {
       SOLD: "sold",
       ACTIVE: "active",
       DISTRIBUTED: "distributed",
-    },
+    } as Record<string, string>,
   },
 
   // Rôles utilisateurs (UI ↔ DB)
@@ -38,7 +38,7 @@ const ENUM_MAPPINGS = {
       guest: "GUEST",
       technician: "TECHNICIAN",
       researcher: "RESEARCHER",
-    },
+    } as Record<string, string>,
     dbToUi: {
       ADMIN: "admin",
       MANAGER: "manager",
@@ -47,7 +47,7 @@ const ENUM_MAPPINGS = {
       GUEST: "guest",
       TECHNICIAN: "technician",
       RESEARCHER: "researcher",
-    },
+    } as Record<string, string>,
   },
 
   // Types de culture (UI ↔ DB)
@@ -59,7 +59,7 @@ const ENUM_MAPPINGS = {
       sorghum: "SORGHUM",
       cowpea: "COWPEA",
       millet: "MILLET",
-    },
+    } as Record<string, string>,
     dbToUi: {
       RICE: "rice",
       MAIZE: "maize",
@@ -67,7 +67,7 @@ const ENUM_MAPPINGS = {
       SORGHUM: "sorghum",
       COWPEA: "cowpea",
       MILLET: "millet",
-    },
+    } as Record<string, string>,
   },
 
   // Statuts multiplicateurs (UI ↔ DB)
@@ -75,11 +75,11 @@ const ENUM_MAPPINGS = {
     uiToDb: {
       active: "ACTIVE",
       inactive: "INACTIVE",
-    },
+    } as Record<string, string>,
     dbToUi: {
       ACTIVE: "active",
       INACTIVE: "inactive",
-    },
+    } as Record<string, string>,
   },
 
   // Niveaux de certification (UI ↔ DB)
@@ -88,12 +88,12 @@ const ENUM_MAPPINGS = {
       beginner: "BEGINNER",
       intermediate: "INTERMEDIATE",
       expert: "EXPERT",
-    },
+    } as Record<string, string>,
     dbToUi: {
       BEGINNER: "beginner",
       INTERMEDIATE: "intermediate",
       EXPERT: "expert",
-    },
+    } as Record<string, string>,
   },
 
   // Statuts parcelles (UI ↔ DB)
@@ -102,12 +102,12 @@ const ENUM_MAPPINGS = {
       available: "AVAILABLE",
       "in-use": "IN_USE",
       resting: "RESTING",
-    },
+    } as Record<string, string>,
     dbToUi: {
       AVAILABLE: "available",
       IN_USE: "in-use",
       RESTING: "resting",
-    },
+    } as Record<string, string>,
   },
 
   // Statuts production (UI ↔ DB)
@@ -117,13 +117,13 @@ const ENUM_MAPPINGS = {
       "in-progress": "IN_PROGRESS",
       completed: "COMPLETED",
       cancelled: "CANCELLED",
-    },
+    } as Record<string, string>,
     dbToUi: {
       PLANNED: "planned",
       IN_PROGRESS: "in-progress",
       COMPLETED: "completed",
       CANCELLED: "cancelled",
-    },
+    } as Record<string, string>,
   },
 
   // Types d'activité (UI ↔ DB)
@@ -137,7 +137,7 @@ const ENUM_MAPPINGS = {
       "pest-control": "PEST_CONTROL",
       harvest: "HARVEST",
       other: "OTHER",
-    },
+    } as Record<string, string>,
     dbToUi: {
       SOIL_PREPARATION: "soil-preparation",
       SOWING: "sowing",
@@ -147,7 +147,7 @@ const ENUM_MAPPINGS = {
       PEST_CONTROL: "pest-control",
       HARVEST: "harvest",
       OTHER: "other",
-    },
+    } as Record<string, string>,
   },
 
   // Types de problèmes (UI ↔ DB)
@@ -158,14 +158,14 @@ const ENUM_MAPPINGS = {
       weather: "WEATHER",
       management: "MANAGEMENT",
       other: "OTHER",
-    },
+    } as Record<string, string>,
     dbToUi: {
       DISEASE: "disease",
       PEST: "pest",
       WEATHER: "weather",
       MANAGEMENT: "management",
       OTHER: "other",
-    },
+    } as Record<string, string>,
   },
 
   // Sévérité des problèmes (UI ↔ DB)
@@ -174,12 +174,12 @@ const ENUM_MAPPINGS = {
       low: "LOW",
       medium: "MEDIUM",
       high: "HIGH",
-    },
+    } as Record<string, string>,
     dbToUi: {
       LOW: "low",
       MEDIUM: "medium",
       HIGH: "high",
-    },
+    } as Record<string, string>,
   },
 
   // Résultats de test (UI ↔ DB)
@@ -187,11 +187,11 @@ const ENUM_MAPPINGS = {
     uiToDb: {
       pass: "PASS",
       fail: "FAIL",
-    },
+    } as Record<string, string>,
     dbToUi: {
       PASS: "pass",
       FAIL: "fail",
-    },
+    } as Record<string, string>,
   },
 
   // Types de rapport (UI ↔ DB)
@@ -202,14 +202,14 @@ const ENUM_MAPPINGS = {
       inventory: "INVENTORY",
       "multiplier-performance": "MULTIPLIER_PERFORMANCE",
       custom: "CUSTOM",
-    },
+    } as Record<string, string>,
     dbToUi: {
       PRODUCTION: "production",
       QUALITY: "quality",
       INVENTORY: "inventory",
       MULTIPLIER_PERFORMANCE: "multiplier-performance",
       CUSTOM: "custom",
-    },
+    } as Record<string, string>,
   },
 
   // Statuts de contrat (UI ↔ DB)
@@ -219,27 +219,41 @@ const ENUM_MAPPINGS = {
       active: "ACTIVE",
       completed: "COMPLETED",
       cancelled: "CANCELLED",
-    },
+    } as Record<string, string>,
     dbToUi: {
       DRAFT: "draft",
       ACTIVE: "active",
       COMPLETED: "completed",
       CANCELLED: "cancelled",
-    },
+    } as Record<string, string>,
   },
 };
 
 // Niveaux de semences (identiques UI/DB)
 const SEED_LEVELS = ["GO", "G1", "G2", "G3", "G4", "R1", "R2"];
 
-// ===== FONCTIONS DE TRANSFORMATION =====
+// ===== FONCTIONS DE TRANSFORMATION AVEC TYPE SAFETY =====
 
 /**
- * Transforme une valeur selon un mapping donné
+ * Transforme une valeur selon un mapping donné avec vérification de type
  */
 function transformValue(value: any, mapping: Record<string, string>): any {
   if (!value || typeof value !== "string") return value;
   return mapping[value] || value;
+}
+
+/**
+ * Obtient le mapping sécurisé pour un champ donné
+ */
+function getMapping(
+  fieldName: string,
+  direction: "uiToDb" | "dbToUi"
+): Record<string, string> {
+  const enumMapping = ENUM_MAPPINGS[fieldName as keyof typeof ENUM_MAPPINGS];
+  if (!enumMapping) {
+    return {};
+  }
+  return enumMapping[direction] || {};
 }
 
 /**
@@ -263,59 +277,56 @@ function transformObjectUIToDB(data: any): any {
         // Déterminer le type de statut selon le contexte
         if (typeof value === "string") {
           // Essayer différents mappings
-          if (ENUM_MAPPINGS.lotStatus.uiToDb[value]) {
-            transformedValue = ENUM_MAPPINGS.lotStatus.uiToDb[value];
-          } else if (ENUM_MAPPINGS.multiplierStatus.uiToDb[value]) {
-            transformedValue = ENUM_MAPPINGS.multiplierStatus.uiToDb[value];
-          } else if (ENUM_MAPPINGS.parcelStatus.uiToDb[value]) {
-            transformedValue = ENUM_MAPPINGS.parcelStatus.uiToDb[value];
-          } else if (ENUM_MAPPINGS.productionStatus.uiToDb[value]) {
-            transformedValue = ENUM_MAPPINGS.productionStatus.uiToDb[value];
-          } else if (ENUM_MAPPINGS.contractStatus.uiToDb[value]) {
-            transformedValue = ENUM_MAPPINGS.contractStatus.uiToDb[value];
-          }
+          transformedValue =
+            transformValue(value, getMapping("lotStatus", "uiToDb")) ||
+            transformValue(value, getMapping("multiplierStatus", "uiToDb")) ||
+            transformValue(value, getMapping("parcelStatus", "uiToDb")) ||
+            transformValue(value, getMapping("productionStatus", "uiToDb")) ||
+            transformValue(value, getMapping("contractStatus", "uiToDb")) ||
+            value;
         }
         break;
 
       case "role":
-        transformedValue = transformValue(value, ENUM_MAPPINGS.role.uiToDb);
+        transformedValue = transformValue(value, getMapping("role", "uiToDb"));
         break;
 
       case "cropType":
-        transformedValue = transformValue(value, ENUM_MAPPINGS.cropType.uiToDb);
+        transformedValue = transformValue(
+          value,
+          getMapping("cropType", "uiToDb")
+        );
         break;
 
       case "certificationLevel":
         transformedValue = transformValue(
           value,
-          ENUM_MAPPINGS.certificationLevel.uiToDb
+          getMapping("certificationLevel", "uiToDb")
         );
         break;
 
       case "type":
         // Peut être activityType ou issueType
         if (typeof value === "string") {
-          if (ENUM_MAPPINGS.activityType.uiToDb[value]) {
-            transformedValue = ENUM_MAPPINGS.activityType.uiToDb[value];
-          } else if (ENUM_MAPPINGS.issueType.uiToDb[value]) {
-            transformedValue = ENUM_MAPPINGS.issueType.uiToDb[value];
-          } else if (ENUM_MAPPINGS.reportType.uiToDb[value]) {
-            transformedValue = ENUM_MAPPINGS.reportType.uiToDb[value];
-          }
+          transformedValue =
+            transformValue(value, getMapping("activityType", "uiToDb")) ||
+            transformValue(value, getMapping("issueType", "uiToDb")) ||
+            transformValue(value, getMapping("reportType", "uiToDb")) ||
+            value;
         }
         break;
 
       case "severity":
         transformedValue = transformValue(
           value,
-          ENUM_MAPPINGS.issueSeverity.uiToDb
+          getMapping("issueSeverity", "uiToDb")
         );
         break;
 
       case "result":
         transformedValue = transformValue(
           value,
-          ENUM_MAPPINGS.testResult.uiToDb
+          getMapping("testResult", "uiToDb")
         );
         break;
 
@@ -323,7 +334,7 @@ function transformObjectUIToDB(data: any): any {
         // Array de crop types
         if (Array.isArray(value)) {
           transformedValue = value.map((item) =>
-            transformValue(item, ENUM_MAPPINGS.cropType.uiToDb)
+            transformValue(item, getMapping("cropType", "uiToDb"))
           );
         }
         break;
@@ -379,59 +390,56 @@ function transformObjectDBToUI(data: any): any {
         // Déterminer le type de statut selon le contexte
         if (typeof value === "string") {
           // Essayer différents mappings
-          if (ENUM_MAPPINGS.lotStatus.dbToUi[value]) {
-            transformedValue = ENUM_MAPPINGS.lotStatus.dbToUi[value];
-          } else if (ENUM_MAPPINGS.multiplierStatus.dbToUi[value]) {
-            transformedValue = ENUM_MAPPINGS.multiplierStatus.dbToUi[value];
-          } else if (ENUM_MAPPINGS.parcelStatus.dbToUi[value]) {
-            transformedValue = ENUM_MAPPINGS.parcelStatus.dbToUi[value];
-          } else if (ENUM_MAPPINGS.productionStatus.dbToUi[value]) {
-            transformedValue = ENUM_MAPPINGS.productionStatus.dbToUi[value];
-          } else if (ENUM_MAPPINGS.contractStatus.dbToUi[value]) {
-            transformedValue = ENUM_MAPPINGS.contractStatus.dbToUi[value];
-          }
+          transformedValue =
+            transformValue(value, getMapping("lotStatus", "dbToUi")) ||
+            transformValue(value, getMapping("multiplierStatus", "dbToUi")) ||
+            transformValue(value, getMapping("parcelStatus", "dbToUi")) ||
+            transformValue(value, getMapping("productionStatus", "dbToUi")) ||
+            transformValue(value, getMapping("contractStatus", "dbToUi")) ||
+            value;
         }
         break;
 
       case "role":
-        transformedValue = transformValue(value, ENUM_MAPPINGS.role.dbToUi);
+        transformedValue = transformValue(value, getMapping("role", "dbToUi"));
         break;
 
       case "cropType":
-        transformedValue = transformValue(value, ENUM_MAPPINGS.cropType.dbToUi);
+        transformedValue = transformValue(
+          value,
+          getMapping("cropType", "dbToUi")
+        );
         break;
 
       case "certificationLevel":
         transformedValue = transformValue(
           value,
-          ENUM_MAPPINGS.certificationLevel.dbToUi
+          getMapping("certificationLevel", "dbToUi")
         );
         break;
 
       case "type":
         // Peut être activityType ou issueType
         if (typeof value === "string") {
-          if (ENUM_MAPPINGS.activityType.dbToUi[value]) {
-            transformedValue = ENUM_MAPPINGS.activityType.dbToUi[value];
-          } else if (ENUM_MAPPINGS.issueType.dbToUi[value]) {
-            transformedValue = ENUM_MAPPINGS.issueType.dbToUi[value];
-          } else if (ENUM_MAPPINGS.reportType.dbToUi[value]) {
-            transformedValue = ENUM_MAPPINGS.reportType.dbToUi[value];
-          }
+          transformedValue =
+            transformValue(value, getMapping("activityType", "dbToUi")) ||
+            transformValue(value, getMapping("issueType", "dbToUi")) ||
+            transformValue(value, getMapping("reportType", "dbToUi")) ||
+            value;
         }
         break;
 
       case "severity":
         transformedValue = transformValue(
           value,
-          ENUM_MAPPINGS.issueSeverity.dbToUi
+          getMapping("issueSeverity", "dbToUi")
         );
         break;
 
       case "result":
         transformedValue = transformValue(
           value,
-          ENUM_MAPPINGS.testResult.dbToUi
+          getMapping("testResult", "dbToUi")
         );
         break;
 
@@ -439,7 +447,7 @@ function transformObjectDBToUI(data: any): any {
         // Array de crop types
         if (Array.isArray(value)) {
           transformedValue = value.map((item) =>
-            transformValue(item, ENUM_MAPPINGS.cropType.dbToUi)
+            transformValue(item, getMapping("cropType", "dbToUi"))
           );
         }
         break;
@@ -514,43 +522,46 @@ function transformQueryParams(query: any): any {
         if (typeof value === "string") {
           // Essayer tous les mappings possibles
           transformedValue =
-            ENUM_MAPPINGS.lotStatus.uiToDb[value] ||
-            ENUM_MAPPINGS.multiplierStatus.uiToDb[value] ||
-            ENUM_MAPPINGS.parcelStatus.uiToDb[value] ||
-            ENUM_MAPPINGS.productionStatus.uiToDb[value] ||
-            ENUM_MAPPINGS.contractStatus.uiToDb[value] ||
+            transformValue(value, getMapping("lotStatus", "uiToDb")) ||
+            transformValue(value, getMapping("multiplierStatus", "uiToDb")) ||
+            transformValue(value, getMapping("parcelStatus", "uiToDb")) ||
+            transformValue(value, getMapping("productionStatus", "uiToDb")) ||
+            transformValue(value, getMapping("contractStatus", "uiToDb")) ||
             value;
         }
         break;
 
       case "role":
-        transformedValue = transformValue(value, ENUM_MAPPINGS.role.uiToDb);
+        transformedValue = transformValue(value, getMapping("role", "uiToDb"));
         break;
 
       case "cropType":
-        transformedValue = transformValue(value, ENUM_MAPPINGS.cropType.uiToDb);
+        transformedValue = transformValue(
+          value,
+          getMapping("cropType", "uiToDb")
+        );
         break;
 
       case "certificationLevel":
         transformedValue = transformValue(
           value,
-          ENUM_MAPPINGS.certificationLevel.uiToDb
+          getMapping("certificationLevel", "uiToDb")
         );
         break;
 
       case "result":
         transformedValue = transformValue(
           value,
-          ENUM_MAPPINGS.testResult.uiToDb
+          getMapping("testResult", "uiToDb")
         );
         break;
 
       case "type":
         if (typeof value === "string") {
           transformedValue =
-            ENUM_MAPPINGS.activityType.uiToDb[value] ||
-            ENUM_MAPPINGS.issueType.uiToDb[value] ||
-            ENUM_MAPPINGS.reportType.uiToDb[value] ||
+            transformValue(value, getMapping("activityType", "uiToDb")) ||
+            transformValue(value, getMapping("issueType", "uiToDb")) ||
+            transformValue(value, getMapping("reportType", "uiToDb")) ||
             value;
         }
         break;

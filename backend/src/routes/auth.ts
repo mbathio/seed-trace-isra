@@ -33,3 +33,5 @@ router.post(
 );
 router.post("/logout", AuthController.logout);
 router.get("/me", authMiddleware, AuthController.getCurrentUser);
+
+export default router;
