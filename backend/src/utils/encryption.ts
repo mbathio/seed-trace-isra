@@ -31,11 +31,11 @@ export class EncryptionService {
 
     // ✅ CORRECTION: Cast explicite pour les valeurs expiresIn
     const accessTokenOptions: SignOptions = {
-      expiresIn: config.jwt.accessTokenExpiry as string | number,
+      expiresIn: config.jwt.accessTokenExpiry as any,
     };
 
     const refreshTokenOptions: SignOptions = {
-      expiresIn: config.jwt.refreshTokenExpiry as string | number,
+      expiresIn: config.jwt.refreshTokenExpiry as any,
     };
 
     const accessToken = jwt.sign(tokenPayload, secret, accessTokenOptions);
