@@ -18,8 +18,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "security:audit": "npm audit --audit-level=moderate",
-    "security:fix": "npm audit fix",
-    "postinstall": "npm run security:audit"
+    "security:fix": "npm audit fix"
   },
   "dependencies": {
     "@prisma/client": "^6.9.0",
