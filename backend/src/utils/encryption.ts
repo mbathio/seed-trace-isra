@@ -29,13 +29,13 @@ export class EncryptionService {
       role: payload.role,
     };
 
-    // ✅ CORRECTION: Utilisation d'interface SignOptions explicite
+    // ✅ CORRECTION: Cast explicite pour les valeurs expiresIn
     const accessTokenOptions: SignOptions = {
-      expiresIn: config.jwt.accessTokenExpiry,
+      expiresIn: config.jwt.accessTokenExpiry as string | number,
     };
 
     const refreshTokenOptions: SignOptions = {
-      expiresIn: config.jwt.refreshTokenExpiry,
+      expiresIn: config.jwt.refreshTokenExpiry as string | number,
     };
 
     const accessToken = jwt.sign(tokenPayload, secret, accessTokenOptions);
