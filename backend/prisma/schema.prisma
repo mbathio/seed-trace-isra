@@ -42,6 +42,8 @@ enum CropType {
   SORGHUM @map("sorghum")
   COWPEA  @map("cowpea")
   MILLET  @map("millet")
+  WHEAT   @map("wheat")  // À ajouter
+
 
   @@map("crop_type")
 }
