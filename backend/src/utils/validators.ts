@@ -517,7 +517,7 @@ export const varietyValidationSchema = yup
       cropType: yup
         .string()
         .oneOf(
-          ["RICE", "MAIZE", "PEANUT", "SORGHUM", "COWPEA", "MILLET"],
+          ["RICE", "MAIZE", "PEANUT", "SORGHUM", "COWPEA", "MILLET", "WHEAT"],
           "Type de culture invalide"
         )
         .required("Type de culture requis"),
@@ -596,7 +596,15 @@ export const multiplierValidationSchema = yup
           yup
             .string()
             .oneOf(
-              ["RICE", "MAIZE", "PEANUT", "SORGHUM", "COWPEA", "MILLET"],
+              [
+                "RICE",
+                "MAIZE",
+                "PEANUT",
+                "SORGHUM",
+                "COWPEA",
+                "MILLET",
+                "WHEAT",
+              ],
               "Spécialisation invalide"
             )
         )

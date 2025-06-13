@@ -64,6 +64,7 @@ export class DataTransformer {
     SORGHUM: "sorghum",
     COWPEA: "cowpea",
     MILLET: "millet",
+    WHEAT: "WHEAT",
   };
 
   private static readonly CROP_TYPE_UI_TO_DB: Record<string, CropType> = {
@@ -73,6 +74,7 @@ export class DataTransformer {
     sorghum: "SORGHUM",
     cowpea: "COWPEA",
     millet: "MILLET",
+    wheat: "WHEAT", // Note: Wheat is kept as uppercase to match DB values
   };
 
   // Statuts multiplicateurs (DB <-> UI)
@@ -196,10 +198,7 @@ export class DataTransformer {
 
   static transformCropTypeUIToDB(cropType: string): CropType {
     // Gestion spéciale pour wheat qui sera mappé en SORGHUM temporairement
-    if (cropType.toLowerCase() === "wheat") {
-      console.warn("⚠️ WHEAT mappé temporairement vers SORGHUM");
-      return CropType.SORGHUM;
-    }
+
     return (
       this.CROP_TYPE_UI_TO_DB[cropType] || (cropType.toUpperCase() as CropType)
     );

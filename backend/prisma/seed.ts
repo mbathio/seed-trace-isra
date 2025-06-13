@@ -243,7 +243,7 @@ async function main() {
       data: {
         code: "ALIOUNE",
         name: "Alioune",
-        cropType: "SORGHUM", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
         description:
           "Variété de blé tendre G3, homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 95,
@@ -257,7 +257,7 @@ async function main() {
       data: {
         code: "HAMAT",
         name: "Hamat",
-        cropType: "SORGHUM", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
         description:
           "Variété de blé tendre homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 90,
@@ -271,7 +271,7 @@ async function main() {
       data: {
         code: "PENDAO",
         name: "Pendao",
-        cropType: "SORGHUM", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
         description:
           "Variété de blé tendre homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 92,
@@ -285,7 +285,7 @@ async function main() {
       data: {
         code: "DIRE-15",
         name: "Diré 15",
-        cropType: "SORGHUM", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
         description:
           "Variété de blé tendre homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 88,
@@ -299,7 +299,7 @@ async function main() {
       data: {
         code: "DIOUFISSA",
         name: "Dioufissa",
-        cropType: "SORGHUM", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
         description:
           "Variété de blé dur homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 100,
@@ -313,7 +313,7 @@ async function main() {
       data: {
         code: "HABY",
         name: "Haby",
-        cropType: "SORGHUM", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
         description:
           "Variété de blé dur homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 95,
@@ -327,7 +327,7 @@ async function main() {
       data: {
         code: "AMINA",
         name: "Amina",
-        cropType: "SORGHUM", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
         description:
           "Variété de blé dur homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 93,
@@ -341,7 +341,7 @@ async function main() {
       data: {
         code: "FANAYE",
         name: "Fanaye",
-        cropType: "SORGHUM", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
         description:
           "Variété de blé dur homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 91,
