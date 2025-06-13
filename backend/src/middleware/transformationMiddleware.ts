@@ -59,6 +59,7 @@ const ENUM_MAPPINGS = {
       sorghum: "SORGHUM",
       cowpea: "COWPEA",
       millet: "MILLET",
+      wheat: "WHEAT",
     } as Record<string, string>,
     dbToUi: {
       RICE: "rice",
@@ -67,6 +68,7 @@ const ENUM_MAPPINGS = {
       SORGHUM: "sorghum",
       COWPEA: "cowpea",
       MILLET: "millet",
+      WHEAT: "wheat",
     } as Record<string, string>,
   },
 

@@ -14,7 +14,15 @@ router.use(varietyTransformation);
 const createVarietySchema = z.object({
   code: z.string().min(1),
   name: z.string().min(1),
-  cropType: z.enum(["rice", "maize", "peanut", "sorghum", "cowpea", "millet"]), // ✅ VALEURS UI
+  cropType: z.enum([
+    "rice",
+    "maize",
+    "peanut",
+    "sorghum",
+    "cowpea",
+    "millet",
+    "wheat",
+  ]), // ✅ VALEURS UI
   description: z.string().optional(),
   maturityDays: z.number().positive(),
   yieldPotential: z.number().positive().optional(),

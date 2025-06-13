@@ -271,6 +271,7 @@ export class ValidationService {
       "SORGHUM",
       "COWPEA",
       "MILLET",
+      "WHEAT",
     ];
     const invalidSpecs = data.specialization?.filter(
       (spec) => !validCrops.includes(spec)
@@ -367,7 +368,9 @@ export class ValidationService {
     const fileExtension = file.originalname.split(".").pop()?.toLowerCase();
     if (!fileExtension || !allowedTypes.includes(fileExtension)) {
       errors.push(
-        `Type de fichier non autorisé. Types acceptés: ${allowedTypes.join(", ")}`
+        `Type de fichier non autorisé. Types acceptés: ${allowedTypes.join(
+          ", "
+        )}`
       );
     }
 
