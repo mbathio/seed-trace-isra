@@ -31,6 +31,7 @@ export enum CropType {
   SORGHUM = "SORGHUM",
   COWPEA = "COWPEA",
   MILLET = "MILLET",
+  WHEAT = "WHEAT",
 }
 
 export enum ParcelStatus {

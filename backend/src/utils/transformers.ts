@@ -1,4 +1,4 @@
-// backend/src/utils/transformers.ts - TRANSFORMATEURS CORRIGÉS
+// backend/src/utils/transformers.ts - TRANSFORMATEURS CORRIGÉS AVEC WHEAT
 import {
   SeedLevel,
   LotStatus,
@@ -56,7 +56,7 @@ export class DataTransformer {
     researcher: "RESEARCHER",
   };
 
-  // Types de culture (DB <-> UI)
+  // ✅ CORRECTION: Types de culture avec WHEAT (DB <-> UI)
   private static readonly CROP_TYPE_DB_TO_UI: Record<CropType, string> = {
     RICE: "rice",
     MAIZE: "maize",
@@ -64,6 +64,7 @@ export class DataTransformer {
     SORGHUM: "sorghum",
     COWPEA: "cowpea",
     MILLET: "millet",
+    WHEAT: "wheat", // ✅ AJOUTÉ
   };
 
   private static readonly CROP_TYPE_UI_TO_DB: Record<string, CropType> = {
@@ -73,6 +74,7 @@ export class DataTransformer {
     sorghum: "SORGHUM",
     cowpea: "COWPEA",
     millet: "MILLET",
+    wheat: "WHEAT", // ✅ AJOUTÉ
   };
 
   // Statuts multiplicateurs (DB <-> UI)
@@ -265,6 +267,14 @@ export class DataTransformer {
     );
   }
 
+  // ✅ MÉTHODE GÉNÉRIQUE pour transformer les enums
+  static transformEnumUIToDB(
+    value: string,
+    mapping: Record<string, string>
+  ): string {
+    return mapping[value] || value.toUpperCase().replace(/-/g, "_");
+  }
+
   // ===== TRANSFORMATION D'ENTITÉS COMPLÈTES =====
 
   // Transformation des lots de semences
@@ -441,21 +451,6 @@ export class DataTransformer {
     } catch {
       return null;
     }
-  }
-
-  // Transformation générique d'énums
-  static transformEnumDBToUI<T extends string>(
-    value: T,
-    mapping: Record<T, string>
-  ): string {
-    return mapping[value] || value.toLowerCase().replace(/_/g, "-");
-  }
-
-  static transformEnumUIToDB<T extends string>(
-    value: string,
-    mapping: Record<string, T>
-  ): T {
-    return mapping[value] || (value.toUpperCase().replace(/-/g, "_") as T);
   }
 
   // Transformation des réponses API complètes
