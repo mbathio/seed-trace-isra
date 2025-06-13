@@ -21,6 +21,7 @@ export const CropTypeEnum = z.enum([
   "sorghum",
   "cowpea",
   "millet",
+  "wheat",
 ]);
 
 export const LotStatusEnum = z.enum([

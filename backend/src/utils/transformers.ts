@@ -1,4 +1,4 @@
-// backend/src/utils/transformers.ts - TRANSFORMATEURS CORRIGÉS AVEC WHEAT
+// backend/src/utils/transformers.ts - TRANSFORMATEURS CORRIGÉS SANS WHEAT
 import {
   SeedLevel,
   LotStatus,
@@ -56,7 +56,7 @@ export class DataTransformer {
     researcher: "RESEARCHER",
   };
 
-  // ✅ CORRECTION: Types de culture avec WHEAT (DB <-> UI)
+  // Types de culture SANS WHEAT (DB <-> UI)
   private static readonly CROP_TYPE_DB_TO_UI: Record<CropType, string> = {
     RICE: "rice",
     MAIZE: "maize",
@@ -64,7 +64,6 @@ export class DataTransformer {
     SORGHUM: "sorghum",
     COWPEA: "cowpea",
     MILLET: "millet",
-    WHEAT: "wheat", // ✅ AJOUTÉ
   };
 
   private static readonly CROP_TYPE_UI_TO_DB: Record<string, CropType> = {
@@ -74,7 +73,6 @@ export class DataTransformer {
     sorghum: "SORGHUM",
     cowpea: "COWPEA",
     millet: "MILLET",
-    wheat: "WHEAT", // ✅ AJOUTÉ
   };
 
   // Statuts multiplicateurs (DB <-> UI)
@@ -197,6 +195,11 @@ export class DataTransformer {
   }
 
   static transformCropTypeUIToDB(cropType: string): CropType {
+    // Gestion spéciale pour wheat qui sera mappé en SORGHUM temporairement
+    if (cropType.toLowerCase() === "wheat") {
+      console.warn("⚠️ WHEAT mappé temporairement vers SORGHUM");
+      return CropType.SORGHUM;
+    }
     return (
       this.CROP_TYPE_UI_TO_DB[cropType] || (cropType.toUpperCase() as CropType)
     );

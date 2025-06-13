@@ -151,6 +151,7 @@ export const CROP_TYPE_MAPPINGS = {
     [CropType.SORGHUM]: "sorghum",
     [CropType.COWPEA]: "cowpea",
     [CropType.MILLET]: "millet",
+    [CropType.WHEAT]: "wheat",
   } as const,
 
   // UI → DB
@@ -161,6 +162,7 @@ export const CROP_TYPE_MAPPINGS = {
     sorghum: CropType.SORGHUM,
     cowpea: CropType.COWPEA,
     millet: CropType.MILLET,
+    wheat: CropType.WHEAT,
   } as const,
 };
 

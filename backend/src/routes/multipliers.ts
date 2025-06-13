@@ -19,7 +19,7 @@ const createMultiplierSchema = z.object({
   yearsExperience: z.number().min(0),
   certificationLevel: z.enum(["beginner", "intermediate", "expert"]), // ✅ VALEURS UI
   specialization: z.array(
-    z.enum(["rice", "maize", "peanut", "sorghum", "cowpea", "millet"])
+    z.enum(["rice", "maize", "peanut", "sorghum", "cowpea", "millet", "wheat"])
   ), // ✅ VALEURS UI
   phone: z.string().optional(),
   email: z.string().email().optional(),
