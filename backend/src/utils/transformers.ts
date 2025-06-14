@@ -64,7 +64,7 @@ export class DataTransformer {
     SORGHUM: "sorghum",
     COWPEA: "cowpea",
     MILLET: "millet",
-    WHEAT: "WHEAT",
+    WHEAT: "wheat",
   };
 
   private static readonly CROP_TYPE_UI_TO_DB: Record<string, CropType> = {
@@ -184,6 +184,11 @@ export class DataTransformer {
 
   // Transformation des rôles
   static transformRoleDBToUI(role: Role): string {
+    // ✅ CORRECTION: Vérifier si le rôle existe avant de le transformer
+    if (!role) {
+      console.warn('Rôle undefined détecté, utilisation de "guest" par défaut');
+      return "guest"; // Valeur par défaut sécurisée
+    }
     return this.ROLE_DB_TO_UI[role] || role.toLowerCase();
   }
 
@@ -377,7 +382,13 @@ export class DataTransformer {
       ...qc,
       result: this.transformTestResultDBToUI(qc.result),
       seedLot: qc.seedLot ? this.transformSeedLot(qc.seedLot) : undefined,
-      inspector: qc.inspector ? this.transformUser(qc.inspector) : undefined,
+      // ✅ CORRECTION: Vérifier que l'inspecteur existe avant de le transformer
+      inspector:
+        qc.inspector && qc.inspector.role
+          ? this.transformUser(qc.inspector)
+          : qc.inspector
+          ? { ...qc.inspector, role: "guest" }
+          : undefined,
       controlDate: this.formatDate(qc.controlDate),
       createdAt: this.formatDate(qc.createdAt),
       updatedAt: this.formatDate(qc.updatedAt),
@@ -434,7 +445,8 @@ export class DataTransformer {
 
     return {
       ...user,
-      role: this.transformRoleDBToUI(user.role),
+      // ✅ CORRECTION: Gérer le cas où le rôle est undefined
+      role: user.role ? this.transformRoleDBToUI(user.role) : "guest",
       createdAt: this.formatDate(user.createdAt),
       updatedAt: this.formatDate(user.updatedAt),
     };
