@@ -1,11 +1,11 @@
-// frontend/src/components/auth/ProtectedRoute.tsx - REDIRECTION VERS LANDING PAGE
-import React, { ReactNode } from "react";
+// frontend/src/components/auth/ProtectedRoute.tsx
+import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { Loader2 } from "lucide-react";
+import { LoadingSpinner } from "../../layouts/LoadingSpinner";
 
 interface ProtectedRouteProps {
-  children: ReactNode;
+  children: React.ReactNode;
   requiredRole?: string;
 }
 
@@ -16,44 +16,61 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
-  // Show loading spinner while checking authentication
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">
-            Vérification de l'authentification...
-          </p>
-        </div>
+        <LoadingSpinner
+          size="lg"
+          message="Vérification de l'authentification..."
+        />
       </div>
     );
   }
 
-  // ✅ CORRECTION: Rediriger vers la landing page au lieu de /auth/login
   if (!isAuthenticated) {
-    // Stocker la destination voulue dans l'état pour rediriger après connexion
+    // Rediriger vers la page de connexion en sauvegardant la destination
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
-  // Check role if required
-  if (requiredRole && user?.role !== requiredRole) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Accès refusé
-          </h1>
-          <p className="text-muted-foreground">
-            Vous n'avez pas les permissions nécessaires pour accéder à cette
-            page.
-          </p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Rôle requis: {requiredRole} - Votre rôle: {user?.role}
-          </p>
+  // Vérification du rôle si nécessaire
+  if (requiredRole && user) {
+    const userRole = user.role.toUpperCase();
+    const requiredRoleUpper = requiredRole.toUpperCase();
+
+    // Hiérarchie des rôles
+    const roleHierarchy = {
+      ADMIN: 7,
+      MANAGER: 6,
+      RESEARCHER: 5,
+      TECHNICIAN: 4,
+      INSPECTOR: 3,
+      MULTIPLIER: 2,
+      GUEST: 1,
+    };
+
+    const userLevel =
+      roleHierarchy[userRole as keyof typeof roleHierarchy] || 0;
+    const requiredLevel =
+      roleHierarchy[requiredRoleUpper as keyof typeof roleHierarchy] || 0;
+
+    if (userLevel < requiredLevel) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">
+              Accès refusé
+            </h2>
+            <p className="text-gray-600">
+              Vous n'avez pas les permissions nécessaires pour accéder à cette
+              page.
+            </p>
+            <Button onClick={() => navigate("/dashboard")} className="mt-4">
+              Retour au tableau de bord
+            </Button>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   return <>{children}</>;

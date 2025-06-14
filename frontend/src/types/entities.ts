@@ -20,7 +20,14 @@ export interface Variety {
   id: number;
   code: string;
   name: string;
-  cropType: "RICE" | "MAIZE" | "PEANUT" | "SORGHUM" | "COWPEA" | "MILLET";
+  cropType:
+    | "RICE"
+    | "MAIZE"
+    | "PEANUT"
+    | "SORGHUM"
+    | "COWPEA"
+    | "MILLET"
+    | "WHEAT";
   description?: string;
   maturityDays: number;
   yieldPotential?: number;

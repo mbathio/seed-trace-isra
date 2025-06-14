@@ -153,7 +153,14 @@ export interface QualityControlFilters extends FilterParams {
 }
 
 export interface VarietyFilters extends FilterParams {
-  cropType: "rice" | "maize" | "peanut" | "sorghum" | "cowpea" | "millet";
+  cropType:
+    | "rice"
+    | "maize"
+    | "peanut"
+    | "sorghum"
+    | "cowpea"
+    | "millet"
+    | "wheat";
   minMaturityDays?: number;
   maxMaturityDays?: number;
   minYieldPotential?: number;

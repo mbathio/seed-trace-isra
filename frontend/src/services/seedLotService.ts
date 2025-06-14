@@ -1,35 +1,48 @@
+// frontend/src/services/seedLotService.ts
 import { api } from "./api";
 import { SeedLot } from "../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../types/api";
+import { DataTransformer } from "../utils/transformers";
 
 export const seedLotService = {
-  getAll: async (
-    params?: PaginationParams & FilterParams
-  ): Promise<{ data: ApiResponse<SeedLot[]> }> => {
-    return api.get("/seed-lots", { params });
+  async getAll(params?: PaginationParams & FilterParams) {
+    const response = await api.get<ApiResponse<SeedLot[]>>("/seed-lots", {
+      params,
+    });
+    // Transformer les données reçues
+    response.data.data = response.data.data.map((lot) =>
+      DataTransformer.transformSeedLotFromAPI(lot)
+    );
+    return response;
   },
 
-  getById: async (id: string): Promise<{ data: { data: SeedLot } }> => {
-    return api.get(`/seed-lots/${id}`);
+  async getById(id: string) {
+    const response = await api.get<ApiResponse<SeedLot>>(`/seed-lots/${id}`);
+    response.data.data = DataTransformer.transformSeedLotFromAPI(
+      response.data.data
+    );
+    return response;
   },
 
-  create: async (data: any): Promise<{ data: any }> => {
-    return api.post("/seed-lots", data);
+  async create(data: any) {
+    const transformedData = DataTransformer.transformSeedLotForAPI(data);
+    return await api.post("/seed-lots", transformedData);
   },
 
-  update: async (id: string, data: any): Promise<{ data: any }> => {
-    return api.put(`/seed-lots/${id}`, data);
+  async update(id: string, data: any) {
+    const transformedData = DataTransformer.transformSeedLotForAPI(data);
+    return await api.put(`/seed-lots/${id}`, transformedData);
   },
 
-  delete: async (id: string): Promise<void> => {
-    return api.delete(`/seed-lots/${id}`);
+  async delete(id: string) {
+    return await api.delete(`/seed-lots/${id}`);
   },
 
-  getGenealogy: async (id: string): Promise<{ data: { data: any } }> => {
-    return api.get(`/seed-lots/${id}/genealogy`);
+  async getGenealogy(id: string) {
+    return await api.get(`/seed-lots/${id}/genealogy`);
   },
 
-  getQRCode: async (id: string): Promise<{ data: any }> => {
-    return api.get(`/seed-lots/${id}/qr-code`);
+  async getQRCode(id: string) {
+    return await api.get(`/seed-lots/${id}/qr-code`);
   },
 };

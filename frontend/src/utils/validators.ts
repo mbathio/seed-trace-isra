@@ -64,7 +64,7 @@ export const varietyValidationSchema = yup.object({
     .string()
     // ✅ CORRIGÉ: Utiliser les valeurs UI (minuscules) au lieu des valeurs DB
     .oneOf(
-      ["rice", "maize", "peanut", "sorghum", "cowpea", "millet"],
+      ["rice", "maize", "peanut", "sorghum", "cowpea", "millet", "wheat"],
       "Type de culture invalide"
     )
     .required("Type de culture requis"),
@@ -172,7 +172,7 @@ export const multiplierValidationSchema = yup.object({
       yup
         .string()
         .oneOf(
-          ["rice", "maize", "peanut", "sorghum", "cowpea", "millet"],
+          ["rice", "maize", "peanut", "sorghum", "cowpea", "millet", "wheat"],
           "Spécialisation invalide"
         )
     )

@@ -21,6 +21,7 @@ export const CROP_TYPES = [
   { value: "sorghum", label: "Sorgho", icon: "🌾" },
   { value: "cowpea", label: "Niébé", icon: "🫘" },
   { value: "millet", label: "Mil", icon: "🌾" },
+  { value: "wheat", label: "Blé", icon: "🌾" },
 ] as const;
 
 // ===== STATUTS DE LOTS =====
@@ -387,6 +388,10 @@ export const CHART_CONFIG = {
     "#84cc16", // lime
     "#ec4899", // pink
     "#6366f1", // indigo
+    "#eab308", // yellow
+    "#d6d6d6", // gray
+    "#000000", // black
+    "#ffffff", // white
   ],
 } as const;
 
@@ -454,6 +459,7 @@ export const UI_TO_DB_MAPPINGS = {
     sorghum: "SORGHUM",
     cowpea: "COWPEA",
     millet: "MILLET",
+    wheat: "WHEAT",
   },
   multiplierStatus: {
     active: "ACTIVE",

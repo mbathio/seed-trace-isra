@@ -1,8 +1,9 @@
+// frontend/src/pages/varieties/CreateVariety.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Leaf } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -27,11 +28,20 @@ import { api } from "../../services/api";
 import { CROP_TYPES } from "../../constants";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { varietyValidationSchema } from "../../utils/validators";
+import { DataTransformer } from "../../utils/transformers";
 
+// ✅ CORRIGÉ: Interface avec valeurs UI (minuscules)
 interface CreateVarietyForm {
   code: string;
   name: string;
-  cropType: "RICE" | "MAIZE" | "PEANUT" | "SORGHUM" | "COWPEA" | "MILLET";
+  cropType:
+    | "rice"
+    | "maize"
+    | "peanut"
+    | "sorghum"
+    | "cowpea"
+    | "millet"
+    | "wheat";
   description?: string;
   maturityDays: number;
   yieldPotential?: number;
@@ -56,6 +66,7 @@ const CreateVariety: React.FC = () => {
     defaultValues: {
       maturityDays: 90,
       resistances: [],
+      cropType: "rice", // ✅ CORRIGÉ: Valeur par défaut en minuscules
     },
   });
 
@@ -63,12 +74,14 @@ const CreateVariety: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateVarietyForm) => {
-      const response = await api.post("/varieties", data);
+      // ✅ CORRIGÉ: Transformer les données pour l'API
+      const transformedData = DataTransformer.transformVarietyForAPI(data);
+      const response = await api.post("/varieties", transformedData);
       return response.data;
     },
     onSuccess: (data) => {
       toast.success("Variété créée avec succès !");
-      navigate(`/varieties/${data.data.code}`);
+      navigate(`/dashboard/varieties/${data.data.code}`);
     },
     onError: (error: any) => {
       const errorMessage =
@@ -107,14 +120,17 @@ const CreateVariety: React.FC = () => {
       <div className="flex items-center space-x-4">
         <Button
           variant="ghost"
-          onClick={() => navigate("/varieties")}
+          onClick={() => navigate("/dashboard/varieties")}
           className="flex items-center"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Retour
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Créer une variété</h1>
+          <h1 className="text-3xl font-bold flex items-center">
+            <Leaf className="h-8 w-8 mr-3 text-green-600" />
+            Créer une variété
+          </h1>
           <p className="text-muted-foreground">
             Ajouter une nouvelle variété au catalogue
           </p>
@@ -180,7 +196,10 @@ const CreateVariety: React.FC = () => {
                       <SelectContent>
                         {CROP_TYPES.map((type) => (
                           <SelectItem key={type.value} value={type.value}>
-                            {type.label}
+                            <span className="flex items-center space-x-2">
+                              <span>{type.icon}</span>
+                              <span>{type.label}</span>
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -264,7 +283,11 @@ const CreateVariety: React.FC = () => {
                       placeholder="5.5"
                       {...field}
                       onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value) || undefined)
+                        field.onChange(
+                          e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined
+                        )
                       }
                     />
                   )}
@@ -303,7 +326,9 @@ const CreateVariety: React.FC = () => {
                       placeholder="2024"
                       {...field}
                       onChange={(e) =>
-                        field.onChange(parseInt(e.target.value) || undefined)
+                        field.onChange(
+                          e.target.value ? parseInt(e.target.value) : undefined
+                        )
                       }
                     />
                   )}
@@ -376,7 +401,7 @@ const CreateVariety: React.FC = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate("/varieties")}
+            onClick={() => navigate("/dashboard/varieties")}
           >
             Annuler
           </Button>
