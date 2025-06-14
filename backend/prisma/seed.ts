@@ -236,14 +236,13 @@ async function main() {
   ]);
 
   // Créer les variétés de BLÉ basées sur les données réelles de la station ISRA Fanaye
-  // Note: Utilisation temporaire de SORGHUM car WHEAT n'est pas dans l'enum
-  // Recommandation: Ajouter WHEAT à l'enum CropType dans schema.prisma
+  // Note: WHEAT est maintenant dans l'enum CropType
   const wheatVarieties = await Promise.all([
     prisma.variety.create({
       data: {
         code: "ALIOUNE",
         name: "Alioune",
-        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT",
         description:
           "Variété de blé tendre G3, homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 95,
@@ -257,7 +256,7 @@ async function main() {
       data: {
         code: "HAMAT",
         name: "Hamat",
-        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT",
         description:
           "Variété de blé tendre homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 90,
@@ -271,7 +270,7 @@ async function main() {
       data: {
         code: "PENDAO",
         name: "Pendao",
-        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT",
         description:
           "Variété de blé tendre homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 92,
@@ -285,7 +284,7 @@ async function main() {
       data: {
         code: "DIRE-15",
         name: "Diré 15",
-        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT",
         description:
           "Variété de blé tendre homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 88,
@@ -299,7 +298,7 @@ async function main() {
       data: {
         code: "DIOUFISSA",
         name: "Dioufissa",
-        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT",
         description:
           "Variété de blé dur homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 100,
@@ -313,7 +312,7 @@ async function main() {
       data: {
         code: "HABY",
         name: "Haby",
-        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT",
         description:
           "Variété de blé dur homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 95,
@@ -327,7 +326,7 @@ async function main() {
       data: {
         code: "AMINA",
         name: "Amina",
-        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT",
         description:
           "Variété de blé dur homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 93,
@@ -341,7 +340,7 @@ async function main() {
       data: {
         code: "FANAYE",
         name: "Fanaye",
-        cropType: "WHEAT", // TODO: Remplacer par WHEAT après ajout dans l'enum
+        cropType: "WHEAT",
         description:
           "Variété de blé dur homologuée SF 2024 - Station ISRA Fanaye",
         maturityDays: 91,
@@ -371,7 +370,7 @@ async function main() {
         longitude: -15.1333,
         yearsExperience: 25,
         certificationLevel: "EXPERT",
-        specialization: ["RICE", "SORGHUM"], // SORGHUM temporaire pour le blé
+        specialization: ["RICE", "WHEAT"], // Maintenant WHEAT est supporté
         phone: "77 100 00 00",
         email: "station.fanaye@isra.sn",
       },
@@ -898,12 +897,7 @@ async function main() {
   console.log("   ⚠️ 2 problèmes de production");
   console.log("   📊 3 rapports");
   console.log("   📈 3 historiques de production");
-  console.log(
-    "\n⚠️  Note: Les variétés de blé utilisent temporairement le type SORGHUM."
-  );
-  console.log(
-    "   Recommandation: Ajouter WHEAT à l'enum CropType dans schema.prisma"
-  );
+  console.log("\n✅ WHEAT est maintenant supporté dans l'enum CropType!");
 }
 
 main()
