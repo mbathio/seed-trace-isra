@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,7 +7,409 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Énumérations avec mapping vers les valeurs du frontend
+model User {
+  id              Int                  @id @default(autoincrement())
+  name            String
+  email           String               @unique
+  password        String
+  avatar          String?
+  isActive        Boolean              @default(true)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  role            Role
+  activities      ProductionActivity[]
+  qualityControls QualityControl[]
+  reports         Report[]
+
+  @@index([email], map: "idx_users_email")
+  @@index([role], map: "idx_users_role")
+  @@index([isActive], map: "idx_users_active")
+  @@index([role, isActive], map: "idx_users_role_active")
+  @@map("users")
+}
+
+model Variety {
+  name           String
+  description    String?
+  maturityDays   Int
+  yieldPotential Float?
+  resistances    String[]
+  origin         String?
+  releaseYear    Int?
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  code           String     @unique
+  id             Int        @id @default(autoincrement())
+  cropType       CropType
+  contracts      Contract[]
+  seedLots       SeedLot[]
+
+  @@index([cropType], map: "idx_varieties_crop_type")
+  @@index([isActive], map: "idx_varieties_active")
+  @@index([code], map: "idx_varieties_code")
+  @@index([name], map: "idx_varieties_name")
+  @@index([cropType, isActive], map: "idx_varieties_crop_active")
+  @@map("varieties")
+}
+
+model Parcel {
+  id               Int            @id @default(autoincrement())
+  name             String?
+  area             Float
+  latitude         Float
+  longitude        Float
+  soilType         String?
+  irrigationSystem String?
+  address          String?
+  multiplierId     Int?
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  status           ParcelStatus   @default(AVAILABLE)
+  contracts        Contract[]
+  multiplier       Multiplier?    @relation(fields: [multiplierId], references: [id])
+  previousCrops    PreviousCrop[]
+  productions      Production[]
+  seedLots         SeedLot[]
+  soilAnalyses     SoilAnalysis[]
+
+  @@index([status], map: "idx_parcels_status")
+  @@index([multiplierId], map: "idx_parcels_multiplier")
+  @@index([isActive], map: "idx_parcels_active")
+  @@index([latitude, longitude], map: "idx_parcels_location")
+  @@index([multiplierId, status], map: "idx_parcels_multiplier_status")
+  @@map("parcels")
+}
+
+model SoilAnalysis {
+  id            Int      @id @default(autoincrement())
+  parcelId      Int
+  analysisDate  DateTime @db.Date
+  pH            Float?
+  organicMatter Float?
+  nitrogen      Float?
+  phosphorus    Float?
+  potassium     Float?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  parcel        Parcel   @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+
+  @@index([parcelId], map: "idx_soil_analyses_parcel")
+  @@index([analysisDate], map: "idx_soil_analyses_date")
+  @@index([parcelId, analysisDate], map: "idx_soil_analyses_parcel_date")
+  @@map("soil_analyses")
+}
+
+model PreviousCrop {
+  id       Int    @id @default(autoincrement())
+  parcelId Int
+  crop     String
+  year     Int
+  season   String
+  yield    Float?
+  parcel   Parcel @relation(fields: [parcelId], references: [id], onDelete: Cascade)
+
+  @@index([parcelId], map: "idx_previous_crops_parcel")
+  @@index([year], map: "idx_previous_crops_year")
+  @@index([parcelId, year], map: "idx_previous_crops_parcel_year")
+  @@map("previous_crops")
+}
+
+model Multiplier {
+  id                 Int                 @id @default(autoincrement())
+  name               String
+  address            String
+  latitude           Float
+  longitude          Float
+  yearsExperience    Int
+  specialization     String[]
+  phone              String?
+  email              String?             @unique
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  certificationLevel CertificationLevel
+  status             MultiplierStatus    @default(ACTIVE)
+  contracts          Contract[]
+  parcels            Parcel[]
+  history            ProductionHistory[]
+  productions        Production[]
+  seedLots           SeedLot[]
+
+  @@index([status], map: "idx_multipliers_status")
+  @@index([certificationLevel], map: "idx_multipliers_certification")
+  @@index([isActive], map: "idx_multipliers_active")
+  @@index([latitude, longitude], map: "idx_multipliers_location")
+  @@index([email], map: "idx_multipliers_email")
+  @@index([name], map: "idx_multipliers_name")
+  @@index([status, isActive], map: "idx_multipliers_status_active")
+  @@map("multipliers")
+}
+
+model Contract {
+  id               Int            @id @default(autoincrement())
+  multiplierId     Int
+  startDate        DateTime       @db.Date
+  endDate          DateTime       @db.Date
+  expectedQuantity Int
+  actualQuantity   Int?
+  parcelId         Int?
+  paymentTerms     String?
+  notes            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  varietyId        Int
+  seedLevel        SeedLevel
+  status           ContractStatus @default(DRAFT)
+  multiplier       Multiplier     @relation(fields: [multiplierId], references: [id])
+  parcel           Parcel?        @relation(fields: [parcelId], references: [id])
+  variety          Variety        @relation(fields: [varietyId], references: [id])
+
+  @@index([status], map: "idx_contracts_status")
+  @@index([multiplierId], map: "idx_contracts_multiplier")
+  @@index([varietyId], map: "idx_contracts_variety")
+  @@index([startDate, endDate], map: "idx_contracts_dates")
+  @@index([multiplierId, status], map: "idx_contracts_multiplier_status")
+  @@map("contracts")
+}
+
+model ProductionHistory {
+  id           Int        @id @default(autoincrement())
+  multiplierId Int
+  season       String
+  year         Int
+  quantity     Int
+  qualityScore Int?
+  contractId   Int?
+  createdAt    DateTime   @default(now())
+  varietyId    Int
+  seedLevel    SeedLevel
+  multiplier   Multiplier @relation(fields: [multiplierId], references: [id])
+
+  @@index([multiplierId], map: "idx_production_history_multiplier")
+  @@index([year], map: "idx_production_history_year")
+  @@index([multiplierId, year], map: "idx_production_history_multiplier_year")
+  @@map("production_history")
+}
+
+model SeedLot {
+  id              String           @id
+  quantity        Int
+  productionDate  DateTime         @db.Date
+  expiryDate      DateTime?        @db.Date
+  multiplierId    Int?
+  parcelId        Int?
+  batchNumber     String?
+  parentLotId     String?
+  notes           String?
+  qrCode          String?
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  varietyId       Int
+  level           SeedLevel
+  status          LotStatus        @default(PENDING)
+  productions     Production[]
+  qualityControls QualityControl[]
+  multiplier      Multiplier?      @relation(fields: [multiplierId], references: [id])
+  parcel          Parcel?          @relation(fields: [parcelId], references: [id])
+  parentLot       SeedLot?         @relation("SeedLotGenealogy", fields: [parentLotId], references: [id])
+  childLots       SeedLot[]        @relation("SeedLotGenealogy")
+  variety         Variety          @relation(fields: [varietyId], references: [id])
+
+  @@index([varietyId], map: "idx_seed_lots_variety")
+  @@index([multiplierId], map: "idx_seed_lots_multiplier")
+  @@index([parcelId], map: "idx_seed_lots_parcel")
+  @@index([status], map: "idx_seed_lots_status")
+  @@index([level], map: "idx_seed_lots_level")
+  @@index([productionDate], map: "idx_seed_lots_production_date")
+  @@index([parentLotId], map: "idx_seed_lots_parent")
+  @@index([isActive], map: "idx_seed_lots_active")
+  @@index([varietyId, level, status], map: "idx_seed_lots_variety_level_status")
+  @@index([productionDate, level], map: "idx_seed_lots_production_level")
+  @@index([multiplierId, status, productionDate], map: "idx_seed_lots_multiplier_complete")
+  @@index([expiryDate, status], map: "idx_seed_lots_expiry_status")
+  @@map("seed_lots")
+}
+
+model QualityControl {
+  id              Int        @id @default(autoincrement())
+  lotId           String
+  controlDate     DateTime   @db.Date
+  germinationRate Float
+  varietyPurity   Float
+  moistureContent Float?
+  seedHealth      Float?
+  observations    String?
+  inspectorId     Int
+  testMethod      String?
+  laboratoryRef   String?
+  certificateUrl  String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  result          TestResult
+  inspector       User       @relation(fields: [inspectorId], references: [id])
+  seedLot         SeedLot    @relation(fields: [lotId], references: [id])
+
+  @@index([controlDate], map: "idx_quality_controls_date")
+  @@index([result], map: "idx_quality_controls_result")
+  @@index([lotId], map: "idx_quality_controls_lot")
+  @@index([inspectorId], map: "idx_quality_controls_inspector")
+  @@index([lotId, controlDate], map: "idx_quality_controls_lot_date")
+  @@index([result, controlDate], map: "idx_quality_controls_result_date")
+  @@map("quality_controls")
+}
+
+model Production {
+  id                Int                  @id @default(autoincrement())
+  lotId             String
+  startDate         DateTime             @db.Date
+  endDate           DateTime?            @db.Date
+  sowingDate        DateTime             @db.Date
+  harvestDate       DateTime?            @db.Date
+  multiplierId      Int
+  parcelId          Int
+  plannedQuantity   Int?
+  actualYield       Float?
+  notes             String?
+  weatherConditions String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  conditions        String?
+  yield             Float?
+  status            ProductionStatus     @default(PLANNED)
+  activities        ProductionActivity[]
+  issues            ProductionIssue[]
+  seedLot           SeedLot              @relation(fields: [lotId], references: [id])
+  multiplier        Multiplier           @relation(fields: [multiplierId], references: [id])
+  parcel            Parcel               @relation(fields: [parcelId], references: [id])
+  weatherData       WeatherData[]
+
+  @@index([status], map: "idx_productions_status")
+  @@index([startDate], map: "idx_productions_start_date")
+  @@index([multiplierId], map: "idx_productions_multiplier")
+  @@index([parcelId], map: "idx_productions_parcel")
+  @@index([lotId], map: "idx_productions_lot")
+  @@index([startDate, endDate], map: "idx_productions_date_range")
+  @@index([multiplierId, status], map: "idx_productions_multiplier_status")
+  @@map("productions")
+}
+
+model ProductionActivity {
+  id           Int             @id @default(autoincrement())
+  productionId Int
+  activityDate DateTime        @db.Date
+  description  String
+  personnel    String[]
+  notes        String?
+  userId       Int?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  type         ActivityType
+  inputs       ActivityInput[]
+  production   Production      @relation(fields: [productionId], references: [id], onDelete: Cascade)
+  user         User?           @relation(fields: [userId], references: [id])
+
+  @@index([productionId], map: "idx_production_activities_production")
+  @@index([activityDate], map: "idx_production_activities_date")
+  @@index([type], map: "idx_production_activities_type")
+  @@index([productionId, activityDate], map: "idx_production_activities_prod_date")
+  @@map("production_activities")
+}
+
+model ActivityInput {
+  id         Int                @id @default(autoincrement())
+  activityId Int
+  name       String
+  quantity   String
+  unit       String
+  cost       Float?
+  activity   ProductionActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([activityId], map: "idx_activity_inputs_activity")
+  @@map("activity_inputs")
+}
+
+model ProductionIssue {
+  id           Int           @id @default(autoincrement())
+  productionId Int
+  issueDate    DateTime      @db.Date
+  description  String
+  actions      String
+  resolved     Boolean       @default(false)
+  resolvedDate DateTime?     @db.Date
+  cost         Float?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  type         IssueType
+  severity     IssueSeverity
+  production   Production    @relation(fields: [productionId], references: [id], onDelete: Cascade)
+
+  @@index([productionId], map: "idx_production_issues_production")
+  @@index([issueDate], map: "idx_production_issues_date")
+  @@index([resolved], map: "idx_production_issues_resolved")
+  @@index([productionId, resolved], map: "idx_production_issues_prod_resolved")
+  @@map("production_issues")
+}
+
+model WeatherData {
+  id           Int         @id @default(autoincrement())
+  productionId Int?
+  recordDate   DateTime    @db.Date
+  temperature  Float
+  rainfall     Float
+  humidity     Float
+  windSpeed    Float?
+  notes        String?
+  source       String?
+  createdAt    DateTime    @default(now())
+  production   Production? @relation(fields: [productionId], references: [id], onDelete: Cascade)
+
+  @@index([productionId], map: "idx_weather_data_production")
+  @@index([recordDate], map: "idx_weather_data_date")
+  @@index([productionId, recordDate], map: "idx_weather_data_prod_date")
+  @@map("weather_data")
+}
+
+model Report {
+  id          Int        @id @default(autoincrement())
+  title       String
+  description String?
+  createdById Int
+  fileName    String?
+  filePath    String?
+  parameters  Json?
+  data        Json?
+  isPublic    Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  type        ReportType
+  createdBy   User       @relation(fields: [createdById], references: [id])
+
+  @@index([type], map: "idx_reports_type")
+  @@index([createdAt], map: "idx_reports_created")
+  @@index([createdById], map: "idx_reports_creator")
+  @@index([isPublic], map: "idx_reports_public")
+  @@index([type, createdAt], map: "idx_reports_type_created")
+  @@map("reports")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId], map: "idx_refresh_tokens_user")
+  @@index([expiresAt], map: "idx_refresh_tokens_expiry")
+  @@index([userId, expiresAt], map: "idx_refresh_tokens_user_expiry")
+  @@index([token, expiresAt], map: "idx_refresh_tokens_token_expiry")
+  @@map("refresh_tokens")
+}
+
 enum Role {
   ADMIN      @map("admin")
   MANAGER    @map("manager")
@@ -42,8 +441,7 @@ enum CropType {
   SORGHUM @map("sorghum")
   COWPEA  @map("cowpea")
   MILLET  @map("millet")
-  WHEAT   @map("wheat")  // À ajouter
-
+  WHEAT   @map("wheat")
 
   @@map("crop_type")
 }
@@ -86,10 +484,10 @@ enum CertificationLevel {
 }
 
 enum ProductionStatus {
-  PLANNED      @map("planned")
-  IN_PROGRESS  @map("in-progress")
-  COMPLETED    @map("completed")
-  CANCELLED    @map("cancelled")
+  PLANNED     @map("planned")
+  IN_PROGRESS @map("in-progress")
+  COMPLETED   @map("completed")
+  CANCELLED   @map("cancelled")
 
   @@map("production_status")
 }
@@ -133,11 +531,11 @@ enum TestResult {
 }
 
 enum ReportType {
-  PRODUCTION            @map("production")
-  QUALITY               @map("quality")
-  INVENTORY             @map("inventory")
+  PRODUCTION             @map("production")
+  QUALITY                @map("quality")
+  INVENTORY              @map("inventory")
   MULTIPLIER_PERFORMANCE @map("multiplier-performance")
-  CUSTOM                @map("custom")
+  CUSTOM                 @map("custom")
 
   @@map("report_type")
 }
@@ -147,451 +545,4 @@ enum MultiplierStatus {
   INACTIVE @map("inactive")
 
   @@map("multiplier_status")
-}
-
-// Modèles de base de données
-model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String   // Hash du mot de passe
-  role      Role
-  avatar    String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  qualityControls QualityControl[]
-  reports         Report[]
-  activities      ProductionActivity[]
-
-  // Index pour les performances
-  @@index([email], map: "idx_users_email")
-  @@index([role], map: "idx_users_role")
-  @@index([isActive], map: "idx_users_active")
-  @@index([role, isActive], map: "idx_users_role_active") // ✅ AJOUTÉ: Index composite
-  @@map("users")
-}
-
-model Variety {
-  id             Int      @id @default(autoincrement())
-  code           String   @unique // Code de la variété (ex: sahel108)
-  name           String
-  cropType       CropType
-  description    String?  @db.Text
-  maturityDays   Int
-  yieldPotential Float?
-  resistances    String[] // Array de résistances
-  origin         String?
-  releaseYear    Int?
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  // Relations
-  seedLots  SeedLot[]
-  contracts Contract[]
-
-  // Index pour les performances
-  @@index([cropType], map: "idx_varieties_crop_type")
-  @@index([isActive], map: "idx_varieties_active")
-  @@index([code], map: "idx_varieties_code")
-  @@index([name], map: "idx_varieties_name")
-  @@index([cropType, isActive], map: "idx_varieties_crop_active") // ✅ AJOUTÉ: Index composite
-  @@map("varieties")
-}
-
-model Parcel {
-  id               Int           @id @default(autoincrement())
-  name             String?
-  area             Float         // Superficie en hectares
-  latitude         Float
-  longitude        Float
-  status           ParcelStatus  @default(AVAILABLE)
-  soilType         String?
-  irrigationSystem String?
-  address          String?
-  multiplierId     Int?
-  isActive         Boolean       @default(true)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-
-  // Relations
-  multiplier    Multiplier?     @relation(fields: [multiplierId], references: [id], onDelete: SetNull)
-  seedLots      SeedLot[]
-  productions   Production[]
-  soilAnalyses  SoilAnalysis[]
-  previousCrops PreviousCrop[]
-  contracts     Contract[]
-
-  // Index pour les performances
-  @@index([status], map: "idx_parcels_status")
-  @@index([multiplierId], map: "idx_parcels_multiplier")
-  @@index([isActive], map: "idx_parcels_active")
-  @@index([latitude, longitude], map: "idx_parcels_location")
-  @@index([multiplierId, status], map: "idx_parcels_multiplier_status") // ✅ AJOUTÉ: Index composite
-  @@map("parcels")
-}
-
-model SoilAnalysis {
-  id            Int      @id @default(autoincrement())
-  parcelId      Int
-  analysisDate  DateTime @db.Date
-  pH            Float?
-  organicMatter Float?   // Pourcentage
-  nitrogen      Float?   // mg/kg
-  phosphorus    Float?   // mg/kg
-  potassium     Float?   // mg/kg
-  notes         String?  @db.Text
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations
-  parcel Parcel @relation(fields: [parcelId], references: [id], onDelete: Cascade)
-
-  @@index([parcelId], map: "idx_soil_analyses_parcel")
-  @@index([analysisDate], map: "idx_soil_analyses_date")
-  @@index([parcelId, analysisDate], map: "idx_soil_analyses_parcel_date") // ✅ AJOUTÉ: Index composite
-  @@map("soil_analyses")
-}
-
-model PreviousCrop {
-  id       Int    @id @default(autoincrement())
-  parcelId Int
-  crop     String
-  year     Int
-  season   String
-  yield    Float? // tonnes/hectare
-
-  // Relations
-  parcel Parcel @relation(fields: [parcelId], references: [id], onDelete: Cascade)
-
-  @@index([parcelId], map: "idx_previous_crops_parcel")
-  @@index([year], map: "idx_previous_crops_year")
-  @@index([parcelId, year], map: "idx_previous_crops_parcel_year") // ✅ AJOUTÉ: Index composite
-  @@map("previous_crops")
-}
-
-model Multiplier {
-  id                 Int                 @id @default(autoincrement())
-  name               String
-  status             MultiplierStatus    @default(ACTIVE)
-  address            String
-  latitude           Float
-  longitude          Float
-  yearsExperience    Int
-  certificationLevel CertificationLevel
-  specialization     String[]            // Array de spécialisations
-  phone              String?
-  email              String?             @unique
-  isActive           Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-
-  // Relations
-  parcels     Parcel[]
-  contracts   Contract[]
-  seedLots    SeedLot[]
-  productions Production[]
-  history     ProductionHistory[]
-
-  // Index pour les performances
-  @@index([status], map: "idx_multipliers_status")
-  @@index([certificationLevel], map: "idx_multipliers_certification")
-  @@index([isActive], map: "idx_multipliers_active")
-  @@index([latitude, longitude], map: "idx_multipliers_location")
-  @@index([email], map: "idx_multipliers_email")
-  @@index([name], map: "idx_multipliers_name")
-  @@index([status, isActive], map: "idx_multipliers_status_active") // ✅ AJOUTÉ: Index composite
-  @@map("multipliers")
-}
-
-model Contract {
-  id               Int            @id @default(autoincrement())
-  multiplierId     Int
-  varietyId        Int
-  startDate        DateTime       @db.Date
-  endDate          DateTime       @db.Date
-  seedLevel        SeedLevel
-  expectedQuantity Int            // kg
-  actualQuantity   Int?           // kg
-  status           ContractStatus @default(DRAFT)
-  parcelId         Int?
-  paymentTerms     String?        @db.Text
-  notes            String?        @db.Text
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-
-  // Relations
-  multiplier Multiplier @relation(fields: [multiplierId], references: [id])
-  variety    Variety    @relation(fields: [varietyId], references: [id])
-  parcel     Parcel?    @relation(fields: [parcelId], references: [id], onDelete: SetNull)
-
-  // Index pour les performances
-  @@index([status], map: "idx_contracts_status")
-  @@index([multiplierId], map: "idx_contracts_multiplier")
-  @@index([varietyId], map: "idx_contracts_variety")
-  @@index([startDate, endDate], map: "idx_contracts_dates")
-  @@index([multiplierId, status], map: "idx_contracts_multiplier_status") // ✅ AJOUTÉ: Index composite
-  @@map("contracts")
-}
-
-model ProductionHistory {
-  id           Int       @id @default(autoincrement())
-  multiplierId Int
-  varietyId    Int
-  seedLevel    SeedLevel
-  season       String
-  year         Int
-  quantity     Int       // kg
-  qualityScore Int?      // 0-100
-  contractId   Int?
-  createdAt    DateTime  @default(now())
-
-  // Relations
-  multiplier Multiplier @relation(fields: [multiplierId], references: [id])
-
-  @@index([multiplierId], map: "idx_production_history_multiplier")
-  @@index([year], map: "idx_production_history_year")
-  @@index([multiplierId, year], map: "idx_production_history_multiplier_year") // ✅ AJOUTÉ: Index composite
-  @@map("production_history")
-}
-
-model SeedLot {
-  id             String    @id // Format: SL-LEVEL-YEAR-NUMBER
-  varietyId      Int
-  level          SeedLevel
-  quantity       Int       // kg
-  productionDate DateTime  @db.Date
-  expiryDate     DateTime? @db.Date
-  multiplierId   Int?
-  parcelId       Int?
-  status         LotStatus @default(PENDING)
-  batchNumber    String?
-  parentLotId    String?
-  notes          String?   @db.Text
-  qrCode         String?   @db.Text // Code QR généré en base64
-  isActive       Boolean   @default(true)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  // Relations
-  variety         Variety           @relation(fields: [varietyId], references: [id])
-  multiplier      Multiplier?       @relation(fields: [multiplierId], references: [id], onDelete: SetNull)
-  parcel          Parcel?           @relation(fields: [parcelId], references: [id], onDelete: SetNull)
-  parentLot       SeedLot?          @relation("SeedLotGenealogy", fields: [parentLotId], references: [id])
-  childLots       SeedLot[]         @relation("SeedLotGenealogy")
-  qualityControls QualityControl[]
-  productions     Production[]
-
-  // Index pour les performances
-  @@index([varietyId], map: "idx_seed_lots_variety")
-  @@index([multiplierId], map: "idx_seed_lots_multiplier")
-  @@index([parcelId], map: "idx_seed_lots_parcel")
-  @@index([status], map: "idx_seed_lots_status")
-  @@index([level], map: "idx_seed_lots_level")
-  @@index([productionDate], map: "idx_seed_lots_production_date")
-  @@index([parentLotId], map: "idx_seed_lots_parent")
-  @@index([isActive], map: "idx_seed_lots_active")
-  @@index([varietyId, level, status], map: "idx_seed_lots_variety_level_status")
-  @@index([productionDate, level], map: "idx_seed_lots_production_level")
-  @@index([multiplierId, status, productionDate], map: "idx_seed_lots_multiplier_complete")
-  @@index([expiryDate, status], map: "idx_seed_lots_expiry_status") // ✅ AJOUTÉ: Pour les lots expirants
-  @@map("seed_lots")
-}
-
-model QualityControl {
-  id              Int        @id @default(autoincrement())
-  lotId           String
-  controlDate     DateTime   @db.Date
-  germinationRate Float      // Pourcentage
-  varietyPurity   Float      // Pourcentage
-  moistureContent Float?     // Pourcentage
-  seedHealth      Float?     // Pourcentage
-  result          TestResult
-  observations    String?    @db.Text
-  inspectorId     Int
-  testMethod      String?
-  laboratoryRef   String?
-  certificateUrl  String?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-
-  // Relations
-  seedLot   SeedLot @relation(fields: [lotId], references: [id])
-  inspector User    @relation(fields: [inspectorId], references: [id])
-
-  // Index pour les performances
-  @@index([controlDate], map: "idx_quality_controls_date")
-  @@index([result], map: "idx_quality_controls_result")
-  @@index([lotId], map: "idx_quality_controls_lot")
-  @@index([inspectorId], map: "idx_quality_controls_inspector")
-  @@index([lotId, controlDate], map: "idx_quality_controls_lot_date") // ✅ AJOUTÉ: Index composite
-  @@index([result, controlDate], map: "idx_quality_controls_result_date") // ✅ AJOUTÉ: Index composite
-  @@map("quality_controls")
-}
-
-model Production {
-  id                Int              @id @default(autoincrement())
-  lotId             String
-  startDate         DateTime         @db.Date
-  endDate           DateTime?        @db.Date
-  sowingDate        DateTime         @db.Date
-  harvestDate       DateTime?        @db.Date
-  yield             Float?           // tonnes/hectare
-  conditions        String?          @db.Text
-  multiplierId      Int
-  parcelId          Int
-  status            ProductionStatus @default(PLANNED)
-  plannedQuantity   Int?             // kg
-  actualYield       Float?           // kg
-  notes             String?          @db.Text
-  weatherConditions String?          @db.Text
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-
-  // Relations
-  seedLot     SeedLot              @relation(fields: [lotId], references: [id])
-  multiplier  Multiplier           @relation(fields: [multiplierId], references: [id])
-  parcel      Parcel               @relation(fields: [parcelId], references: [id])
-  activities  ProductionActivity[]
-  issues      ProductionIssue[]
-  weatherData WeatherData[]
-
-  // Index pour les performances
-  @@index([status], map: "idx_productions_status")
-  @@index([startDate], map: "idx_productions_start_date")
-  @@index([multiplierId], map: "idx_productions_multiplier")
-  @@index([parcelId], map: "idx_productions_parcel")
-  @@index([lotId], map: "idx_productions_lot")
-  @@index([startDate, endDate], map: "idx_productions_date_range")
-  @@index([multiplierId, status], map: "idx_productions_multiplier_status") // ✅ AJOUTÉ: Index composite
-  @@map("productions")
-}
-
-model ProductionActivity {
-  id           Int          @id @default(autoincrement())
-  productionId Int
-  type         ActivityType
-  activityDate DateTime     @db.Date
-  description  String       @db.Text
-  personnel    String[]     // Array de personnel impliqué
-  notes        String?      @db.Text
-  userId       Int?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-
-  // Relations
-  production Production      @relation(fields: [productionId], references: [id], onDelete: Cascade)
-  user       User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
-  inputs     ActivityInput[]
-
-  @@index([productionId], map: "idx_production_activities_production")
-  @@index([activityDate], map: "idx_production_activities_date")
-  @@index([type], map: "idx_production_activities_type")
-  @@index([productionId, activityDate], map: "idx_production_activities_prod_date") // ✅ AJOUTÉ: Index composite
-  @@map("production_activities")
-}
-
-model ActivityInput {
-  id         Int                @id @default(autoincrement())
-  activityId Int
-  name       String
-  quantity   String
-  unit       String
-  cost       Float?
-
-  // Relations
-  activity ProductionActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
-
-  @@index([activityId], map: "idx_activity_inputs_activity")
-  @@map("activity_inputs")
-}
-
-model ProductionIssue {
-  id           Int           @id @default(autoincrement())
-  productionId Int
-  issueDate    DateTime      @db.Date
-  type         IssueType
-  description  String        @db.Text
-  severity     IssueSeverity
-  actions      String        @db.Text
-  resolved     Boolean       @default(false)
-  resolvedDate DateTime?     @db.Date
-  cost         Float?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-
-  // Relations
-  production Production @relation(fields: [productionId], references: [id], onDelete: Cascade)
-
-  @@index([productionId], map: "idx_production_issues_production")
-  @@index([issueDate], map: "idx_production_issues_date")
-  @@index([resolved], map: "idx_production_issues_resolved")
-  @@index([productionId, resolved], map: "idx_production_issues_prod_resolved") // ✅ AJOUTÉ: Index composite
-  @@map("production_issues")
-}
-
-model WeatherData {
-  id           Int        @id @default(autoincrement())
-  productionId Int?
-  recordDate   DateTime   @db.Date
-  temperature  Float      // °C
-  rainfall     Float      // mm
-  humidity     Float      // %
-  windSpeed    Float?     // km/h
-  notes        String?    @db.Text
-  source       String?    // Station météo, manuel, etc.
-  createdAt    DateTime   @default(now())
-
-  // Relations
-  production Production? @relation(fields: [productionId], references: [id], onDelete: Cascade)
-
-  @@index([productionId], map: "idx_weather_data_production")
-  @@index([recordDate], map: "idx_weather_data_date")
-  @@index([productionId, recordDate], map: "idx_weather_data_prod_date") // ✅ AJOUTÉ: Index composite
-  @@map("weather_data")
-}
-
-model Report {
-  id           Int        @id @default(autoincrement())
-  title        String
-  type         ReportType
-  description  String?    @db.Text
-  createdById  Int
-  fileName     String?
-  filePath     String?
-  parameters   Json?      // Paramètres utilisés pour générer le rapport
-  data         Json?      // Données du rapport si stockées
-  isPublic     Boolean    @default(false)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-
-  // Relations
-  createdBy User @relation(fields: [createdById], references: [id])
-
-  // Index pour les performances
-  @@index([type], map: "idx_reports_type")
-  @@index([createdAt], map: "idx_reports_created")
-  @@index([createdById], map: "idx_reports_creator")
-  @@index([isPublic], map: "idx_reports_public")
-  @@index([type, createdAt], map: "idx_reports_type_created") // ✅ AJOUTÉ: Index composite
-  @@map("reports")
-}
-
-// Modèle pour la gestion des sessions et de l'authentification - ✅ CORRIGÉ avec index optimisés
-model RefreshToken {
-  id        String   @id @default(cuid())
-  token     String   @unique
-  userId    Int
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  // ✅ CORRECTION: Index optimisés pour les performances
-  @@index([userId], map: "idx_refresh_tokens_user")
-  @@index([expiresAt], map: "idx_refresh_tokens_expiry")
-  @@index([userId, expiresAt], map: "idx_refresh_tokens_user_expiry") // ✅ AJOUTÉ: Index composite pour nettoyage
-  @@index([token, expiresAt], map: "idx_refresh_tokens_token_expiry") // ✅ AJOUTÉ: Index composite pour validation
-  @@map("refresh_tokens")
 }
