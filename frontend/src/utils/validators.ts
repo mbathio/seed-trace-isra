@@ -45,6 +45,7 @@ export const seedLotValidationSchema = yup.object({
 });
 
 // ✅ CORRIGÉ: Validation avec valeurs UI pour variety
+
 export const varietyValidationSchema = yup.object({
   code: yup
     .string()

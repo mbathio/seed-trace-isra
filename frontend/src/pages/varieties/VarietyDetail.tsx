@@ -75,7 +75,7 @@ const VarietyDetail: React.FC = () => {
       SORGHUM: { variant: "destructive", label: "Sorgho" },
       COWPEA: { variant: "default", label: "Niébé" },
       MILLET: { variant: "secondary", label: "Mil" },
-      Wheat: { variant: "secondary", label: "Blé" },
+      WHEAT: { variant: "secondary", label: "Blé" },
     };
 
     const config = typeMap[cropType] || { variant: "outline", label: cropType };

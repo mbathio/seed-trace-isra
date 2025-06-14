@@ -27,10 +27,11 @@ import { toast } from "react-toastify";
 import { api } from "../../services/api";
 import { CROP_TYPES } from "../../constants";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { varietyValidationSchema } from "../../utils/validators";
+import * as yup from "yup";
 import { DataTransformer } from "../../utils/transformers";
+import type { SubmitHandler } from "react-hook-form";
 
-// ✅ CORRIGÉ: Interface avec valeurs UI (minuscules)
+// ✅ Interface pour le formulaire
 interface CreateVarietyForm {
   code: string;
   name: string;
@@ -45,10 +46,55 @@ interface CreateVarietyForm {
   description?: string;
   maturityDays: number;
   yieldPotential?: number;
-  resistances: string[];
+  resistances: string[]; // Make required, not optional
   origin?: string;
   releaseYear?: number;
 }
+
+// ✅ Schéma de validation local adapté à l'interface
+const createVarietySchema = yup.object({
+  code: yup
+    .string()
+    .required("Code requis")
+    .min(2, "Code trop court")
+    .max(20, "Code trop long")
+    .matches(
+      /^[A-Z0-9]+$/,
+      "Code doit contenir uniquement des lettres majuscules et des chiffres"
+    ),
+  name: yup
+    .string()
+    .required("Nom requis")
+    .min(2, "Nom trop court")
+    .max(100, "Nom trop long"),
+  cropType: yup
+    .string()
+    .oneOf(
+      ["rice", "maize", "peanut", "sorghum", "cowpea", "millet", "wheat"],
+      "Type de culture invalide"
+    )
+    .required("Type de culture requis"),
+  description: yup.string().max(1000, "Description trop longue").optional(),
+  maturityDays: yup
+    .number()
+    .positive("Durée doit être positive")
+    .min(30, "Minimum 30 jours")
+    .max(365, "Maximum 365 jours")
+    .required("Durée de maturité requise"),
+  yieldPotential: yup
+    .number()
+    .positive("Rendement doit être positif")
+    .max(50, "Maximum 50 t/ha")
+    .optional(),
+  origin: yup.string().max(100, "Origine trop longue").optional(),
+  releaseYear: yup
+    .number()
+    .positive()
+    .min(1900, "Année trop ancienne")
+    .max(new Date().getFullYear(), "Année ne peut pas être dans le futur")
+    .optional(),
+  resistances: yup.array().of(yup.string().required()).optional().default([]),
+});
 
 const CreateVariety: React.FC = () => {
   const navigate = useNavigate();
@@ -62,11 +108,11 @@ const CreateVariety: React.FC = () => {
     setValue,
     formState: { errors },
   } = useForm<CreateVarietyForm>({
-    resolver: yupResolver(varietyValidationSchema),
+    resolver: yupResolver(createVarietySchema),
     defaultValues: {
       maturityDays: 90,
       resistances: [],
-      cropType: "rice", // ✅ CORRIGÉ: Valeur par défaut en minuscules
+      cropType: "rice",
     },
   });
 
@@ -74,7 +120,6 @@ const CreateVariety: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateVarietyForm) => {
-      // ✅ CORRIGÉ: Transformer les données pour l'API
       const transformedData = DataTransformer.transformVarietyForAPI(data);
       const response = await api.post("/varieties", transformedData);
       return response.data;
@@ -105,7 +150,7 @@ const CreateVariety: React.FC = () => {
     );
   };
 
-  const onSubmit = async (data: CreateVarietyForm) => {
+  const onSubmit: SubmitHandler<CreateVarietyForm> = async (data) => {
     setIsSubmitting(true);
     try {
       await createMutation.mutateAsync(data);
