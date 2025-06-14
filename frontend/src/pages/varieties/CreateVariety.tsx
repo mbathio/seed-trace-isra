@@ -425,9 +425,7 @@ const CreateVariety: React.FC = () => {
                       type="button"
                       onClick={() => removeResistance(index)}
                       className="ml-1 text-red-500 hover:text-red-700"
-                    >
-                      ×
-                    </button>
+                    ></button>
                   </Badge>
                 ))}
               </div>

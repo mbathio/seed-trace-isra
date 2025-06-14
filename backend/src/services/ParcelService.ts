@@ -45,8 +45,12 @@ export class ParcelService {
         sortOrder = "asc",
       } = query;
 
-      const skip = (page - 1) * pageSize;
+      // ✅ CORRECTION: Convertir page et pageSize en nombres
+      const pageNum = typeof page === "string" ? parseInt(page, 10) : page;
+      const pageSizeNum =
+        typeof pageSize === "string" ? parseInt(pageSize, 10) : pageSize;
 
+      const skip = (pageNum - 1) * pageSizeNum;
       const where: any = {
         isActive: true,
       };

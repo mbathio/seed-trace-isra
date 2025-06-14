@@ -20,9 +20,11 @@ import qualityControlRoutes from "./routes/quality-controls";
 import reportRoutes from "./routes/reports";
 import statisticsRoutes from "./routes/statistics";
 import exportRoutes from "./routes/export";
-
 // Import des middlewares
 import { errorHandler } from "./middleware/errorHandler";
+import { parseAndValidateQuery } from "./middleware/queryParser";
+
+// Import des middlewares
 
 // Charger les variables d'environnement
 dotenv.config();

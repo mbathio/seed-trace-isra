@@ -1,4 +1,4 @@
-// ===== 3. backend/src/services/MultiplierService.ts - MISE À JOUR AVEC TRANSFORMATEURS =====
+// backend/src/services/MultiplierService.ts - SERVICE CORRIGÉ
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { PaginationQuery } from "../types/api";
@@ -9,41 +9,26 @@ import {
   ContractStatus,
   CropType,
 } from "@prisma/client";
-import { DataTransformer } from "../utils/transformers"; // ✅ AJOUTÉ
 
 export class MultiplierService {
   static async createMultiplier(data: any): Promise<any> {
     try {
-      // ✅ TRANSFORMATION : Transformer les données UI vers DB
-      const transformedStatus = data.status 
-        ? DataTransformer.transformMultiplierStatusUIToDB(data.status) as MultiplierStatus
-        : MultiplierStatus.ACTIVE;
-
-      const transformedCertificationLevel = DataTransformer.transformCertificationLevelUIToDB(
-        data.certificationLevel
-      ) as CertificationLevel;
-
-      const transformedSpecialization = data.specialization?.map((spec: string) =>
-        DataTransformer.transformCropTypeUIToDB(spec)
-      ) || [];
-
       const multiplier = await prisma.multiplier.create({
         data: {
           name: data.name,
-          status: transformedStatus,
+          status: data.status || MultiplierStatus.ACTIVE,
           address: data.address,
           latitude: data.latitude,
           longitude: data.longitude,
           yearsExperience: data.yearsExperience,
-          certificationLevel: transformedCertificationLevel,
-          specialization: transformedSpecialization,
+          certificationLevel: data.certificationLevel,
+          specialization: data.specialization || [],
           phone: data.phone,
           email: data.email,
         },
       });
 
-      // ✅ TRANSFORMATION : Transformer les données pour le frontend
-      return DataTransformer.transformMultiplier(multiplier);
+      return multiplier;
     } catch (error) {
       logger.error("Erreur lors de la création du multiplicateur:", error);
       throw error;
@@ -64,7 +49,12 @@ export class MultiplierService {
         sortOrder = "asc",
       } = query;
 
-      const skip = (page - 1) * pageSize;
+      // ✅ CORRECTION: Convertir page et pageSize en nombres
+      const pageNum = typeof page === "string" ? parseInt(page, 10) : page;
+      const pageSizeNum =
+        typeof pageSize === "string" ? parseInt(pageSize, 10) : pageSize;
+
+      const skip = (pageNum - 1) * pageSizeNum;
 
       const where: any = {
         isActive: true,
@@ -79,15 +69,11 @@ export class MultiplierService {
       }
 
       if (status) {
-        // ✅ TRANSFORMATION : Transformer le statut UI vers DB
-        where.status = DataTransformer.transformMultiplierStatusUIToDB(status) as MultiplierStatus;
+        where.status = status;
       }
 
       if (certificationLevel) {
-        // ✅ TRANSFORMATION : Transformer le niveau de certification UI vers DB
-        where.certificationLevel = DataTransformer.transformCertificationLevelUIToDB(
-          certificationLevel
-        ) as CertificationLevel;
+        where.certificationLevel = certificationLevel;
       }
 
       const [multipliers, total] = await Promise.all([
@@ -105,30 +91,30 @@ export class MultiplierService {
           },
           orderBy: { [sortBy]: sortOrder },
           skip,
-          take: pageSize,
+          take: pageSizeNum, // ✅ CORRECTION: Utiliser le nombre converti
         }),
         prisma.multiplier.count({ where }),
       ]);
 
-      const totalPages = Math.ceil(total / pageSize);
-
-      // ✅ TRANSFORMATION : Transformer tous les multiplicateurs pour le frontend
-      const transformedMultipliers = multipliers.map((multiplier) =>
-        DataTransformer.transformMultiplier(multiplier)
-      );
+      const totalPages = Math.ceil(total / pageSizeNum);
 
       return {
-        multipliers: transformedMultipliers,
+        multipliers,
         total,
         meta: {
-          page,
-          pageSize,
+          page: pageNum,
+          pageSize: pageSizeNum,
           totalCount: total,
           totalPages,
+          hasNextPage: pageNum < totalPages,
+          hasPreviousPage: pageNum > 1,
         },
       };
     } catch (error) {
-      logger.error("Erreur lors de la récupération des multiplicateurs:", error);
+      logger.error(
+        "Erreur lors de la récupération des multiplicateurs:",
+        error
+      );
       throw error;
     }
   }
@@ -178,35 +164,7 @@ export class MultiplierService {
         },
       });
 
-      if (!multiplier) {
-        return null;
-      }
-
-      // ✅ TRANSFORMATION : Transformer le multiplicateur et ses relations
-      const transformedMultiplier = DataTransformer.transformMultiplier(multiplier);
-      
-      // Transformer les relations
-      if (transformedMultiplier.contracts) {
-        transformedMultiplier.contracts = transformedMultiplier.contracts.map((contract: any) => ({
-          ...contract,
-          variety: DataTransformer.transformVariety(contract.variety),
-          status: contract.status?.toLowerCase().replace(/_/g, "-") || contract.status,
-        }));
-      }
-
-      if (transformedMultiplier.seedLots) {
-        transformedMultiplier.seedLots = transformedMultiplier.seedLots.map((lot: any) =>
-          DataTransformer.transformSeedLot(lot)
-        );
-      }
-
-      if (transformedMultiplier.productions) {
-        transformedMultiplier.productions = transformedMultiplier.productions.map((production: any) =>
-          DataTransformer.transformProduction(production)
-        );
-      }
-
-      return transformedMultiplier;
+      return multiplier;
     } catch (error) {
       logger.error("Erreur lors de la récupération du multiplicateur:", error);
       throw error;
@@ -215,42 +173,31 @@ export class MultiplierService {
 
   static async updateMultiplier(id: number, data: any): Promise<any> {
     try {
-      const updateData: any = {};
+      const updateData: any = {
+        updatedAt: new Date(),
+      };
 
+      // Copier uniquement les champs définis
       if (data.name !== undefined) updateData.name = data.name;
       if (data.address !== undefined) updateData.address = data.address;
       if (data.latitude !== undefined) updateData.latitude = data.latitude;
       if (data.longitude !== undefined) updateData.longitude = data.longitude;
-      if (data.yearsExperience !== undefined) updateData.yearsExperience = data.yearsExperience;
+      if (data.yearsExperience !== undefined)
+        updateData.yearsExperience = data.yearsExperience;
       if (data.phone !== undefined) updateData.phone = data.phone;
       if (data.email !== undefined) updateData.email = data.email;
-
-      // ✅ TRANSFORMATION : Transformer les enums si fournis
-      if (data.status !== undefined) {
-        updateData.status = DataTransformer.transformMultiplierStatusUIToDB(data.status);
-      }
-
-      if (data.certificationLevel !== undefined) {
-        updateData.certificationLevel = DataTransformer.transformCertificationLevelUIToDB(
-          data.certificationLevel
-        );
-      }
-
-      if (data.specialization !== undefined) {
-        updateData.specialization = data.specialization.map((spec: string) =>
-          DataTransformer.transformCropTypeUIToDB(spec)
-        );
-      }
-
-      updateData.updatedAt = new Date();
+      if (data.status !== undefined) updateData.status = data.status;
+      if (data.certificationLevel !== undefined)
+        updateData.certificationLevel = data.certificationLevel;
+      if (data.specialization !== undefined)
+        updateData.specialization = data.specialization;
 
       const multiplier = await prisma.multiplier.update({
         where: { id },
         data: updateData,
       });
 
-      // ✅ TRANSFORMATION : Transformer les données pour le frontend
-      return DataTransformer.transformMultiplier(multiplier);
+      return multiplier;
     } catch (error) {
       logger.error("Erreur lors de la mise à jour du multiplicateur:", error);
       throw error;
@@ -279,14 +226,7 @@ export class MultiplierService {
         orderBy: { startDate: "desc" },
       });
 
-      // ✅ TRANSFORMATION : Transformer les contrats pour le frontend
-      return contracts.map((contract) => ({
-        ...contract,
-        status: contract.status?.toLowerCase().replace(/_/g, "-") || contract.status,
-        variety: DataTransformer.transformVariety(contract.variety),
-        startDate: contract.startDate?.toISOString().split("T")[0],
-        endDate: contract.endDate?.toISOString().split("T")[0],
-      }));
+      return contracts;
     } catch (error) {
       logger.error("Erreur lors de la récupération des contrats:", error);
       throw error;
@@ -303,27 +243,20 @@ export class MultiplierService {
         if (!isNaN(parsedId)) {
           varietyId = parsedId;
         } else {
+          // Si c'est un code, chercher la variété
           const variety = await prisma.variety.findFirst({
             where: { code: data.varietyId },
           });
           if (!variety) {
-            throw new Error(`Variété non trouvée avec le code: ${data.varietyId}`);
+            throw new Error(
+              `Variété non trouvée avec le code: ${data.varietyId}`
+            );
           }
           varietyId = variety.id;
         }
       } else {
         varietyId = data.varietyId;
       }
-
-      // ✅ TRANSFORMATION : Transformer le statut du contrat UI vers DB
-      const transformedStatus = data.status 
-        ? DataTransformer.transformEnumUIToDB(data.status, {
-            draft: "DRAFT",
-            active: "ACTIVE", 
-            completed: "COMPLETED",
-            cancelled: "CANCELLED"
-          }) as ContractStatus
-        : ContractStatus.DRAFT;
 
       const contract = await prisma.contract.create({
         data: {
@@ -336,7 +269,7 @@ export class MultiplierService {
           parcelId: data.parcelId,
           paymentTerms: data.paymentTerms,
           notes: data.notes,
-          status: transformedStatus,
+          status: data.status || ContractStatus.DRAFT,
         },
         include: {
           variety: true,
@@ -344,15 +277,7 @@ export class MultiplierService {
         },
       });
 
-      // ✅ TRANSFORMATION : Transformer le contrat pour le frontend
-      return {
-        ...contract,
-        status: contract.status?.toLowerCase().replace(/_/g, "-"),
-        variety: DataTransformer.transformVariety(contract.variety),
-        multiplier: DataTransformer.transformMultiplier(contract.multiplier),
-        startDate: contract.startDate?.toISOString().split("T")[0],
-        endDate: contract.endDate?.toISOString().split("T")[0],
-      };
+      return contract;
     } catch (error) {
       logger.error("Erreur lors de la création du contrat:", error);
       throw error;
