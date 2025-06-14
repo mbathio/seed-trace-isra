@@ -128,12 +128,12 @@ export class StatisticsService {
         ORDER BY month ASC
       `;
 
-      // Tendances des contrôles qualité
+      // Tendances des contrôles qualité - CORRIGÉ avec cast enum
       const qualityTrends = await prisma.$queryRaw`
         SELECT 
           DATE_TRUNC('month', "controlDate") as month,
           COUNT(*)::int as total,
-          COUNT(CASE WHEN result = 'PASS' THEN 1 END)::int as passed
+          COUNT(CASE WHEN result = 'pass'::test_result THEN 1 END)::int as passed
         FROM "quality_controls"
         WHERE "controlDate" >= ${startDate}
         GROUP BY DATE_TRUNC('month', "controlDate")

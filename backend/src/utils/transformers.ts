@@ -458,11 +458,35 @@ export class DataTransformer {
   private static formatDate(date: any): string | null {
     if (!date) return null;
     try {
-      if (typeof date === "string") return date;
-      return date.toISOString
-        ? date.toISOString()
-        : new Date(date).toISOString();
-    } catch {
+      // Si c'est déjà une string ISO, la retourner telle quelle
+      if (typeof date === "string") {
+        // Vérifier si c'est une date ISO valide
+        const dateObj = new Date(date);
+        if (!isNaN(dateObj.getTime())) {
+          return date;
+        }
+        return null;
+      }
+
+      // Si c'est un objet Date
+      if (date instanceof Date) {
+        return date.toISOString();
+      }
+
+      // Si c'est un objet avec toISOString
+      if (date.toISOString && typeof date.toISOString === "function") {
+        return date.toISOString();
+      }
+
+      // Essayer de créer une date
+      const dateObj = new Date(date);
+      if (!isNaN(dateObj.getTime())) {
+        return dateObj.toISOString();
+      }
+
+      return null;
+    } catch (error) {
+      console.warn("Erreur lors du formatage de la date:", error);
       return null;
     }
   }
