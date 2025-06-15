@@ -22,8 +22,7 @@ import statisticsRoutes from "./routes/statistics";
 import exportRoutes from "./routes/export";
 // Import des middlewares
 import { errorHandler } from "./middleware/errorHandler";
-import { parseAndValidateQuery } from "./middleware/queryParser";
-
+import { parseQueryParams } from "./middleware/queryParser";
 // Import des middlewares
 
 // Charger les variables d'environnement

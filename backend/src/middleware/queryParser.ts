@@ -7,13 +7,9 @@ export interface ParsedQuery {
   [key: string]: any;
 }
 
-// Étendre le type Request AVANT la fonction
-declare global {
-  namespace Express {
-    interface Request {
-      parsedQuery: ParsedQuery; // ✅ Enlever le ? pour indiquer qu'il sera toujours défini
-    }
-  }
+// Étendre le type Request localement
+export interface RequestWithParsedQuery extends Request {
+  parsedQuery: ParsedQuery;
 }
 
 export function parseQueryParams(
@@ -22,8 +18,8 @@ export function parseQueryParams(
   next: NextFunction
 ): void {
   try {
-    // ✅ Initialiser req.parsedQuery directement
-    req.parsedQuery = {
+    // Créer un objet parsedQuery
+    const parsedQuery: ParsedQuery = {
       page: parseInt(req.query.page as string) || 1,
       pageSize: Math.min(parseInt(req.query.pageSize as string) || 10, 100),
       search: (req.query.search as string) || undefined,
@@ -32,9 +28,12 @@ export function parseQueryParams(
     // Ajouter d'autres paramètres
     Object.keys(req.query).forEach((key) => {
       if (!["page", "pageSize", "search"].includes(key)) {
-        req.parsedQuery![key] = req.query[key]; // ✅ Utiliser ! pour indiquer qu'il est défini
+        parsedQuery[key] = req.query[key];
       }
     });
+
+    // Attacher à la requête
+    (req as RequestWithParsedQuery).parsedQuery = parsedQuery;
 
     next();
   } catch (error) {
