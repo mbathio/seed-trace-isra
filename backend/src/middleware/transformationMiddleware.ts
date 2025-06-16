@@ -2,6 +2,10 @@
 
 import { Request, Response, NextFunction } from "express";
 import { logger } from "../utils/logger";
+import {
+  transformObjectUIToDB,
+  transformObjectDBToUI,
+} from "../utils/transformers";
 
 // ===== MAPPINGS DE TRANSFORMATION CENTRALISÉS AVEC TYPES STRICTS =====
 
@@ -745,22 +749,35 @@ export const queryTransformation = createTransformationMiddleware({
 /**
  * Middleware pour les lots de semences
  */
-export const seedLotTransformation = createTransformationMiddleware({
-  input: true,
-  output: true,
-  query: true,
-  logTransformations: process.env.NODE_ENV === "development",
-});
 
 /**
  * Middleware pour les variétés
  */
-export const varietyTransformation = createTransformationMiddleware({
-  input: true,
-  output: true,
-  query: true,
-  logTransformations: process.env.NODE_ENV === "development",
-});
+export const varietyTransformation = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // Transformer les données d'entrée
+  if (req.body && Object.keys(req.body).length > 0) {
+    req.body = transformObjectUIToDB(req.body);
+  }
+
+  // Intercepter la réponse pour transformer les données de sortie
+  const originalJson = res.json.bind(res);
+  res.json = function (data: any) {
+    if (data && typeof data === "object") {
+      if (data.success !== undefined && data.data !== undefined) {
+        data.data = transformObjectDBToUI(data.data);
+      } else {
+        data = transformObjectDBToUI(data);
+      }
+    }
+    return originalJson.call(this, data);
+  };
+
+  next();
+};
 
 /**
  * Middleware pour les multiplicateurs
@@ -775,12 +792,6 @@ export const multiplierTransformation = createTransformationMiddleware({
 /**
  * Middleware pour les contrôles qualité
  */
-export const qualityControlTransformation = createTransformationMiddleware({
-  input: true,
-  output: true,
-  query: true,
-  logTransformations: process.env.NODE_ENV === "development",
-});
 
 /**
  * Middleware pour les productions
@@ -829,3 +840,6 @@ if (process.env.NODE_ENV === "development") {
     seedLevels: SEED_LEVELS.length,
   });
 }
+
+export const seedLotTransformation = varietyTransformation;
+export const qualityControlTransformation = varietyTransformation;
