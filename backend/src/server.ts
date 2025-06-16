@@ -158,11 +158,11 @@ const startServer = async (): Promise<void> => {
       logger.info(`📍 URL: http://${HOST}:${PORT}`);
       logger.info(`📝 Environnement: ${config.environment}`);
       logger.info(`🔗 CORS activé pour: ${config.client.url}`);
+      logger.info(`🔐 JWT configuré avec expiration: ${config.jwt.expiresIn}`);
       logger.info(
-        `🔐 JWT configuré avec expiration: ${config.jwt.accessTokenExpiry}`
-      );
-      logger.info(
-        `📁 Upload max: ${Math.round(config.upload.maxFileSize / 1024 / 1024)}MB`
+        `📁 Upload max: ${Math.round(
+          config.upload.maxFileSize / 1024 / 1024
+        )}MB`
       );
       logger.info(`📊 Log level: ${config.logging.level}`);
 

@@ -33,13 +33,12 @@ export class EncryptionService {
 
     // ✅ CORRECTION: Utiliser une assertion de type pour expiresIn
     const accessToken = jwt.sign(tokenPayload, secret, {
-      expiresIn: config.jwt.expiresIn as string | number,
-    });
+      expiresIn: config.jwt.expiresIn,
+    } as jwt.SignOptions);
 
     const refreshToken = jwt.sign({ userId: payload.userId }, secret, {
-      expiresIn: config.jwt.refreshExpiresIn as string | number,
-    });
-
+      expiresIn: config.jwt.refreshExpiresIn,
+    } as jwt.SignOptions);
     return { accessToken, refreshToken };
   }
 
