@@ -1,17 +1,31 @@
-// backend/src/middleware/transformationMiddleware.ts - VERSION CORRIGÉE
+// backend/src/middleware/transformationMiddleware.ts
+
 import { Request, Response, NextFunction } from "express";
 
 /**
- * Helper pour nettoyer les paramètres de requête
+ * Nettoie les paramètres de requête en convertissant
+ * les strings en types appropriés
  */
 const cleanQueryParams = (query: any): any => {
-  const cleaned: any = {};
+  const cleaned = { ...query };
 
-  for (const key in query) {
-    if (query[key] !== undefined && query[key] !== null && query[key] !== "") {
-      cleaned[key] = query[key];
+  // Convertir les paramètres booléens
+  ["includeRelations", "includeSources", "includeProductions"].forEach(
+    (param) => {
+      if (cleaned[param] === "true") cleaned[param] = true;
+      else if (cleaned[param] === "false") cleaned[param] = false;
     }
-  }
+  );
+
+  // Convertir les paramètres numériques
+  ["page", "limit", "multiplierId", "parcelId", "inspectorId", "year"].forEach(
+    (param) => {
+      if (cleaned[param]) {
+        const num = parseInt(cleaned[param], 10);
+        if (!isNaN(num)) cleaned[param] = num;
+      }
+    }
+  );
 
   return cleaned;
 };
@@ -33,8 +47,8 @@ export const varietyTransformation = (
   if (req.body?.category) {
     const uiToDbMap: Record<string, string> = {
       cereal: "CEREAL",
-      legume: "LEGUME",
       vegetable: "VEGETABLE",
+      leguminous: "LEGUMINOUS",
       tuber: "TUBER",
       industrial: "INDUSTRIAL",
       forage: "FORAGE",
@@ -55,8 +69,8 @@ export const varietyTransformation = (
 
     const dbToUiMap: Record<string, string> = {
       CEREAL: "cereal",
-      LEGUME: "legume",
       VEGETABLE: "vegetable",
+      LEGUMINOUS: "leguminous",
       TUBER: "tuber",
       INDUSTRIAL: "industrial",
       FORAGE: "forage",
@@ -92,6 +106,24 @@ export const varietyTransformation = (
       }
     }
 
+    // Gérer aussi le cas où des variétés sont imbriquées dans seedLots
+    if (
+      transformedData?.data &&
+      Array.isArray(transformedData.data) &&
+      transformedData.data.length > 0 &&
+      transformedData.data[0]?.variety
+    ) {
+      transformedData.data = transformedData.data.map((item: any) => {
+        if (item.variety) {
+          return {
+            ...item,
+            variety: transformVariety(item.variety),
+          };
+        }
+        return item;
+      });
+    }
+
     return originalJson(transformedData);
   };
 
@@ -111,8 +143,8 @@ export const seedLotTransformation = (
     req.query = cleanQueryParams(req.query);
   }
 
-  // Transformation UI → DB pour les niveaux et statuts
-  if (req.body?.level) {
+  // Transformation UI → DB pour les générations
+  if (req.body?.generation) {
     const uiToDbMap: Record<string, string> = {
       g0: "G0",
       g1: "G1",
@@ -121,23 +153,11 @@ export const seedLotTransformation = (
       g4: "G4",
       r1: "R1",
       r2: "R2",
+      n: "N",
     };
 
-    if (uiToDbMap[req.body.level.toLowerCase()]) {
-      req.body.level = uiToDbMap[req.body.level.toLowerCase()];
-    }
-  }
-
-  if (req.body?.status) {
-    const statusUiToDbMap: Record<string, string> = {
-      available: "AVAILABLE",
-      reserved: "RESERVED",
-      distributed: "DISTRIBUTED",
-      expired: "EXPIRED",
-    };
-
-    if (statusUiToDbMap[req.body.status]) {
-      req.body.status = statusUiToDbMap[req.body.status];
+    if (uiToDbMap[req.body.generation]) {
+      req.body.generation = uiToDbMap[req.body.generation];
     }
   }
 
@@ -149,7 +169,7 @@ export const seedLotTransformation = (
       return originalJson(data);
     }
 
-    const levelDbToUiMap: Record<string, string> = {
+    const dbToUiMap: Record<string, string> = {
       G0: "g0",
       G1: "g1",
       G2: "g2",
@@ -157,30 +177,21 @@ export const seedLotTransformation = (
       G4: "g4",
       R1: "r1",
       R2: "r2",
-    };
-
-    const statusDbToUiMap: Record<string, string> = {
-      AVAILABLE: "available",
-      RESERVED: "reserved",
-      DISTRIBUTED: "distributed",
-      EXPIRED: "expired",
+      N: "n",
     };
 
     // Fonction helper pour transformer un lot
-    const transformSeedLot = (lot: any) => {
-      if (!lot || typeof lot !== "object") return lot;
+    const transformLot = (lot: any) => {
+      if (!lot || !lot.generation || typeof lot !== "object") return lot;
 
-      const transformed = { ...lot };
-
-      if (lot.level && levelDbToUiMap[lot.level]) {
-        transformed.level = levelDbToUiMap[lot.level];
+      if (dbToUiMap[lot.generation]) {
+        return {
+          ...lot,
+          generation: dbToUiMap[lot.generation],
+        };
       }
 
-      if (lot.status && statusDbToUiMap[lot.status]) {
-        transformed.status = statusDbToUiMap[lot.status];
-      }
-
-      return transformed;
+      return lot;
     };
 
     // Cloner les données pour éviter les mutations
@@ -190,11 +201,11 @@ export const seedLotTransformation = (
     if (transformedData?.data) {
       // Transformer un tableau de lots
       if (Array.isArray(transformedData.data)) {
-        transformedData.data = transformedData.data.map(transformSeedLot);
+        transformedData.data = transformedData.data.map(transformLot);
       }
       // Transformer un seul lot
       else if (typeof transformedData.data === "object") {
-        transformedData.data = transformSeedLot(transformedData.data);
+        transformedData.data = transformLot(transformedData.data);
       }
     }
 
@@ -205,8 +216,7 @@ export const seedLotTransformation = (
 };
 
 /**
- * Transforme les énumérations entre UI et DB pour les utilisateurs
- * IMPORTANT: Ce middleware ne doit transformer que les données, pas les routes d'auth
+ * Transforme les rôles entre UI et DB pour les utilisateurs
  */
 export const userTransformation = (
   req: Request,
@@ -218,16 +228,14 @@ export const userTransformation = (
     req.query = cleanQueryParams(req.query);
   }
 
-  // Transformation UI → DB pour les rôles UNIQUEMENT dans le body
-  if (req.body?.role && req.path !== "/login" && req.path !== "/register") {
+  // Transformation UI → DB pour les rôles
+  if (req.body?.role) {
     const uiToDbMap: Record<string, string> = {
       admin: "ADMIN",
       manager: "MANAGER",
-      researcher: "RESEARCHER",
       technician: "TECHNICIAN",
       inspector: "INSPECTOR",
-      multiplier: "MULTIPLIER",
-      guest: "GUEST",
+      researcher: "RESEARCHER",
     };
 
     if (uiToDbMap[req.body.role]) {
@@ -246,11 +254,9 @@ export const userTransformation = (
     const dbToUiMap: Record<string, string> = {
       ADMIN: "admin",
       MANAGER: "manager",
-      RESEARCHER: "researcher",
       TECHNICIAN: "technician",
       INSPECTOR: "inspector",
-      MULTIPLIER: "multiplier",
-      GUEST: "guest",
+      RESEARCHER: "researcher",
     };
 
     // Fonction helper pour transformer un utilisateur
@@ -270,20 +276,21 @@ export const userTransformation = (
     // Cloner les données pour éviter les mutations
     const transformedData = JSON.parse(JSON.stringify(data));
 
-    // Transformer les données selon la structure de la réponse
+    // Transformer les données
     if (transformedData?.data) {
-      // Pour les réponses d'authentification avec structure { user, tokens }
-      if (transformedData.data.user && transformedData.data.tokens) {
-        transformedData.data.user = transformUser(transformedData.data.user);
-      }
-      // Pour un tableau d'utilisateurs
-      else if (Array.isArray(transformedData.data)) {
+      // Transformer un tableau d'utilisateurs
+      if (Array.isArray(transformedData.data)) {
         transformedData.data = transformedData.data.map(transformUser);
       }
-      // Pour un seul utilisateur
+      // Transformer un seul utilisateur
       else if (typeof transformedData.data === "object") {
         transformedData.data = transformUser(transformedData.data);
       }
+    }
+
+    // Gérer aussi le cas où l'utilisateur est dans un objet auth (login)
+    if (transformedData?.user) {
+      transformedData.user = transformUser(transformedData.user);
     }
 
     return originalJson(transformedData);
@@ -293,7 +300,7 @@ export const userTransformation = (
 };
 
 /**
- * Transforme les énumérations entre UI et DB pour les multiplicateurs
+ * Transforme les types entre UI et DB pour les multiplicateurs
  */
 export const multiplierTransformation = (
   req: Request,
@@ -311,6 +318,7 @@ export const multiplierTransformation = (
       individual: "INDIVIDUAL",
       cooperative: "COOPERATIVE",
       company: "COMPANY",
+      association: "ASSOCIATION",
     };
 
     if (uiToDbMap[req.body.type]) {
@@ -330,6 +338,7 @@ export const multiplierTransformation = (
       INDIVIDUAL: "individual",
       COOPERATIVE: "cooperative",
       COMPANY: "company",
+      ASSOCIATION: "association",
     };
 
     // Fonction helper pour transformer un multiplicateur
@@ -655,7 +664,7 @@ export const fullTransformation = (
     multiplierTransformation,
     qualityControlTransformation,
     parcelTransformation,
-    productionTransformation, // Ajouté ici aussi
+    productionTransformation,
   ];
 
   // Fonction récursive pour appliquer les middlewares

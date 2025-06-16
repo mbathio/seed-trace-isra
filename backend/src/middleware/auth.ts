@@ -265,6 +265,13 @@ export function optionalAuth(
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     // Pas d'authentification, continuer sans utilisateur
+    logger.debug(
+      "Pas de token d'authentification fourni pour la route optionnelle",
+      {
+        url: req.originalUrl,
+        method: req.method,
+      }
+    );
     next();
     return;
   }
@@ -272,15 +279,17 @@ export function optionalAuth(
   // Tenter l'authentification sans bloquer si elle échoue
   authMiddleware(req, res, (error?: any) => {
     if (error) {
-      // En cas d'erreur d'auth, continuer sans utilisateur plutôt que de bloquer
+      // Ignorer l'erreur et continuer sans authentification
       logger.debug(
-        "Authentification optionnelle échouée, continuité sans utilisateur",
+        "Authentification optionnelle échouée, continuation sans authentification",
         {
           error: error.message,
-          ip: req.ip,
+          url: req.originalUrl,
+          method: req.method,
         }
       );
-      req.user = undefined;
+      // S'assurer que req.user n'est pas défini en cas d'échec
+      delete (req as any).user;
     }
     next();
   });
