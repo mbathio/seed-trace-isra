@@ -1,8 +1,9 @@
+// ===== 5. backend/src/routes/productions.ts - AVEC TRANSFORMATION =====
 import { Router } from "express";
 import { ProductionController } from "../controllers/ProductionController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole } from "../middleware/auth";
-import { productionTransformation } from "../middleware/transformationMiddleware";
+import { productionTransformation } from "../middleware/transformationMiddleware"; // ✅ AJOUTÉ
 import { z } from "zod";
 
 const router = Router();
@@ -74,41 +75,28 @@ const issueSchema = z.object({
   cost: z.number().optional(),
 });
 
-// ✅ SCHÉMA COMPLET pour weatherData
 const weatherDataSchema = z.object({
   recordDate: z.string().refine((date) => !isNaN(Date.parse(date))),
   temperature: z.number(),
   rainfall: z.number(),
-  humidity: z.number().optional(),
+  humidity: z.number(),
   windSpeed: z.number().optional(),
-  soilMoisture: z.number().optional(),
   notes: z.string().optional(),
+  source: z.string().optional(),
 });
 
-const harvestSchema = z.object({
-  actualQuantity: z.number().positive(),
-  harvestDate: z.string().refine((date) => !isNaN(Date.parse(date))),
-  quality: z.enum(["excellent", "good", "average", "poor"]), // ✅ VALEURS UI
-  storageLocation: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-const updateStatusSchema = z.object({
-  status: z.enum(["planned", "in-progress", "completed", "cancelled"]), // ✅ VALEURS UI
-});
-
-// Routes
+// Routes...
 router.get("/", ProductionController.getProductions);
 router.get("/:id", ProductionController.getProductionById);
 router.post(
   "/",
-  requireRole("TECHNICIAN", "ADMIN"),
+  requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: createProductionSchema }),
   ProductionController.createProduction
 );
 router.put(
   "/:id",
-  requireRole("TECHNICIAN", "ADMIN"),
+  requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: updateProductionSchema }),
   ProductionController.updateProduction
 );
@@ -117,41 +105,23 @@ router.delete(
   requireRole("ADMIN"),
   ProductionController.deleteProduction
 );
-
-// Routes spécifiques
 router.post(
   "/:id/activities",
-  requireRole("TECHNICIAN", "ADMIN"),
+  requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: activitySchema }),
   ProductionController.addActivity
 );
-
 router.post(
   "/:id/issues",
-  requireRole("TECHNICIAN", "ADMIN"),
+  requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: issueSchema }),
-  ProductionController.reportIssue
+  ProductionController.addIssue
 );
-
 router.post(
-  "/:id/weather",
-  requireRole("TECHNICIAN", "ADMIN"),
+  "/:id/weather-data",
+  requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: weatherDataSchema }),
-  ProductionController.recordWeatherData
-);
-
-router.post(
-  "/:id/harvest",
-  requireRole("TECHNICIAN", "ADMIN"),
-  validateRequest({ body: harvestSchema }),
-  ProductionController.recordHarvest
-);
-
-router.patch(
-  "/:id/status",
-  requireRole("TECHNICIAN", "ADMIN"),
-  validateRequest({ body: updateStatusSchema }),
-  ProductionController.updateStatus
+  ProductionController.addWeatherData
 );
 
 export default router;
