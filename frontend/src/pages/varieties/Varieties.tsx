@@ -1,300 +1,620 @@
-// frontend/src/pages/varieties/Varieties.tsx - VERSION CORRIGÉE AVEC CONSTANTES
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { Plus, Download, Eye, Edit, Leaf } from "lucide-react";
+import React, { useState, useEffect } from "react";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../../components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../components/ui/select";
-import { SearchInput } from "../../components/forms/SearchInput";
-import { api } from "../../services/api";
-import { Variety } from "../../types/entities";
-import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
-import { formatNumber } from "../../utils/formatters";
-import { CROP_TYPES, getStatusConfig } from "../../constants"; // ✅ AJOUTÉ: Import des constantes
-import { DataTransformer } from "../../utils/transformers"; // ✅ AJOUTÉ: Import du transformateur
-import { useDebounce } from "../../hooks/useDebounce";
-import { usePagination } from "../../hooks/usePagination";
+  Search,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Eye,
+  Plus,
+  Edit,
+  Trash2,
+} from "lucide-react";
 
-const Varieties: React.FC = () => {
-  const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<FilterParams>({});
-  const debouncedSearch = useDebounce(search, 300);
-  const { pagination, actions } = usePagination({ initialPageSize: 10 });
+// Configuration de l'API
+const API_BASE_URL = "http://localhost:3001/api";
 
-  // ✅ CORRIGÉ: Query avec transformation automatique
-  const { data, isLoading, error } = useQuery<ApiResponse<Variety[]>>({
-    queryKey: [
-      "varieties",
-      pagination.page,
-      pagination.pageSize,
-      debouncedSearch,
-      filters,
-    ],
-    queryFn: async () => {
-      const params: PaginationParams & FilterParams = {
-        page: pagination.page,
-        pageSize: pagination.pageSize,
-        search: debouncedSearch || undefined,
-        ...filters,
-      };
+// Types
+interface Variety {
+  id: number; // Changé de string à number
+  code: string;
+  name: string;
+  description: string;
+  maturityDays: number;
+  yieldPotential: number;
+  resistances: string[];
+  origin: string;
+  releaseYear: number;
+  cropType: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    seedLots: number;
+  };
+}
 
-      const response = await api.get("/varieties", { params });
+interface PaginatedResponse {
+  data: Variety[];
+  meta: {
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+  };
+}
 
-      // ✅ Transformer les données reçues de l'API
-      const transformedData = {
-        ...response.data,
-        data: response.data.data.map((variety: Variety) =>
-          DataTransformer.transformVarietyFromAPI(variety)
-        ),
-      };
+// Service API pour les variétés (utilisant fetch natif)
+const varietyService = {
+  getAll: async (params?: any): Promise<PaginatedResponse> => {
+    const token = localStorage.getItem("accessToken");
+    console.log("Token:", token ? "Present" : "Absent"); // Debug
 
-      return transformedData;
-    },
-  });
+    const queryParams = new URLSearchParams(params).toString();
+    const url = `${API_BASE_URL}/varieties?${queryParams}`;
+    console.log("Fetching URL:", url); // Debug
 
-  // ✅ CORRIGÉ: Utilisation des constantes pour les badges de type de culture
-  const getCropTypeBadge = (cropType: string) => {
-    const typeConfig = getStatusConfig(cropType, CROP_TYPES);
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    });
 
-    // Couleurs spécifiques pour les types de culture
-    const colorClasses = {
-      rice: "bg-green-100 text-green-800 border-green-200",
-      maize: "bg-yellow-100 text-yellow-800 border-yellow-200",
-      peanut: "bg-orange-100 text-orange-800 border-orange-200",
-      sorghum: "bg-red-100 text-red-800 border-red-200",
-      cowpea: "bg-purple-100 text-purple-800 border-purple-200",
-      millet: "bg-blue-100 text-blue-800 border-blue-200",
-      Wheat: "bg-gray-100 text-gray-800 border-gray-200",
+    console.log("Response status:", response.status); // Debug
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Error response:", errorText); // Debug
+      throw new Error(
+        `Erreur ${response.status}: ${
+          errorText || "Erreur lors de la récupération des variétés"
+        }`
+      );
+    }
+
+    const data = await response.json();
+    console.log("Data received:", data); // Debug
+
+    // Adapter la structure de la réponse API
+    return {
+      data: data.data || [],
+      meta: data.meta || {
+        page: 1,
+        pageSize: 10,
+        totalCount: 0,
+        totalPages: 0,
+      },
+    };
+  },
+
+  getById: async (id: string): Promise<Variety> => {
+    const token = localStorage.getItem("accessToken");
+    const response = await fetch(`${API_BASE_URL}/varieties/${id}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Erreur lors de la récupération de la variété");
+    }
+
+    const data = await response.json();
+    return data.data;
+  },
+
+  create: async (data: any): Promise<Variety> => {
+    const token = localStorage.getItem("accessToken");
+    const response = await fetch(`${API_BASE_URL}/varieties`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error("Erreur lors de la création de la variété");
+    }
+
+    const result = await response.json();
+    return result.data;
+  },
+
+  update: async (id: string, data: any): Promise<Variety> => {
+    const token = localStorage.getItem("accessToken");
+    const response = await fetch(`${API_BASE_URL}/varieties/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error("Erreur lors de la mise à jour de la variété");
+    }
+
+    const result = await response.json();
+    return result.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    const token = localStorage.getItem("accessToken");
+    const response = await fetch(`${API_BASE_URL}/varieties/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Erreur lors de la suppression de la variété");
+    }
+  },
+};
+
+export default function VarietiesPage() {
+  const [varieties, setVarieties] = useState<Variety[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [selectedVarieties, setSelectedVarieties] = useState<string[]>([]);
+  const [sortField, setSortField] = useState<keyof Variety>("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  const pageSize = 10;
+
+  // Récupérer les données depuis l'API
+  const fetchVarieties = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await varietyService.getAll({
+        page: currentPage,
+        pageSize,
+        search: searchTerm || undefined,
+        sortBy: sortField,
+        sortOrder: sortDirection,
+      });
+
+      console.log("Response:", response); // Debug
+
+      setVarieties(response.data);
+      setTotalPages(response.meta.totalPages);
+      setTotalCount(response.meta.totalCount);
+    } catch (err: any) {
+      console.error("Erreur lors du chargement des variétés:", err);
+
+      // Gestion d'erreur plus détaillée
+      if (err.message.includes("401")) {
+        setError("Vous devez être connecté pour accéder aux variétés.");
+      } else if (
+        err.message.includes("NetworkError") ||
+        err.message.includes("Failed to fetch")
+      ) {
+        setError(
+          "Impossible de se connecter au serveur. Vérifiez que le backend est démarré."
+        );
+      } else {
+        setError(err.message || "Impossible de charger les variétés.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Charger les données au montage et quand les paramètres changent
+  useEffect(() => {
+    fetchVarieties();
+  }, [currentPage, sortField, sortDirection]);
+
+  // Recherche avec debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (currentPage === 1) {
+        fetchVarieties();
+      } else {
+        setCurrentPage(1);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const handleSort = (field: keyof Variety) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedVarieties.length === varieties.length) {
+      setSelectedVarieties([]);
+    } else {
+      setSelectedVarieties(varieties.map((v) => v.id.toString()));
+    }
+  };
+
+  const handleSelectVariety = (id: number) => {
+    if (selectedVarieties.includes(id.toString())) {
+      setSelectedVarieties(
+        selectedVarieties.filter((v) => v !== id.toString())
+      );
+    } else {
+      setSelectedVarieties([...selectedVarieties, id.toString()]);
+    }
+  };
+
+  const getStatusBadge = (isActive: boolean) => {
+    if (isActive) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          Active
+        </span>
+      );
+    } else {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+          Inactive
+        </span>
+      );
+    }
+  };
+
+  const getCropTypeBadge = (cropType?: string) => {
+    if (!cropType) return null;
+
+    const cropConfig = {
+      rice: { bg: "bg-blue-100", text: "text-blue-800", label: "Riz" },
+      maize: { bg: "bg-yellow-100", text: "text-yellow-800", label: "Maïs" },
+      peanut: {
+        bg: "bg-orange-100",
+        text: "text-orange-800",
+        label: "Arachide",
+      },
+      sorghum: {
+        bg: "bg-purple-100",
+        text: "text-purple-800",
+        label: "Sorgho",
+      },
+      cowpea: { bg: "bg-pink-100", text: "text-pink-800", label: "Niébé" },
+      millet: { bg: "bg-indigo-100", text: "text-indigo-800", label: "Mil" },
+      wheat: { bg: "bg-amber-100", text: "text-amber-800", label: "Blé" },
     };
 
-    const colorClass =
-      colorClasses[cropType as keyof typeof colorClasses] ||
-      "bg-gray-100 text-gray-800 border-gray-200";
+    const config = cropConfig[cropType as keyof typeof cropConfig] || {
+      bg: "bg-gray-100",
+      text: "text-gray-800",
+      label: cropType,
+    };
 
     return (
-      <Badge className={`${colorClass} font-medium`}>
-        <span className="mr-1">{typeConfig.icon}</span>
-        {typeConfig.label}
-      </Badge>
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}
+      >
+        {config.label}
+      </span>
     );
   };
 
-  if (error) {
+  const handleDelete = async (id: number) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette variété ?")) {
+      try {
+        await varietyService.delete(id.toString());
+        fetchVarieties();
+      } catch (err) {
+        console.error("Erreur lors de la suppression:", err);
+        alert("Impossible de supprimer la variété");
+      }
+    }
+  };
+
+  if (error && varieties.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600">Erreur lors du chargement des variétés</p>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="text-red-600 mb-4">{error}</div>
+        <button
+          onClick={fetchVarieties}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+        >
+          Réessayer
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Variétés</h1>
-          <p className="text-muted-foreground">
-            Gérez le catalogue des variétés de semences
-          </p>
-        </div>
-        <div className="flex space-x-2">
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Exporter
-          </Button>
-          <Button asChild>
-            <Link to="/dashboard/varieties/create">
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle variété
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <SearchInput
-                value={search}
-                onChange={setSearch}
-                placeholder="Rechercher par nom, code, description..."
-              />
-            </div>
-
-            <Select
-              value={filters.cropType || ""}
-              onValueChange={(value) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  cropType: value || undefined,
-                }))
-              }
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Type de culture" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Tous les types</SelectItem>
-                {/* ✅ CORRIGÉ: Utilisation des constantes */}
-                {CROP_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    <span className="flex items-center space-x-2">
-                      <span>{type.icon}</span>
-                      <span>{type.label}</span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Results */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {data?.meta?.totalCount || 0} variété(s) trouvée(s)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
-              <p>Chargement...</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Maturité</TableHead>
-                  <TableHead>Rendement</TableHead>
-                  <TableHead>Origine</TableHead>
-                  <TableHead>Année</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data?.data?.map((variety) => (
-                  <TableRow key={variety.id}>
-                    <TableCell className="font-mono font-medium">
-                      {variety.code}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Leaf className="h-4 w-4 text-green-600" />
-                        <span className="font-medium">{variety.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{getCropTypeBadge(variety.cropType)}</TableCell>
-                    <TableCell>{variety.maturityDays} jours</TableCell>
-                    <TableCell>
-                      {variety.yieldPotential
-                        ? `${formatNumber(variety.yieldPotential)} t/ha`
-                        : "-"}
-                    </TableCell>
-                    <TableCell>{variety.origin || "-"}</TableCell>
-                    <TableCell>{variety.releaseYear || "-"}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-1">
-                        <Button
-                          asChild
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                        >
-                          <Link to={`/dashboard/varieties/${variety.code}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-
-          {/* Empty state */}
-          {!isLoading && (!data?.data || data.data.length === 0) && (
-            <div className="text-center py-12">
-              <Leaf className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
-                Aucune variété trouvée
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {search || filters.cropType
-                  ? "Aucune variété ne correspond à vos critères de recherche."
-                  : "Commencez par ajouter votre première variété."}
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Gestion des Variétés de Semences
+              </h1>
+              <p className="text-gray-600">
+                Catalogue complet des variétés de semences de l'ISRA Saint-Louis
               </p>
-              <Button asChild>
-                <Link to="/dashboard/varieties/create">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ajouter une variété
-                </Link>
-              </Button>
             </div>
-          )}
+            <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+              <Plus className="h-5 w-5" />
+              Nouvelle variété
+            </button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="text-sm text-gray-600 mb-1">Total des variétés</div>
+            <div className="text-2xl font-bold text-gray-900">{totalCount}</div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="text-sm text-gray-600 mb-1">Variétés actives</div>
+            <div className="text-2xl font-bold text-green-600">
+              {varieties.filter((v) => v.isActive).length}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="text-sm text-gray-600 mb-1">Avec semences</div>
+            <div className="text-2xl font-bold text-yellow-600">
+              {
+                varieties.filter((v) => v._count && v._count.seedLots > 0)
+                  .length
+              }
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="text-sm text-gray-600 mb-1">Sans semences</div>
+            <div className="text-2xl font-bold text-red-600">
+              {
+                varieties.filter((v) => !v._count || v._count.seedLots === 0)
+                  .length
+              }
+            </div>
+          </div>
+        </div>
+
+        {/* Toolbar */}
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Rechercher par nom, description, origine..."
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent w-80"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                <Filter className="h-5 w-5" />
+                Filtres
+              </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                <Download className="h-5 w-5" />
+                Exporter
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      checked={
+                        selectedVarieties.length === varieties.length &&
+                        varieties.length > 0
+                      }
+                      onChange={handleSelectAll}
+                    />
+                  </th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("name")}
+                  >
+                    Nom{" "}
+                    {sortField === "name" &&
+                      (sortDirection === "asc" ? "↑" : "↓")}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("maturityDays")}
+                  >
+                    Maturité{" "}
+                    {sortField === "maturityDays" &&
+                      (sortDirection === "asc" ? "↑" : "↓")}
+                  </th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort("yieldPotential")}
+                  >
+                    Rendement{" "}
+                    {sortField === "yieldPotential" &&
+                      (sortDirection === "asc" ? "↑" : "↓")}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Résistances
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Statut
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading ? (
+                  <tr>
+                    <td colSpan={9} className="px-6 py-4 text-center">
+                      <div className="flex justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-600"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : varieties.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={9}
+                      className="px-6 py-4 text-center text-gray-500"
+                    >
+                      Aucune variété trouvée
+                    </td>
+                  </tr>
+                ) : (
+                  varieties.map((variety) => (
+                    <tr key={variety.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                          checked={selectedVarieties.includes(
+                            variety.id.toString()
+                          )}
+                          onChange={() => handleSelectVariety(variety.id)}
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {variety.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {variety.code} • {variety.origin}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getCropTypeBadge(variety.cropType)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900 max-w-xs truncate">
+                          {variety.description}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {variety.maturityDays} jours
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {variety.yieldPotential} t/ha
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {variety.resistances
+                            .slice(0, 2)
+                            .map((resistance, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800"
+                              >
+                                {resistance}
+                              </span>
+                            ))}
+                          {variety.resistances.length > 2 && (
+                            <span className="text-xs text-gray-500">
+                              +{variety.resistances.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(variety.isActive)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="text-green-600 hover:text-green-700"
+                            title="Voir"
+                          >
+                            <Eye className="h-5 w-5" />
+                          </button>
+                          <button
+                            className="text-blue-600 hover:text-blue-700"
+                            title="Modifier"
+                          >
+                            <Edit className="h-5 w-5" />
+                          </button>
+                          <button
+                            className="text-red-600 hover:text-red-700"
+                            title="Supprimer"
+                            onClick={() => handleDelete(variety.id)}
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
           {/* Pagination */}
-          {data?.meta && data.meta.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-muted-foreground">
-                Page {data.meta.page} sur {data.meta.totalPages}
-              </p>
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={actions.previousPage}
-                  disabled={!data.meta.hasPreviousPage}
+          <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Affichage de{" "}
+                {varieties.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} à{" "}
+                {Math.min(currentPage * pageSize, totalCount)} sur {totalCount}{" "}
+                variétés
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Précédent
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={actions.nextPage}
-                  disabled={!data.meta.hasNextPage}
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <span className="px-3 py-1 text-sm">
+                  Page {currentPage} sur {totalPages || 1}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="p-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Suivant
-                </Button>
+                  <ChevronRight className="h-5 w-5" />
+                </button>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
-};
-
-export default Varieties;
+}
