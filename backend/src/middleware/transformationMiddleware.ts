@@ -522,6 +522,123 @@ export const parcelTransformation = (
 };
 
 /**
+ * Transforme les énumérations entre UI et DB pour les productions
+ */
+export const productionTransformation = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // Nettoyer les paramètres de requête
+  if (req.query) {
+    req.query = cleanQueryParams(req.query);
+  }
+
+  // Transformation UI → DB pour les statuts et types
+  if (req.body?.status) {
+    const statusUiToDbMap: Record<string, string> = {
+      planned: "PLANNED",
+      "in-progress": "IN_PROGRESS",
+      completed: "COMPLETED",
+      cancelled: "CANCELLED",
+    };
+
+    if (statusUiToDbMap[req.body.status]) {
+      req.body.status = statusUiToDbMap[req.body.status];
+    }
+  }
+
+  if (req.body?.type) {
+    const typeUiToDbMap: Record<string, string> = {
+      "soil-preparation": "SOIL_PREPARATION",
+      sowing: "SOWING",
+      fertilization: "FERTILIZATION",
+      irrigation: "IRRIGATION",
+      weeding: "WEEDING",
+      "pest-control": "PEST_CONTROL",
+      harvest: "HARVEST",
+      other: "OTHER",
+    };
+
+    if (typeUiToDbMap[req.body.type]) {
+      req.body.type = typeUiToDbMap[req.body.type];
+    }
+  }
+
+  // Intercepter la réponse pour transformation DB → UI
+  const originalJson = res.json.bind(res);
+  res.json = function (data: any) {
+    // Ne pas transformer si pas de données
+    if (!data || typeof data !== "object") {
+      return originalJson(data);
+    }
+
+    const statusDbToUiMap: Record<string, string> = {
+      PLANNED: "planned",
+      IN_PROGRESS: "in-progress",
+      COMPLETED: "completed",
+      CANCELLED: "cancelled",
+    };
+
+    const typeDbToUiMap: Record<string, string> = {
+      SOIL_PREPARATION: "soil-preparation",
+      SOWING: "sowing",
+      FERTILIZATION: "fertilization",
+      IRRIGATION: "irrigation",
+      WEEDING: "weeding",
+      PEST_CONTROL: "pest-control",
+      HARVEST: "harvest",
+      OTHER: "other",
+    };
+
+    // Fonction helper pour transformer une production
+    const transformProduction = (production: any) => {
+      if (!production || typeof production !== "object") return production;
+
+      const transformed = { ...production };
+
+      if (production.status && statusDbToUiMap[production.status]) {
+        transformed.status = statusDbToUiMap[production.status];
+      }
+
+      // Transformer les activités si présentes
+      if (production.activities && Array.isArray(production.activities)) {
+        transformed.activities = production.activities.map((activity: any) => {
+          if (activity.type && typeDbToUiMap[activity.type]) {
+            return {
+              ...activity,
+              type: typeDbToUiMap[activity.type],
+            };
+          }
+          return activity;
+        });
+      }
+
+      return transformed;
+    };
+
+    // Cloner les données pour éviter les mutations
+    const transformedData = JSON.parse(JSON.stringify(data));
+
+    // Transformer les données
+    if (transformedData?.data) {
+      // Transformer un tableau de productions
+      if (Array.isArray(transformedData.data)) {
+        transformedData.data = transformedData.data.map(transformProduction);
+      }
+      // Transformer une seule production
+      else if (typeof transformedData.data === "object") {
+        transformedData.data = transformProduction(transformedData.data);
+      }
+    }
+
+    return originalJson(transformedData);
+  };
+
+  next();
+};
+
+/**
  * Middleware de transformation complet pour toutes les entités
  * Utile pour les routes qui manipulent plusieurs types d'entités
  */
@@ -538,6 +655,7 @@ export const fullTransformation = (
     multiplierTransformation,
     qualityControlTransformation,
     parcelTransformation,
+    productionTransformation, // Ajouté ici aussi
   ];
 
   // Fonction récursive pour appliquer les middlewares
