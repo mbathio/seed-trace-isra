@@ -13,7 +13,6 @@ import {
 const router = Router();
 
 // ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION pour transformer les rôles
-router.use(userTransformation);
 
 // Routes...
 router.post(
