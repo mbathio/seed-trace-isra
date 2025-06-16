@@ -3,7 +3,7 @@ import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { PaginationQuery } from "../types/api";
 import { CropType } from "@prisma/client";
-import { DataTransformer } from "../utils/transformers"; // ✅ AJOUTÉ
+import DataTransformer from "../utils/transformers"; // ✅ AJOUTÉ
 
 export class VarietyService {
   static async createVariety(data: any): Promise<any> {

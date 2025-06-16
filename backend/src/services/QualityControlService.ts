@@ -4,7 +4,7 @@ import { logger } from "../utils/logger";
 import { CreateQualityControlData } from "../types/entities";
 import { PaginationQuery } from "../types/api";
 import { TestResult, LotStatus } from "@prisma/client";
-import { DataTransformer } from "../utils/transformers"; // ✅ AJOUTÉ
+import DataTransformer from "../utils/transformers"; // ✅ AJOUTÉ
 
 export class QualityControlService {
   static async createQualityControl(

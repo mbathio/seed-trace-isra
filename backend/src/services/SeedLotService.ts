@@ -6,14 +6,11 @@ import { logger } from "../utils/logger";
 import { CreateSeedLotData, UpdateSeedLotData } from "../types/entities";
 import { PaginationQuery } from "../types/api";
 import { SeedLevel, LotStatus } from "@prisma/client";
-import { DataTransformer } from "../utils/transformers"; // ✅ AJOUTÉ
+import DataTransformer from "../utils/transformers"; // ✅ AJOUTÉ
 
 // ✅ MISE À JOUR : Classe d'erreur personnalisée
 export class SeedLotError extends Error {
-  constructor(
-    message: string,
-    public code?: string
-  ) {
+  constructor(message: string, public code?: string) {
     super(message);
     this.name = "SeedLotError";
   }

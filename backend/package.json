@@ -21,7 +21,6 @@
     "security:fix": "npm audit fix"
   },
   "dependencies": {
-    "@prisma/client": "^6.9.0",
     "bcryptjs": "^3.0.2",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
@@ -43,6 +42,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@prisma/client": "^6.9.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.7.5",
     "@types/cors": "^2.8.17",

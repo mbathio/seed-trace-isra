@@ -477,10 +477,29 @@ export function validateTransformation(obj: any): boolean {
 }
 
 // ===== EXPORTS =====
-export default {
+
+// Export par défaut pour compatibilité (optionnel)
+
+export const DataTransformer = {
   transformObjectUIToDB,
   transformObjectDBToUI,
   transformQueryParams,
   logTransformation,
   validateTransformation,
+
+  // Ajoutez ces méthodes manquantes qui sont utilisées dans les services
+  transformSeedLot: (lot: any) => transformObjectDBToUI(lot),
+  transformVariety: (variety: any) => transformObjectDBToUI(variety),
+  transformQualityControl: (qc: any) => transformObjectDBToUI(qc),
+  transformInputStatus: (status: string) =>
+    transformObjectUIToDB({ status }).status,
+  transformLotStatusDBToUI: (status: string) =>
+    transformEnum(status, LOT_STATUS_MAPPINGS.DB_TO_UI),
+  transformCropTypeUIToDB: (cropType: string) =>
+    transformEnum(cropType, CROP_TYPE_MAPPINGS.UI_TO_DB),
+  transformTestResultUIToDB: (result: string) =>
+    transformEnum(result, TEST_RESULT_MAPPINGS.UI_TO_DB),
 };
+
+// Gardez aussi l'export par défaut
+export default DataTransformer;
