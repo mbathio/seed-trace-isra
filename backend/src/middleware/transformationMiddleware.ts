@@ -1,256 +1,164 @@
 // backend/src/middleware/transformationMiddleware.ts
 import { Request, Response, NextFunction } from "express";
-import { logger } from "../utils/logger";
-// Importer depuis le nouveau fichier transformers.ts
-import {
-  transformObjectUIToDB,
-  transformObjectDBToUI,
-  transformQueryParams,
-} from "../utils/transformers";
-
-// ===== OPTIONS DE TRANSFORMATION =====
-interface TransformationOptions {
-  input?: boolean; // Transformer les données d'entrée (UI → DB)
-  output?: boolean; // Transformer les données de sortie (DB → UI)
-  query?: boolean; // Transformer les query parameters
-  logTransformations?: boolean;
-}
 
 /**
- * Middleware de transformation automatique
+ * Nettoie les paramètres de requête en supprimant les valeurs "undefined" (string)
+ * et les valeurs vides
  */
-export function createTransformationMiddleware(
-  options: TransformationOptions = {}
-) {
-  const {
-    input = true,
-    output = true,
-    query = true,
-    logTransformations = process.env.NODE_ENV === "development",
-  } = options;
+const cleanQueryParams = (params: any): any => {
+  const cleaned: any = {};
 
-  return (req: Request, res: Response, next: NextFunction) => {
-    try {
-      // ===== TRANSFORMATION DES DONNÉES D'ENTRÉE (UI → DB) =====
-      if (input && req.body && Object.keys(req.body).length > 0) {
-        const originalBody = { ...req.body };
-        req.body = transformObjectUIToDB(req.body);
+  Object.keys(params).forEach((key) => {
+    const value = params[key];
 
-        if (logTransformations) {
-          logger.debug("🔄 Body transformation (UI → DB)", {
-            route: `${req.method} ${req.path}`,
-            original: originalBody,
-            transformed: req.body,
-          });
-        }
-      }
-
-      // ===== TRANSFORMATION DES QUERY PARAMETERS =====
-      if (query && req.query && Object.keys(req.query).length > 0) {
-        const originalQuery = { ...req.query };
-        req.query = transformQueryParams(req.query);
-
-        if (logTransformations) {
-          logger.debug("🔄 Query transformation (UI → DB)", {
-            route: `${req.method} ${req.path}`,
-            original: originalQuery,
-            transformed: req.query,
-          });
-        }
-      }
-
-      // ===== TRANSFORMATION DES DONNÉES DE SORTIE (DB → UI) =====
-      if (output) {
-        const originalJson = res.json.bind(res);
-
-        res.json = function (data: any) {
-          try {
-            if (data && typeof data === "object") {
-              let transformedData = data;
-
-              if (logTransformations) {
-                logger.debug("🔄 Response transformation (DB → UI) - Before", {
-                  route: `${req.method} ${req.path}`,
-                  originalData: data,
-                });
-              }
-
-              // Transformer selon la structure de la réponse
-              if (data.success !== undefined && data.data !== undefined) {
-                // Réponse API standard { success, message, data, meta }
-                transformedData = {
-                  ...data,
-                  data: data.data
-                    ? transformObjectDBToUI(data.data)
-                    : data.data,
-                };
-              } else {
-                // Réponse directe
-                transformedData = transformObjectDBToUI(data);
-              }
-
-              if (logTransformations) {
-                logger.debug("🔄 Response transformation (DB → UI) - After", {
-                  route: `${req.method} ${req.path}`,
-                  transformedData: transformedData,
-                });
-              }
-
-              return originalJson.call(this, transformedData);
-            } else {
-              return originalJson.call(this, data);
-            }
-          } catch (error) {
-            logger.error("❌ Error in response transformation", {
-              route: `${req.method} ${req.path}`,
-              error: error instanceof Error ? error.message : String(error),
-              originalData: data,
-            });
-
-            // En cas d'erreur, retourner les données originales
-            return originalJson.call(this, data);
-          }
-        };
-      }
-
-      next();
-    } catch (error) {
-      logger.error("❌ Error in transformation middleware", {
-        route: `${req.method} ${req.path}`,
-        error: error instanceof Error ? error.message : String(error),
-      });
-
-      // En cas d'erreur, continuer sans transformation
-      next();
+    // Ignorer les valeurs qui sont littéralement "undefined" (string)
+    // ou undefined (type) ou null ou vides
+    if (
+      value !== "undefined" &&
+      value !== undefined &&
+      value !== null &&
+      value !== ""
+    ) {
+      cleaned[key] = value;
     }
+  });
+
+  return cleaned;
+};
+
+/**
+ * Transforme les énumérations entre UI et DB pour les variétés
+ */
+export const varietyTransformation = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // Nettoyer les paramètres de requête
+  if (req.query) {
+    req.query = cleanQueryParams(req.query);
+    console.log("🔄 Query après nettoyage:", req.query);
+  }
+
+  // Transformation UI → DB pour les requêtes
+  if (req.body?.cropType) {
+    const uiToDbMap: Record<string, string> = {
+      rice: "RICE",
+      maize: "MAIZE",
+      peanut: "PEANUT",
+      sorghum: "SORGHUM",
+      cowpea: "COWPEA",
+      millet: "MILLET",
+      wheat: "WHEAT",
+    };
+
+    if (uiToDbMap[req.body.cropType]) {
+      req.body.cropType = uiToDbMap[req.body.cropType];
+    }
+  }
+
+  // Intercepter la réponse pour transformation DB → UI
+  const originalJson = res.json;
+  res.json = function (data: any) {
+    if (data?.data) {
+      const dbToUiMap: Record<string, string> = {
+        RICE: "rice",
+        MAIZE: "maize",
+        PEANUT: "peanut",
+        SORGHUM: "sorghum",
+        COWPEA: "cowpea",
+        MILLET: "millet",
+        WHEAT: "wheat",
+      };
+
+      // Transformer un tableau de variétés
+      if (Array.isArray(data.data)) {
+        data.data = data.data.map((variety: any) => {
+          if (variety.cropType && dbToUiMap[variety.cropType]) {
+            return {
+              ...variety,
+              cropType: dbToUiMap[variety.cropType],
+            };
+          }
+          return variety;
+        });
+      }
+      // Transformer une seule variété
+      else if (data.data.cropType && dbToUiMap[data.data.cropType]) {
+        data.data.cropType = dbToUiMap[data.data.cropType];
+      }
+    }
+
+    return originalJson.call(this, data);
   };
-}
 
-// ===== MIDDLEWARES PRÊTS À UTILISER =====
-
-/**
- * Middleware complet avec transformation entrée/sortie
- */
-export const fullTransformation = createTransformationMiddleware({
-  input: true,
-  output: true,
-  query: true,
-  logTransformations: process.env.NODE_ENV === "development",
-});
+  next();
+};
 
 /**
- * Middleware pour transformation des entrées seulement
+ * Transforme les énumérations entre UI et DB pour les lots de semences
  */
-export const inputTransformation = createTransformationMiddleware({
-  input: true,
-  output: false,
-  query: true,
-  logTransformations: false,
-});
+export const seedLotTransformation = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // Nettoyer les paramètres de requête
+  if (req.query) {
+    req.query = cleanQueryParams(req.query);
+  }
 
-/**
- * Middleware pour transformation des sorties seulement
- */
-export const outputTransformation = createTransformationMiddleware({
-  input: false,
-  output: true,
-  query: false,
-  logTransformations: false,
-});
+  // Transformation UI → DB pour les statuts
+  if (req.body?.status) {
+    const uiToDbStatusMap: Record<string, string> = {
+      pending: "PENDING",
+      certified: "CERTIFIED",
+      rejected: "REJECTED",
+      in_stock: "IN_STOCK",
+      sold: "SOLD",
+      active: "ACTIVE",
+      distributed: "DISTRIBUTED",
+    };
 
-/**
- * Middleware pour transformation des query parameters seulement
- */
-export const queryTransformation = createTransformationMiddleware({
-  input: false,
-  output: false,
-  query: true,
-  logTransformations: false,
-});
+    if (uiToDbStatusMap[req.body.status]) {
+      req.body.status = uiToDbStatusMap[req.body.status];
+    }
+  }
 
-// ===== MIDDLEWARES SPÉCIALISÉS PAR ENTITÉ =====
+  // Intercepter la réponse pour transformation DB → UI
+  const originalJson = res.json;
+  res.json = function (data: any) {
+    if (data?.data) {
+      const dbToUiStatusMap: Record<string, string> = {
+        PENDING: "pending",
+        CERTIFIED: "certified",
+        REJECTED: "rejected",
+        IN_STOCK: "in_stock",
+        SOLD: "sold",
+        ACTIVE: "active",
+        DISTRIBUTED: "distributed",
+      };
 
-/**
- * Middleware pour les lots de semences
- */
-export const seedLotTransformation = createTransformationMiddleware({
-  input: true,
-  output: true,
-  query: true,
-  logTransformations: process.env.NODE_ENV === "development",
-});
+      // Transformer un tableau
+      if (Array.isArray(data.data)) {
+        data.data = data.data.map((item: any) => {
+          if (item.status && dbToUiStatusMap[item.status]) {
+            return {
+              ...item,
+              status: dbToUiStatusMap[item.status],
+            };
+          }
+          return item;
+        });
+      }
+      // Transformer un seul objet
+      else if (data.data.status && dbToUiStatusMap[data.data.status]) {
+        data.data.status = dbToUiStatusMap[data.data.status];
+      }
+    }
 
-/**
- * Middleware pour les variétés
- */
-export const varietyTransformation = createTransformationMiddleware({
-  input: true,
-  output: true,
-  query: true,
-  logTransformations: process.env.NODE_ENV === "development",
-});
+    return originalJson.call(this, data);
+  };
 
-/**
- * Middleware pour les multiplicateurs
- */
-export const multiplierTransformation = createTransformationMiddleware({
-  input: true,
-  output: true,
-  query: true,
-  logTransformations: process.env.NODE_ENV === "development",
-});
-
-/**
- * Middleware pour les contrôles qualité
- */
-export const qualityControlTransformation = createTransformationMiddleware({
-  input: true,
-  output: true,
-  query: true,
-  logTransformations: process.env.NODE_ENV === "development",
-});
-
-/**
- * Middleware pour les productions
- */
-export const productionTransformation = createTransformationMiddleware({
-  input: true,
-  output: true,
-  query: true,
-  logTransformations: process.env.NODE_ENV === "development",
-});
-
-/**
- * Middleware pour les parcelles
- */
-export const parcelTransformation = createTransformationMiddleware({
-  input: true,
-  output: true,
-  query: true,
-  logTransformations: process.env.NODE_ENV === "development",
-});
-
-/**
- * Middleware pour les utilisateurs
- */
-export const userTransformation = createTransformationMiddleware({
-  input: true,
-  output: true,
-  query: true,
-  logTransformations: process.env.NODE_ENV === "development",
-});
-
-/**
- * Middleware pour les contrats
- */
-export const contractTransformation = createTransformationMiddleware({
-  input: true,
-  output: true,
-  query: true,
-  logTransformations: process.env.NODE_ENV === "development",
-});
-
-// Log de chargement du middleware
-if (process.env.NODE_ENV === "development") {
-  logger.info("🔧 Transformation middleware loaded");
-}
+  next();
+};
