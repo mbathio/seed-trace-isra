@@ -1,3 +1,4 @@
+// backend/src/config/environment.ts
 import * as dotenv from "dotenv";
 import * as path from "path";
 
@@ -12,6 +13,7 @@ interface DatabaseConfig {
   username: string;
   password: string;
   database: string;
+  url: string;
   entities: string[];
   migrations: string[];
   synchronize: boolean;
@@ -124,12 +126,24 @@ interface SeedTraceabilityConfig {
   };
 }
 
+// Ajout des configurations manquantes pour server et client
+interface ServerConfig {
+  port: number;
+  host: string;
+}
+
+interface ClientConfig {
+  url: string | string[];
+}
+
 interface ConfigType {
   env: string;
   port: number;
   apiPrefix: string;
   appName: string;
   appVersion: string;
+  server: ServerConfig;
+  client: ClientConfig;
   database: DatabaseConfig;
   redis: RedisConfig;
   jwt: JwtConfig;
@@ -173,13 +187,30 @@ const config: ConfigType = {
   appName: getEnvVar("APP_NAME", "ISRA Seed Traceability System"),
   appVersion: getEnvVar("APP_VERSION", "1.0.0"),
 
+  // Configuration du serveur
+  server: {
+    port: getEnvNumber("PORT", 3000),
+    host: getEnvVar("HOST", "0.0.0.0"),
+  },
+
+  // Configuration du client
+  client: {
+    url: process.env.CLIENT_URL
+      ? process.env.CLIENT_URL.split(",")
+      : ["http://localhost:3000", "http://localhost:5173"],
+  },
+
   database: {
     type: "postgres",
     host: getEnvVar("DB_HOST", "localhost"),
     port: getEnvNumber("DB_PORT", 5432),
     username: getEnvVar("DB_USERNAME", "isra_user"),
-    password: getEnvVar("DB_PASSWORD"),
+    password: getEnvVar("DB_PASSWORD", ""),
     database: getEnvVar("DB_DATABASE", "isra_seeds"),
+    url: getEnvVar(
+      "DATABASE_URL",
+      "postgresql://user1:user1@localhost:5432/isra_seeds?schema=public"
+    ),
     entities: [path.join(__dirname, "../**/*.entity{.ts,.js}")],
     migrations: [path.join(__dirname, "../migrations/*{.ts,.js}")],
     synchronize: getEnvBoolean("DB_SYNCHRONIZE", false),
@@ -200,9 +231,12 @@ const config: ConfigType = {
   },
 
   jwt: {
-    secret: getEnvVar("JWT_SECRET"),
+    secret: getEnvVar("JWT_SECRET", "default-jwt-secret-change-me"),
     expiresIn: getEnvVar("JWT_EXPIRES_IN", "1d"),
-    refreshSecret: getEnvVar("JWT_REFRESH_SECRET"),
+    refreshSecret: getEnvVar(
+      "JWT_REFRESH_SECRET",
+      "default-refresh-secret-change-me"
+    ),
     refreshExpiresIn: getEnvVar("JWT_REFRESH_EXPIRES_IN", "7d"),
   },
 
@@ -211,8 +245,8 @@ const config: ConfigType = {
     port: getEnvNumber("SMTP_PORT", 587),
     secure: getEnvBoolean("SMTP_SECURE", false),
     auth: {
-      user: getEnvVar("SMTP_USER"),
-      pass: getEnvVar("SMTP_PASS"),
+      user: getEnvVar("SMTP_USER", ""),
+      pass: getEnvVar("SMTP_PASS", ""),
     },
     from: getEnvVar("SMTP_FROM", "noreply@isra.sn"),
   },
@@ -227,10 +261,10 @@ const config: ConfigType = {
     }),
     ...(getEnvVar("STORAGE_TYPE", "local") === "s3" && {
       s3: {
-        accessKeyId: getEnvVar("AWS_ACCESS_KEY_ID"),
-        secretAccessKey: getEnvVar("AWS_SECRET_ACCESS_KEY"),
+        accessKeyId: getEnvVar("AWS_ACCESS_KEY_ID", ""),
+        secretAccessKey: getEnvVar("AWS_SECRET_ACCESS_KEY", ""),
         region: getEnvVar("AWS_REGION", "eu-west-1"),
-        bucket: getEnvVar("AWS_S3_BUCKET"),
+        bucket: getEnvVar("AWS_S3_BUCKET", ""),
       },
     }),
   },
@@ -301,11 +335,21 @@ const config: ConfigType = {
   },
 };
 
+// Interface pour le résultat de validation
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
 // Validation de la configuration
-const validateConfig = (config: ConfigType): void => {
+const validateConfig = (): ValidationResult => {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
   // Vérifier les variables critiques
   const requiredEnvVars = [
-    "DB_PASSWORD",
+    "DATABASE_URL",
     "JWT_SECRET",
     "JWT_REFRESH_SECRET",
     "SMTP_USER",
@@ -317,25 +361,43 @@ const validateConfig = (config: ConfigType): void => {
   );
 
   if (missingVars.length > 0 && config.env === "production") {
-    throw new Error(
+    errors.push(
       `Missing required environment variables: ${missingVars.join(", ")}`
     );
   }
 
   // Avertissements pour le développement
   if (config.env === "development" && missingVars.length > 0) {
-    console.warn(
-      `⚠️  Missing environment variables: ${missingVars.join(
+    warnings.push(
+      `Missing environment variables: ${missingVars.join(
         ", "
       )}. Using defaults for development.`
     );
   }
+
+  // Logger les warnings
+  warnings.forEach((warning) => {
+    console.warn(`⚠️  ${warning}`);
+  });
+
+  // Logger les erreurs
+  errors.forEach((error) => {
+    console.error(`❌ ${error}`);
+  });
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings,
+  };
 };
 
-// Valider la configuration au démarrage
-validateConfig(config);
+// Fonctions helpers pour vérifier l'environnement
+const isDevelopment = (): boolean => config.env === "development";
+const isProduction = (): boolean => config.env === "production";
+const isTest = (): boolean => config.env === "test";
 
-// Logger la configuration (sans les informations sensibles)
+// Logger la configuration au démarrage (sans les informations sensibles)
 if (config.env === "development") {
   console.log("🚀 Configuration loaded:", {
     env: config.env,
@@ -354,5 +416,16 @@ if (config.env === "development") {
   });
 }
 
+// Exports nommés pour server.ts
+export {
+  config,
+  validateConfig,
+  isDevelopment,
+  isProduction,
+  isTest,
+  ConfigType,
+  ValidationResult,
+};
+
+// Export par défaut pour compatibilité
 export default config;
-export { ConfigType };
