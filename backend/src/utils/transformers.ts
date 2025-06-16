@@ -1,624 +1,486 @@
-// backend/src/utils/transformers.ts - TRANSFORMATEURS CORRIGÉS SANS WHEAT
+// backend/src/utils/transformers.ts
+import { logger } from "./logger";
 import {
-  SeedLevel,
-  LotStatus,
-  Role,
-  CropType,
-  MultiplierStatus,
-  CertificationLevel,
-  ParcelStatus,
-  ProductionStatus,
-  TestResult,
-} from "@prisma/client";
+  ROLE_MAPPINGS,
+  CROP_TYPE_MAPPINGS,
+  LOT_STATUS_MAPPINGS,
+  PARCEL_STATUS_MAPPINGS,
+  PRODUCTION_STATUS_MAPPINGS,
+  ACTIVITY_TYPE_MAPPINGS,
+  ISSUE_TYPE_MAPPINGS,
+  ISSUE_SEVERITY_MAPPINGS,
+  TEST_RESULT_MAPPINGS,
+  CERTIFICATION_LEVEL_MAPPINGS,
+  MULTIPLIER_STATUS_MAPPINGS,
+  CONTRACT_STATUS_MAPPINGS,
+  REPORT_TYPE_MAPPINGS,
+  SEED_LEVEL_MAPPINGS,
+  MAPPING_REGISTRY,
+} from "../config/enums";
 
-export class DataTransformer {
-  // ===== MAPPINGS BIDIRECTIONNELS =====
+// ===== TYPES =====
+type MappingType = keyof typeof MAPPING_REGISTRY;
+type TransformDirection = "UI_TO_DB" | "DB_TO_UI";
 
-  // Statuts de lots (DB <-> UI)
-  private static readonly LOT_STATUS_DB_TO_UI: Record<LotStatus, string> = {
-    PENDING: "pending",
-    CERTIFIED: "certified",
-    REJECTED: "rejected",
-    IN_STOCK: "in-stock",
-    SOLD: "sold",
-    ACTIVE: "active",
-    DISTRIBUTED: "distributed",
-  };
+// ===== FONCTIONS DE TRANSFORMATION GÉNÉRIQUES =====
 
-  private static readonly LOT_STATUS_UI_TO_DB: Record<string, LotStatus> = {
-    pending: "PENDING",
-    certified: "CERTIFIED",
-    rejected: "REJECTED",
-    "in-stock": "IN_STOCK",
-    sold: "SOLD",
-    active: "ACTIVE",
-    distributed: "DISTRIBUTED",
-  };
+/**
+ * Transforme une valeur enum selon le mapping fourni
+ */
+function transformEnum(
+  value: string | undefined | null,
+  mapping: Record<string, string>
+): string | undefined {
+  if (!value || typeof value !== "string") return undefined;
+  return mapping[value] || value;
+}
 
-  // Rôles utilisateurs (DB <-> UI)
-  private static readonly ROLE_DB_TO_UI: Record<Role, string> = {
-    ADMIN: "admin",
-    MANAGER: "manager",
-    INSPECTOR: "inspector",
-    MULTIPLIER: "multiplier",
-    GUEST: "guest",
-    TECHNICIAN: "technician",
-    RESEARCHER: "researcher",
-  };
-
-  private static readonly ROLE_UI_TO_DB: Record<string, Role> = {
-    admin: "ADMIN",
-    manager: "MANAGER",
-    inspector: "INSPECTOR",
-    multiplier: "MULTIPLIER",
-    guest: "GUEST",
-    technician: "TECHNICIAN",
-    researcher: "RESEARCHER",
-  };
-
-  // Types de culture SANS WHEAT (DB <-> UI)
-  private static readonly CROP_TYPE_DB_TO_UI: Record<CropType, string> = {
-    RICE: "rice",
-    MAIZE: "maize",
-    PEANUT: "peanut",
-    SORGHUM: "sorghum",
-    COWPEA: "cowpea",
-    MILLET: "millet",
-    WHEAT: "wheat",
-  };
-
-  private static readonly CROP_TYPE_UI_TO_DB: Record<string, CropType> = {
-    rice: "RICE",
-    maize: "MAIZE",
-    peanut: "PEANUT",
-    sorghum: "SORGHUM",
-    cowpea: "COWPEA",
-    millet: "MILLET",
-    wheat: "WHEAT", // Note: Wheat is kept as uppercase to match DB values
-  };
-
-  // Statuts multiplicateurs (DB <-> UI)
-  private static readonly MULTIPLIER_STATUS_DB_TO_UI: Record<
-    MultiplierStatus,
-    string
-  > = {
-    ACTIVE: "active",
-    INACTIVE: "inactive",
-  };
-
-  private static readonly MULTIPLIER_STATUS_UI_TO_DB: Record<
-    string,
-    MultiplierStatus
-  > = {
-    active: "ACTIVE",
-    inactive: "INACTIVE",
-  };
-
-  // Niveaux de certification (DB <-> UI)
-  private static readonly CERTIFICATION_LEVEL_DB_TO_UI: Record<
-    CertificationLevel,
-    string
-  > = {
-    BEGINNER: "beginner",
-    INTERMEDIATE: "intermediate",
-    EXPERT: "expert",
-  };
-
-  private static readonly CERTIFICATION_LEVEL_UI_TO_DB: Record<
-    string,
-    CertificationLevel
-  > = {
-    beginner: "BEGINNER",
-    intermediate: "INTERMEDIATE",
-    expert: "EXPERT",
-  };
-
-  // Statuts parcelles (DB <-> UI)
-  private static readonly PARCEL_STATUS_DB_TO_UI: Record<ParcelStatus, string> =
-    {
-      AVAILABLE: "available",
-      IN_USE: "in-use",
-      RESTING: "resting",
-    };
-
-  private static readonly PARCEL_STATUS_UI_TO_DB: Record<string, ParcelStatus> =
-    {
-      available: "AVAILABLE",
-      "in-use": "IN_USE",
-      resting: "RESTING",
-    };
-
-  // Statuts production (DB <-> UI)
-  private static readonly PRODUCTION_STATUS_DB_TO_UI: Record<
-    ProductionStatus,
-    string
-  > = {
-    PLANNED: "planned",
-    IN_PROGRESS: "in-progress",
-    COMPLETED: "completed",
-    CANCELLED: "cancelled",
-  };
-
-  private static readonly PRODUCTION_STATUS_UI_TO_DB: Record<
-    string,
-    ProductionStatus
-  > = {
-    planned: "PLANNED",
-    "in-progress": "IN_PROGRESS",
-    completed: "COMPLETED",
-    cancelled: "CANCELLED",
-  };
-
-  // Résultats de test (DB <-> UI)
-  private static readonly TEST_RESULT_DB_TO_UI: Record<TestResult, string> = {
-    PASS: "pass",
-    FAIL: "fail",
-  };
-
-  private static readonly TEST_RESULT_UI_TO_DB: Record<string, TestResult> = {
-    pass: "PASS",
-    fail: "FAIL",
-  };
-
-  // ===== MÉTHODES DE TRANSFORMATION =====
-
-  // Transformation des statuts de lots
-  static transformLotStatusDBToUI(status: LotStatus): string {
-    return (
-      this.LOT_STATUS_DB_TO_UI[status] ||
-      status.toLowerCase().replace(/_/g, "-")
-    );
+/**
+ * Obtient le mapping approprié pour une transformation
+ */
+function getMapping(
+  type: MappingType,
+  direction: TransformDirection
+): Record<string, string> {
+  const mappings = MAPPING_REGISTRY[type];
+  if (!mappings) {
+    logger.warn(`No mapping found for type: ${type}`);
+    return {};
   }
+  return mappings[direction] || {};
+}
 
-  static transformLotStatusUIToDB(status: string): LotStatus {
-    return (
-      this.LOT_STATUS_UI_TO_DB[status] ||
-      (status.toUpperCase().replace(/-/g, "_") as LotStatus)
-    );
-  }
+/**
+ * Détermine le type d'entité basé sur les propriétés de l'objet
+ */
+function detectEntityType(obj: any): string {
+  if (!obj || typeof obj !== "object") return "unknown";
 
-  // Méthode spéciale pour l'input status (compatibilité)
-  static transformInputStatus(status: string): LotStatus {
-    return this.transformLotStatusUIToDB(status);
-  }
+  // Détection basée sur les propriétés uniques
+  if (obj.level !== undefined && obj.varietyId !== undefined) return "seedLot";
+  if (obj.cropType !== undefined && obj.maturityDays !== undefined)
+    return "variety";
+  if (
+    obj.certificationLevel !== undefined &&
+    obj.registrationNumber !== undefined
+  )
+    return "multiplier";
+  if (obj.parcelCode !== undefined) return "parcel";
+  if (obj.sowingDate !== undefined && obj.productionId !== undefined)
+    return "production";
+  if (obj.controlDate !== undefined && obj.seedLotId !== undefined)
+    return "qualityControl";
+  if (obj.contractNumber !== undefined) return "contract";
+  if (obj.email !== undefined && obj.role !== undefined) return "user";
+  if (obj.activityDate !== undefined) return "activity";
+  if (obj.issueDate !== undefined && obj.severity !== undefined) return "issue";
 
-  // Transformation des rôles
-  static transformRoleDBToUI(role: Role): string {
-    // ✅ CORRECTION: Vérifier si le rôle existe avant de le transformer
-    if (!role) {
-      console.warn('Rôle undefined détecté, utilisation de "guest" par défaut');
-      return "guest"; // Valeur par défaut sécurisée
+  return "unknown";
+}
+
+/**
+ * Transforme les query parameters de l'UI vers le format DB
+ */
+export function transformQueryParams(query: any): any {
+  if (!query || typeof query !== "object") return query;
+
+  const transformed: any = { ...query };
+
+  // Transformer les enums dans les query params
+  Object.keys(transformed).forEach((key) => {
+    const value = transformed[key];
+    if (!value || typeof value !== "string") return;
+
+    switch (key) {
+      case "status":
+        // Essayer différents mappings selon le contexte
+        transformed[key] =
+          transformEnum(value, LOT_STATUS_MAPPINGS.UI_TO_DB) ||
+          transformEnum(value, PARCEL_STATUS_MAPPINGS.UI_TO_DB) ||
+          transformEnum(value, PRODUCTION_STATUS_MAPPINGS.UI_TO_DB) ||
+          transformEnum(value, CONTRACT_STATUS_MAPPINGS.UI_TO_DB) ||
+          transformEnum(value, MULTIPLIER_STATUS_MAPPINGS.UI_TO_DB) ||
+          value;
+        break;
+
+      case "role":
+        transformed[key] = transformEnum(value, ROLE_MAPPINGS.UI_TO_DB);
+        break;
+
+      case "cropType":
+        transformed[key] = transformEnum(value, CROP_TYPE_MAPPINGS.UI_TO_DB);
+        break;
+
+      case "level":
+        // Les niveaux de semences restent identiques
+        transformed[key] = transformEnum(value, SEED_LEVEL_MAPPINGS.UI_TO_DB);
+        break;
+
+      case "type":
+        // Essayer différents mappings selon le contexte
+        transformed[key] =
+          transformEnum(value, ACTIVITY_TYPE_MAPPINGS.UI_TO_DB) ||
+          transformEnum(value, ISSUE_TYPE_MAPPINGS.UI_TO_DB) ||
+          transformEnum(value, REPORT_TYPE_MAPPINGS.UI_TO_DB) ||
+          value;
+        break;
+
+      case "severity":
+        transformed[key] = transformEnum(
+          value,
+          ISSUE_SEVERITY_MAPPINGS.UI_TO_DB
+        );
+        break;
+
+      case "result":
+        transformed[key] = transformEnum(value, TEST_RESULT_MAPPINGS.UI_TO_DB);
+        break;
+
+      case "certificationLevel":
+        transformed[key] = transformEnum(
+          value,
+          CERTIFICATION_LEVEL_MAPPINGS.UI_TO_DB
+        );
+        break;
     }
-    return this.ROLE_DB_TO_UI[role] || role.toLowerCase();
+  });
+
+  return transformed;
+}
+
+/**
+ * Transforme un objet de l'UI vers le format DB
+ */
+export function transformObjectUIToDB(obj: any): any {
+  if (!obj || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) {
+    return obj.map((item) => transformObjectUIToDB(item));
   }
 
-  static transformRoleUIToDB(role: string): Role {
-    return this.ROLE_UI_TO_DB[role] || (role.toUpperCase() as Role);
-  }
+  const transformed: any = {};
+  const entityType = detectEntityType(obj);
 
-  // Transformation des types de culture
-  static transformCropTypeDBToUI(cropType: CropType): string {
-    return this.CROP_TYPE_DB_TO_UI[cropType] || cropType.toLowerCase();
-  }
-
-  static transformCropTypeUIToDB(cropType: string): CropType {
-    // Gestion spéciale pour wheat qui sera mappé en SORGHUM temporairement
-
-    return (
-      this.CROP_TYPE_UI_TO_DB[cropType] || (cropType.toUpperCase() as CropType)
-    );
-  }
-
-  // Transformation des statuts multiplicateurs
-  static transformMultiplierStatusDBToUI(status: MultiplierStatus): string {
-    return this.MULTIPLIER_STATUS_DB_TO_UI[status] || status.toLowerCase();
-  }
-
-  static transformMultiplierStatusUIToDB(status: string): MultiplierStatus {
-    return (
-      this.MULTIPLIER_STATUS_UI_TO_DB[status] ||
-      (status.toUpperCase() as MultiplierStatus)
-    );
-  }
-
-  // Transformation des niveaux de certification
-  static transformCertificationLevelDBToUI(level: CertificationLevel): string {
-    return this.CERTIFICATION_LEVEL_DB_TO_UI[level] || level.toLowerCase();
-  }
-
-  static transformCertificationLevelUIToDB(level: string): CertificationLevel {
-    return (
-      this.CERTIFICATION_LEVEL_UI_TO_DB[level] ||
-      (level.toUpperCase() as CertificationLevel)
-    );
-  }
-
-  // Transformation des statuts parcelles
-  static transformParcelStatusDBToUI(status: ParcelStatus): string {
-    return (
-      this.PARCEL_STATUS_DB_TO_UI[status] ||
-      status.toLowerCase().replace(/_/g, "-")
-    );
-  }
-
-  static transformParcelStatusUIToDB(status: string): ParcelStatus {
-    return (
-      this.PARCEL_STATUS_UI_TO_DB[status] ||
-      (status.toUpperCase().replace(/-/g, "_") as ParcelStatus)
-    );
-  }
-
-  // Transformation des statuts production
-  static transformProductionStatusDBToUI(status: ProductionStatus): string {
-    return (
-      this.PRODUCTION_STATUS_DB_TO_UI[status] ||
-      status.toLowerCase().replace(/_/g, "-")
-    );
-  }
-
-  static transformProductionStatusUIToDB(status: string): ProductionStatus {
-    return (
-      this.PRODUCTION_STATUS_UI_TO_DB[status] ||
-      (status.toUpperCase().replace(/-/g, "_") as ProductionStatus)
-    );
-  }
-
-  // Transformation des résultats de test
-  static transformTestResultDBToUI(result: TestResult): string {
-    return this.TEST_RESULT_DB_TO_UI[result] || result.toLowerCase();
-  }
-
-  static transformTestResultUIToDB(result: string): TestResult {
-    return (
-      this.TEST_RESULT_UI_TO_DB[result] || (result.toUpperCase() as TestResult)
-    );
-  }
-
-  // ✅ MÉTHODE GÉNÉRIQUE pour transformer les enums
-  static transformEnumUIToDB(
-    value: string,
-    mapping: Record<string, string>
-  ): string {
-    return mapping[value] || value.toUpperCase().replace(/-/g, "_");
-  }
-
-  // ===== TRANSFORMATION D'ENTITÉS COMPLÈTES =====
-
-  // Transformation des lots de semences
-  static transformSeedLot(lot: any): any {
-    if (!lot) return null;
-
-    return {
-      ...lot,
-      status: this.transformLotStatusDBToUI(lot.status),
-      variety: lot.variety
-        ? {
-            ...lot.variety,
-            cropType: this.transformCropTypeDBToUI(lot.variety.cropType),
-            createdAt: this.formatDate(lot.variety.createdAt),
-            updatedAt: this.formatDate(lot.variety.updatedAt),
-          }
-        : undefined,
-      multiplier: lot.multiplier
-        ? this.transformMultiplier(lot.multiplier)
-        : undefined,
-      parcel: lot.parcel ? this.transformParcel(lot.parcel) : undefined,
-      parentLot: lot.parentLot
-        ? this.transformSeedLot(lot.parentLot)
-        : undefined,
-      childLots:
-        lot.childLots?.map((child: any) => this.transformSeedLot(child)) || [],
-      qualityControls:
-        lot.qualityControls?.map((qc: any) =>
-          this.transformQualityControl(qc)
-        ) || [],
-      productions:
-        lot.productions?.map((p: any) => this.transformProduction(p)) || [],
-      productionDate: this.formatDate(lot.productionDate),
-      expiryDate: this.formatDate(lot.expiryDate),
-      createdAt: this.formatDate(lot.createdAt),
-      updatedAt: this.formatDate(lot.updatedAt),
-    };
-  }
-
-  // Transformation des variétés
-  static transformVariety(variety: any): any {
-    if (!variety) return null;
-
-    return {
-      ...variety,
-      cropType: this.transformCropTypeDBToUI(variety.cropType),
-      createdAt: this.formatDate(variety.createdAt),
-      updatedAt: this.formatDate(variety.updatedAt),
-    };
-  }
-
-  // Transformation des multiplicateurs
-  static transformMultiplier(multiplier: any): any {
-    if (!multiplier) return null;
-
-    return {
-      ...multiplier,
-      status: this.transformMultiplierStatusDBToUI(multiplier.status),
-      certificationLevel: this.transformCertificationLevelDBToUI(
-        multiplier.certificationLevel
-      ),
-      specialization:
-        multiplier.specialization?.map((spec: CropType) =>
-          this.transformCropTypeDBToUI(spec)
-        ) || [],
-      createdAt: this.formatDate(multiplier.createdAt),
-      updatedAt: this.formatDate(multiplier.updatedAt),
-    };
-  }
-
-  // Transformation des parcelles
-  static transformParcel(parcel: any): any {
-    if (!parcel) return null;
-
-    return {
-      ...parcel,
-      status: this.transformParcelStatusDBToUI(parcel.status),
-      multiplier: parcel.multiplier
-        ? this.transformMultiplier(parcel.multiplier)
-        : undefined,
-      soilAnalyses:
-        parcel.soilAnalyses?.map((analysis: any) => ({
-          ...analysis,
-          analysisDate: this.formatDate(analysis.analysisDate),
-          createdAt: this.formatDate(analysis.createdAt),
-          updatedAt: this.formatDate(analysis.updatedAt),
-        })) || [],
-      createdAt: this.formatDate(parcel.createdAt),
-      updatedAt: this.formatDate(parcel.updatedAt),
-    };
-  }
-
-  // Transformation des contrôles qualité
-  static transformQualityControl(qc: any): any {
-    if (!qc) return null;
-
-    return {
-      ...qc,
-      result: this.transformTestResultDBToUI(qc.result),
-      seedLot: qc.seedLot ? this.transformSeedLot(qc.seedLot) : undefined,
-      // ✅ CORRECTION: Vérifier que l'inspecteur existe avant de le transformer
-      inspector:
-        qc.inspector && qc.inspector.role
-          ? this.transformUser(qc.inspector)
-          : qc.inspector
-          ? { ...qc.inspector, role: "guest" }
-          : undefined,
-      controlDate: this.formatDate(qc.controlDate),
-      createdAt: this.formatDate(qc.createdAt),
-      updatedAt: this.formatDate(qc.updatedAt),
-    };
-  }
-
-  // Transformation des productions
-  static transformProduction(production: any): any {
-    if (!production) return null;
-
-    return {
-      ...production,
-      status: this.transformProductionStatusDBToUI(production.status),
-      seedLot: production.seedLot
-        ? this.transformSeedLot(production.seedLot)
-        : undefined,
-      multiplier: production.multiplier
-        ? this.transformMultiplier(production.multiplier)
-        : undefined,
-      parcel: production.parcel
-        ? this.transformParcel(production.parcel)
-        : undefined,
-      activities:
-        production.activities?.map((activity: any) => ({
-          ...activity,
-          type:
-            activity.type?.toLowerCase?.().replace(/_/g, "-") || activity.type,
-          activityDate: this.formatDate(activity.activityDate),
-          createdAt: this.formatDate(activity.createdAt),
-          updatedAt: this.formatDate(activity.updatedAt),
-        })) || [],
-      issues:
-        production.issues?.map((issue: any) => ({
-          ...issue,
-          type: issue.type?.toLowerCase?.() || issue.type,
-          severity: issue.severity?.toLowerCase?.() || issue.severity,
-          issueDate: this.formatDate(issue.issueDate),
-          resolvedDate: this.formatDate(issue.resolvedDate),
-          createdAt: this.formatDate(issue.createdAt),
-          updatedAt: this.formatDate(issue.updatedAt),
-        })) || [],
-      startDate: this.formatDate(production.startDate),
-      endDate: this.formatDate(production.endDate),
-      sowingDate: this.formatDate(production.sowingDate),
-      harvestDate: this.formatDate(production.harvestDate),
-      createdAt: this.formatDate(production.createdAt),
-      updatedAt: this.formatDate(production.updatedAt),
-    };
-  }
-
-  // Transformation des utilisateurs
-  static transformUser(user: any): any {
-    if (!user) return null;
-
-    return {
-      ...user,
-      // ✅ CORRECTION: Gérer le cas où le rôle est undefined
-      role: user.role ? this.transformRoleDBToUI(user.role) : "guest",
-      createdAt: this.formatDate(user.createdAt),
-      updatedAt: this.formatDate(user.updatedAt),
-    };
-  }
-
-  // ===== MÉTHODES UTILITAIRES =====
-
-  // Formatage des dates
-  private static formatDate(date: any): string | null {
-    if (!date) return null;
-    try {
-      // Si c'est déjà une string ISO, la retourner telle quelle
-      if (typeof date === "string") {
-        // Vérifier si c'est une date ISO valide
-        const dateObj = new Date(date);
-        if (!isNaN(dateObj.getTime())) {
-          return date;
-        }
-        return null;
-      }
-
-      // Si c'est un objet Date
-      if (date instanceof Date) {
-        return date.toISOString();
-      }
-
-      // Si c'est un objet avec toISOString
-      if (date.toISOString && typeof date.toISOString === "function") {
-        return date.toISOString();
-      }
-
-      // Essayer de créer une date
-      const dateObj = new Date(date);
-      if (!isNaN(dateObj.getTime())) {
-        return dateObj.toISOString();
-      }
-
-      return null;
-    } catch (error) {
-      console.warn("Erreur lors du formatage de la date:", error);
-      return null;
-    }
-  }
-
-  // Transformation des réponses API complètes
-  static transformApiResponse(response: any, entityType: string): any {
-    if (!response) return null;
-
-    const transformers: Record<string, (item: any) => any> = {
-      user: this.transformUser.bind(this),
-      seedlot: this.transformSeedLot.bind(this),
-      seedLot: this.transformSeedLot.bind(this),
-      variety: this.transformVariety.bind(this),
-      multiplier: this.transformMultiplier.bind(this),
-      parcel: this.transformParcel.bind(this),
-      qualitycontrol: this.transformQualityControl.bind(this),
-      qualityControl: this.transformQualityControl.bind(this),
-      production: this.transformProduction.bind(this),
-    };
-
-    const transformer = transformers[entityType.toLowerCase()];
-    if (!transformer) {
-      console.warn(`No transformer found for entity type: ${entityType}`);
-      return response;
-    }
-
-    // Transformation des données
-    if (response.data) {
-      if (Array.isArray(response.data)) {
-        response.data = response.data.map(transformer).filter(Boolean);
-      } else {
-        response.data = transformer(response.data);
-      }
-    }
-
-    // Transformation des résultats paginés
-    if (response.lots && Array.isArray(response.lots)) {
-      response.lots = response.lots
-        .map(this.transformSeedLot.bind(this))
-        .filter(Boolean);
-    }
-
-    if (response.varieties && Array.isArray(response.varieties)) {
-      response.varieties = response.varieties
-        .map(this.transformVariety.bind(this))
-        .filter(Boolean);
-    }
-
-    if (response.multipliers && Array.isArray(response.multipliers)) {
-      response.multipliers = response.multipliers
-        .map(this.transformMultiplier.bind(this))
-        .filter(Boolean);
-    }
-
-    if (response.parcels && Array.isArray(response.parcels)) {
-      response.parcels = response.parcels
-        .map(this.transformParcel.bind(this))
-        .filter(Boolean);
-    }
-
-    if (response.controls && Array.isArray(response.controls)) {
-      response.controls = response.controls
-        .map(this.transformQualityControl.bind(this))
-        .filter(Boolean);
-    }
-
-    if (response.productions && Array.isArray(response.productions)) {
-      response.productions = response.productions
-        .map(this.transformProduction.bind(this))
-        .filter(Boolean);
-    }
-
-    if (response.users && Array.isArray(response.users)) {
-      response.users = response.users
-        .map(this.transformUser.bind(this))
-        .filter(Boolean);
-    }
-
-    return response;
-  }
-
-  // Validation des transformations
-  static validateTransformation(original: any, transformed: any): boolean {
-    try {
-      if (!original && !transformed) return true;
-      if (!original || !transformed) return false;
-
-      // Vérifier les champs critiques
-      const criticalFields = ["id", "name", "code"];
-      for (const field of criticalFields) {
-        if (
-          original[field] !== undefined &&
-          original[field] !== transformed[field]
-        ) {
-          console.warn(
-            `Transformation warning: ${field} changed from ${original[field]} to ${transformed[field]}`
+  for (const [key, value] of Object.entries(obj)) {
+    // Transformer selon le type de champ et le contexte
+    switch (key) {
+      case "status":
+        // Déterminer le bon mapping selon l'entité
+        if (entityType === "seedLot") {
+          transformed[key] = transformEnum(
+            value as string,
+            LOT_STATUS_MAPPINGS.UI_TO_DB
           );
+        } else if (entityType === "parcel") {
+          transformed[key] = transformEnum(
+            value as string,
+            PARCEL_STATUS_MAPPINGS.UI_TO_DB
+          );
+        } else if (entityType === "production") {
+          transformed[key] = transformEnum(
+            value as string,
+            PRODUCTION_STATUS_MAPPINGS.UI_TO_DB
+          );
+        } else if (entityType === "contract") {
+          transformed[key] = transformEnum(
+            value as string,
+            CONTRACT_STATUS_MAPPINGS.UI_TO_DB
+          );
+        } else if (entityType === "multiplier") {
+          transformed[key] = transformEnum(
+            value as string,
+            MULTIPLIER_STATUS_MAPPINGS.UI_TO_DB
+          );
+        } else {
+          transformed[key] = value;
         }
-      }
-      return true;
-    } catch (error) {
-      console.error("Validation transformation error:", error);
-      return false;
+        break;
+
+      case "role":
+        transformed[key] = transformEnum(
+          value as string,
+          ROLE_MAPPINGS.UI_TO_DB
+        );
+        break;
+
+      case "cropType":
+        transformed[key] = transformEnum(
+          value as string,
+          CROP_TYPE_MAPPINGS.UI_TO_DB
+        );
+        break;
+
+      case "certificationLevel":
+        transformed[key] = transformEnum(
+          value as string,
+          CERTIFICATION_LEVEL_MAPPINGS.UI_TO_DB
+        );
+        break;
+
+      case "type":
+        if (entityType === "activity") {
+          transformed[key] = transformEnum(
+            value as string,
+            ACTIVITY_TYPE_MAPPINGS.UI_TO_DB
+          );
+        } else if (entityType === "issue") {
+          transformed[key] = transformEnum(
+            value as string,
+            ISSUE_TYPE_MAPPINGS.UI_TO_DB
+          );
+        } else if (obj.reportType !== undefined) {
+          transformed[key] = transformEnum(
+            value as string,
+            REPORT_TYPE_MAPPINGS.UI_TO_DB
+          );
+        } else {
+          transformed[key] = value;
+        }
+        break;
+
+      case "severity":
+        transformed[key] = transformEnum(
+          value as string,
+          ISSUE_SEVERITY_MAPPINGS.UI_TO_DB
+        );
+        break;
+
+      case "result":
+        transformed[key] = transformEnum(
+          value as string,
+          TEST_RESULT_MAPPINGS.UI_TO_DB
+        );
+        break;
+
+      case "level":
+        transformed[key] = transformEnum(
+          value as string,
+          SEED_LEVEL_MAPPINGS.UI_TO_DB
+        );
+        break;
+
+      case "specialization":
+        if (Array.isArray(value)) {
+          transformed[key] = value.map((v: string) =>
+            transformEnum(v, CROP_TYPE_MAPPINGS.UI_TO_DB)
+          );
+        } else {
+          transformed[key] = value;
+        }
+        break;
+
+      default:
+        // Récursion sur les objets imbriqués
+        if (
+          value &&
+          typeof value === "object" &&
+          !Array.isArray(value) &&
+          !(value instanceof Date)
+        ) {
+          transformed[key] = transformObjectUIToDB(value);
+        } else if (Array.isArray(value)) {
+          transformed[key] = value.map((item) =>
+            typeof item === "object" ? transformObjectUIToDB(item) : item
+          );
+        } else {
+          transformed[key] = value;
+        }
     }
   }
 
-  // Nettoyage des données
-  static sanitizeData(data: any): any {
-    if (!data || typeof data !== "object") return data;
+  return transformed;
+}
 
-    const sanitized = Array.isArray(data) ? [] : {};
+/**
+ * Transforme un objet du format DB vers l'UI
+ */
+export function transformObjectDBToUI(obj: any): any {
+  if (!obj || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) {
+    return obj.map((item) => transformObjectDBToUI(item));
+  }
 
-    for (const [key, value] of Object.entries(data)) {
-      if (value === null || value === undefined) {
-        continue; // Supprimer les valeurs null/undefined
-      }
+  const transformed: any = {};
+  const entityType = detectEntityType(obj);
 
-      if (typeof value === "string") {
-        const trimmed = value.trim();
-        if (trimmed.length > 0) {
-          (sanitized as any)[key] = trimmed;
+  for (const [key, value] of Object.entries(obj)) {
+    // Transformer selon le type de champ et le contexte
+    switch (key) {
+      case "status":
+        // Déterminer le bon mapping selon l'entité
+        if (entityType === "seedLot") {
+          transformed[key] = transformEnum(
+            value as string,
+            LOT_STATUS_MAPPINGS.DB_TO_UI
+          );
+        } else if (entityType === "parcel") {
+          transformed[key] = transformEnum(
+            value as string,
+            PARCEL_STATUS_MAPPINGS.DB_TO_UI
+          );
+        } else if (entityType === "production") {
+          transformed[key] = transformEnum(
+            value as string,
+            PRODUCTION_STATUS_MAPPINGS.DB_TO_UI
+          );
+        } else if (entityType === "contract") {
+          transformed[key] = transformEnum(
+            value as string,
+            CONTRACT_STATUS_MAPPINGS.DB_TO_UI
+          );
+        } else if (entityType === "multiplier") {
+          transformed[key] = transformEnum(
+            value as string,
+            MULTIPLIER_STATUS_MAPPINGS.DB_TO_UI
+          );
+        } else {
+          transformed[key] = value;
         }
-      } else if (typeof value === "object") {
-        const sanitizedValue = this.sanitizeData(value);
-        if (sanitizedValue !== null && Object.keys(sanitizedValue).length > 0) {
-          (sanitized as any)[key] = sanitizedValue;
+        break;
+
+      case "role":
+        transformed[key] = transformEnum(
+          value as string,
+          ROLE_MAPPINGS.DB_TO_UI
+        );
+        break;
+
+      case "cropType":
+        transformed[key] = transformEnum(
+          value as string,
+          CROP_TYPE_MAPPINGS.DB_TO_UI
+        );
+        break;
+
+      case "certificationLevel":
+        transformed[key] = transformEnum(
+          value as string,
+          CERTIFICATION_LEVEL_MAPPINGS.DB_TO_UI
+        );
+        break;
+
+      case "type":
+        if (entityType === "activity") {
+          transformed[key] = transformEnum(
+            value as string,
+            ACTIVITY_TYPE_MAPPINGS.DB_TO_UI
+          );
+        } else if (entityType === "issue") {
+          transformed[key] = transformEnum(
+            value as string,
+            ISSUE_TYPE_MAPPINGS.DB_TO_UI
+          );
+        } else if (obj.reportType !== undefined) {
+          transformed[key] = transformEnum(
+            value as string,
+            REPORT_TYPE_MAPPINGS.DB_TO_UI
+          );
+        } else {
+          transformed[key] = value;
         }
-      } else {
-        (sanitized as any)[key] = value;
-      }
+        break;
+
+      case "severity":
+        transformed[key] = transformEnum(
+          value as string,
+          ISSUE_SEVERITY_MAPPINGS.DB_TO_UI
+        );
+        break;
+
+      case "result":
+        transformed[key] = transformEnum(
+          value as string,
+          TEST_RESULT_MAPPINGS.DB_TO_UI
+        );
+        break;
+
+      case "level":
+        transformed[key] = transformEnum(
+          value as string,
+          SEED_LEVEL_MAPPINGS.DB_TO_UI
+        );
+        break;
+
+      case "specialization":
+        if (Array.isArray(value)) {
+          transformed[key] = value.map((v: string) =>
+            transformEnum(v, CROP_TYPE_MAPPINGS.DB_TO_UI)
+          );
+        } else {
+          transformed[key] = value;
+        }
+        break;
+
+      default:
+        // Récursion sur les objets imbriqués
+        if (
+          value &&
+          typeof value === "object" &&
+          !Array.isArray(value) &&
+          !(value instanceof Date)
+        ) {
+          transformed[key] = transformObjectDBToUI(value);
+        } else if (Array.isArray(value)) {
+          transformed[key] = value.map((item) =>
+            typeof item === "object" ? transformObjectDBToUI(item) : item
+          );
+        } else {
+          transformed[key] = value;
+        }
     }
+  }
 
-    return sanitized;
+  return transformed;
+}
+
+// ===== HELPERS POUR DEBUGGING =====
+
+/**
+ * Log les transformations en développement
+ */
+export function logTransformation(
+  original: any,
+  transformed: any,
+  direction: TransformDirection
+): void {
+  if (process.env.NODE_ENV === "development") {
+    logger.debug(`🔄 Transformation ${direction}:`, {
+      original,
+      transformed,
+      entityType: detectEntityType(original),
+    });
   }
 }
+
+/**
+ * Valide qu'une transformation est réversible
+ */
+export function validateTransformation(obj: any): boolean {
+  try {
+    const toDb = transformObjectUIToDB(obj);
+    const backToUi = transformObjectDBToUI(toDb);
+
+    // Vérifier que les transformations sont réversibles
+    const isValid = JSON.stringify(obj) === JSON.stringify(backToUi);
+
+    if (!isValid && process.env.NODE_ENV === "development") {
+      logger.warn("⚠️ Transformation non réversible détectée:", {
+        original: obj,
+        afterRoundTrip: backToUi,
+      });
+    }
+
+    return isValid;
+  } catch (error) {
+    logger.error("❌ Erreur lors de la validation de transformation:", error);
+    return false;
+  }
+}
+
+// ===== EXPORTS =====
+export default {
+  transformObjectUIToDB,
+  transformObjectDBToUI,
+  transformQueryParams,
+  logTransformation,
+  validateTransformation,
+};

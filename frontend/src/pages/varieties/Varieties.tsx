@@ -16,8 +16,7 @@ const API_BASE_URL = "http://localhost:3001/api";
 
 // Types
 interface Variety {
-  id: number; // Changé de string à number
-  code: string;
+  id: string;
   name: string;
   description: string;
   maturityDays: number;
@@ -25,13 +24,10 @@ interface Variety {
   resistances: string[];
   origin: string;
   releaseYear: number;
-  cropType: string;
-  isActive: boolean;
+  cropType?: string;
+  status: "ACTIVE" | "DISCONTINUED" | "EXPERIMENTAL";
   createdAt: string;
   updatedAt: string;
-  _count?: {
-    seedLots: number;
-  };
 }
 
 interface PaginatedResponse {
@@ -243,55 +239,64 @@ export default function VarietiesPage() {
     if (selectedVarieties.length === varieties.length) {
       setSelectedVarieties([]);
     } else {
-      setSelectedVarieties(varieties.map((v) => v.id.toString()));
+      setSelectedVarieties(varieties.map((v) => v.id));
     }
   };
 
-  const handleSelectVariety = (id: number) => {
-    if (selectedVarieties.includes(id.toString())) {
-      setSelectedVarieties(
-        selectedVarieties.filter((v) => v !== id.toString())
-      );
+  const handleSelectVariety = (id: string) => {
+    if (selectedVarieties.includes(id)) {
+      setSelectedVarieties(selectedVarieties.filter((v) => v !== id));
     } else {
-      setSelectedVarieties([...selectedVarieties, id.toString()]);
+      setSelectedVarieties([...selectedVarieties, id]);
     }
   };
 
-  const getStatusBadge = (isActive: boolean) => {
-    if (isActive) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          Active
-        </span>
-      );
-    } else {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-          Inactive
-        </span>
-      );
-    }
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      ACTIVE: { bg: "bg-green-100", text: "text-green-800", label: "Active" },
+      DISCONTINUED: {
+        bg: "bg-red-100",
+        text: "text-red-800",
+        label: "Discontinuée",
+      },
+      EXPERIMENTAL: {
+        bg: "bg-yellow-100",
+        text: "text-yellow-800",
+        label: "Expérimentale",
+      },
+    };
+
+    const config =
+      statusConfig[status as keyof typeof statusConfig] || statusConfig.ACTIVE;
+
+    return (
+      <span
+        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}
+      >
+        {config.label}
+      </span>
+    );
   };
 
   const getCropTypeBadge = (cropType?: string) => {
     if (!cropType) return null;
 
     const cropConfig = {
-      rice: { bg: "bg-blue-100", text: "text-blue-800", label: "Riz" },
-      maize: { bg: "bg-yellow-100", text: "text-yellow-800", label: "Maïs" },
-      peanut: {
+      RICE: { bg: "bg-blue-100", text: "text-blue-800", label: "Riz" },
+      MAIZE: { bg: "bg-yellow-100", text: "text-yellow-800", label: "Maïs" },
+      PEANUT: {
         bg: "bg-orange-100",
         text: "text-orange-800",
         label: "Arachide",
       },
-      sorghum: {
+      SORGHUM: {
         bg: "bg-purple-100",
         text: "text-purple-800",
         label: "Sorgho",
       },
-      cowpea: { bg: "bg-pink-100", text: "text-pink-800", label: "Niébé" },
-      millet: { bg: "bg-indigo-100", text: "text-indigo-800", label: "Mil" },
-      wheat: { bg: "bg-amber-100", text: "text-amber-800", label: "Blé" },
+      COWPEA: { bg: "bg-pink-100", text: "text-pink-800", label: "Niébé" },
+      MILLET: { bg: "bg-indigo-100", text: "text-indigo-800", label: "Mil" },
+      WHEAT: { bg: "bg-amber-100", text: "text-amber-800", label: "Blé" },
     };
 
     const config = cropConfig[cropType as keyof typeof cropConfig] || {
@@ -309,10 +314,10 @@ export default function VarietiesPage() {
     );
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer cette variété ?")) {
       try {
-        await varietyService.delete(id.toString());
+        await varietyService.delete(id);
         fetchVarieties();
       } catch (err) {
         console.error("Erreur lors de la suppression:", err);
@@ -365,25 +370,19 @@ export default function VarietiesPage() {
           <div className="bg-white rounded-lg shadow-sm p-4">
             <div className="text-sm text-gray-600 mb-1">Variétés actives</div>
             <div className="text-2xl font-bold text-green-600">
-              {varieties.filter((v) => v.isActive).length}
+              {varieties.filter((v) => v.status === "ACTIVE").length}
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="text-sm text-gray-600 mb-1">Avec semences</div>
+            <div className="text-sm text-gray-600 mb-1">Expérimentales</div>
             <div className="text-2xl font-bold text-yellow-600">
-              {
-                varieties.filter((v) => v._count && v._count.seedLots > 0)
-                  .length
-              }
+              {varieties.filter((v) => v.status === "EXPERIMENTAL").length}
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-4">
-            <div className="text-sm text-gray-600 mb-1">Sans semences</div>
+            <div className="text-sm text-gray-600 mb-1">Discontinuées</div>
             <div className="text-2xl font-bold text-red-600">
-              {
-                varieties.filter((v) => !v._count || v._count.seedLots === 0)
-                  .length
-              }
+              {varieties.filter((v) => v.status === "DISCONTINUED").length}
             </div>
           </div>
         </div>
@@ -499,9 +498,7 @@ export default function VarietiesPage() {
                         <input
                           type="checkbox"
                           className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                          checked={selectedVarieties.includes(
-                            variety.id.toString()
-                          )}
+                          checked={selectedVarieties.includes(variety.id)}
                           onChange={() => handleSelectVariety(variety.id)}
                         />
                       </td>
@@ -510,7 +507,7 @@ export default function VarietiesPage() {
                           {variety.name}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {variety.code} • {variety.origin}
+                          {variety.origin}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -551,7 +548,7 @@ export default function VarietiesPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(variety.isActive)}
+                        {getStatusBadge(variety.status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
