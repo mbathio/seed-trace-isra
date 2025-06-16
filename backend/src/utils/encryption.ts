@@ -1,10 +1,12 @@
+// backend/src/utils/encryption.ts - VERSION CORRIGÉE
 import bcrypt from "bcryptjs";
-import jwt, { SignOptions } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { config } from "../config/environment";
 import { JwtPayload, AuthTokens } from "../types/api";
 
 export class EncryptionService {
   static async hashPassword(password: string): Promise<string> {
+    // ✅ CORRECTION: Utiliser config.bcrypt.saltRounds
     return bcrypt.hash(password, config.bcrypt.saltRounds);
   }
 
@@ -29,21 +31,14 @@ export class EncryptionService {
       role: payload.role,
     };
 
-    // ✅ CORRECTION: Cast explicite pour les valeurs expiresIn
-    const accessTokenOptions: SignOptions = {
-      expiresIn: config.jwt.accessTokenExpiry as any,
-    };
+    // ✅ CORRECTION: Utiliser une assertion de type pour expiresIn
+    const accessToken = jwt.sign(tokenPayload, secret, {
+      expiresIn: config.jwt.expiresIn as string | number,
+    });
 
-    const refreshTokenOptions: SignOptions = {
-      expiresIn: config.jwt.refreshTokenExpiry as any,
-    };
-
-    const accessToken = jwt.sign(tokenPayload, secret, accessTokenOptions);
-    const refreshToken = jwt.sign(
-      { userId: payload.userId },
-      secret,
-      refreshTokenOptions
-    );
+    const refreshToken = jwt.sign({ userId: payload.userId }, secret, {
+      expiresIn: config.jwt.refreshExpiresIn as string | number,
+    });
 
     return { accessToken, refreshToken };
   }

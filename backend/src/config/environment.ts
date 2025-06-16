@@ -1,4 +1,4 @@
-// backend/src/config/environment.ts
+// backend/src/config/environment.ts - VERSION CORRIGÉE
 import * as dotenv from "dotenv";
 import * as path from "path";
 
@@ -36,7 +36,6 @@ interface JwtConfig {
   expiresIn: string;
   refreshSecret: string;
   refreshExpiresIn: string;
-  accessTokenExpiry?: string;
 }
 
 interface EmailConfig {
@@ -127,7 +126,6 @@ interface SeedTraceabilityConfig {
   };
 }
 
-// Ajout des configurations manquantes pour server et client
 interface ServerConfig {
   port: number;
   host: string;
@@ -141,6 +139,7 @@ interface UploadConfig {
   maxFileSize: number;
   uploadDir: string;
   allowedTypes: string[];
+  allowedFormats: string[]; // Ajout pour fileUpload.ts
 }
 
 interface LoggingConfig {
@@ -148,6 +147,11 @@ interface LoggingConfig {
   enableConsole: boolean;
   enableFile: boolean;
   filePath?: string;
+}
+
+// ✅ AJOUT de l'interface BcryptConfig manquante
+interface BcryptConfig {
+  saltRounds: number;
 }
 
 interface ConfigType {
@@ -171,6 +175,7 @@ interface ConfigType {
   security: SecurityConfig;
   geolocation: GeolocationConfig;
   seedTraceability: SeedTraceabilityConfig;
+  bcrypt: BcryptConfig; // ✅ AJOUT de la propriété bcrypt
 }
 
 // Fonction helper pour parser les variables d'environnement
@@ -199,19 +204,17 @@ const getEnvBoolean = (key: string, defaultValue: boolean): boolean => {
 // Configuration principale
 const config: ConfigType = {
   env: getEnvVar("NODE_ENV", "development"),
-  environment: getEnvVar("NODE_ENV", "development"), // Alias pour compatibilité
+  environment: getEnvVar("NODE_ENV", "development"),
   port: getEnvNumber("PORT", 3000),
   apiPrefix: getEnvVar("API_PREFIX", "/api/v1"),
   appName: getEnvVar("APP_NAME", "ISRA Seed Traceability System"),
   appVersion: getEnvVar("APP_VERSION", "1.0.0"),
 
-  // Configuration du serveur
   server: {
     port: getEnvNumber("PORT", 3000),
     host: getEnvVar("HOST", "0.0.0.0"),
   },
 
-  // Configuration du client
   client: {
     url: process.env.CLIENT_URL
       ? process.env.CLIENT_URL.split(",")
@@ -245,7 +248,7 @@ const config: ConfigType = {
     port: getEnvNumber("REDIS_PORT", 6379),
     password: process.env.REDIS_PASSWORD,
     db: getEnvNumber("REDIS_DB", 0),
-    ttl: getEnvNumber("REDIS_TTL", 3600), // 1 heure par défaut
+    ttl: getEnvNumber("REDIS_TTL", 3600),
   },
 
   jwt: {
@@ -256,7 +259,6 @@ const config: ConfigType = {
       "default-refresh-secret-change-me"
     ),
     refreshExpiresIn: getEnvVar("JWT_REFRESH_EXPIRES_IN", "7d"),
-    accessTokenExpiry: getEnvVar("JWT_ACCESS_EXPIRY", "15m"),
   },
 
   email: {
@@ -289,12 +291,13 @@ const config: ConfigType = {
   },
 
   upload: {
-    maxFileSize: getEnvNumber("MAX_FILE_SIZE", 10 * 1024 * 1024), // 10MB par défaut
+    maxFileSize: getEnvNumber("MAX_FILE_SIZE", 10 * 1024 * 1024),
     uploadDir: getEnvVar("UPLOAD_PATH", "./uploads"),
     allowedTypes: getEnvVar(
       "ALLOWED_FILE_TYPES",
       "image/jpeg,image/png,image/gif,application/pdf"
     ).split(","),
+    allowedFormats: ["jpg", "jpeg", "png", "gif", "pdf"], // ✅ AJOUT pour fileUpload.ts
   },
 
   logging: {
@@ -326,13 +329,13 @@ const config: ConfigType = {
     metricsPort: getEnvNumber("METRICS_PORT", 9090),
     metricsPath: getEnvVar("METRICS_PATH", "/metrics"),
     collectDefaultMetrics: getEnvBoolean("COLLECT_DEFAULT_METRICS", true),
-    healthCheckInterval: getEnvNumber("HEALTH_CHECK_INTERVAL", 30000), // 30 secondes
+    healthCheckInterval: getEnvNumber("HEALTH_CHECK_INTERVAL", 30000),
   },
 
   security: {
     bcryptRounds: getEnvNumber("BCRYPT_ROUNDS", 10),
     rateLimit: {
-      windowMs: getEnvNumber("RATE_LIMIT_WINDOW_MS", 15 * 60 * 1000), // 15 minutes
+      windowMs: getEnvNumber("RATE_LIMIT_WINDOW_MS", 15 * 60 * 1000),
       max: getEnvNumber("RATE_LIMIT_MAX", 100),
     },
     cors: {
@@ -341,6 +344,11 @@ const config: ConfigType = {
         : ["http://localhost:3000", "http://localhost:5173"],
       credentials: true,
     },
+  },
+
+  // ✅ AJOUT de la configuration bcrypt
+  bcrypt: {
+    saltRounds: getEnvNumber("BCRYPT_ROUNDS", 10),
   },
 
   geolocation: {
@@ -364,7 +372,7 @@ const config: ConfigType = {
     },
     offlineSync: {
       enabled: getEnvBoolean("OFFLINE_SYNC_ENABLED", true),
-      syncInterval: getEnvNumber("SYNC_INTERVAL", 300000), // 5 minutes
+      syncInterval: getEnvNumber("SYNC_INTERVAL", 300000),
       maxRetries: getEnvNumber("SYNC_MAX_RETRIES", 3),
     },
   },
@@ -382,14 +390,7 @@ const validateConfig = (): ValidationResult => {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Vérifier les variables critiques
-  const requiredEnvVars = [
-    "DATABASE_URL",
-    "JWT_SECRET",
-    "JWT_REFRESH_SECRET",
-    "SMTP_USER",
-    "SMTP_PASS",
-  ];
+  const requiredEnvVars = ["DATABASE_URL", "JWT_SECRET", "JWT_REFRESH_SECRET"];
 
   const missingVars = requiredEnvVars.filter(
     (varName) => !process.env[varName]
@@ -401,7 +402,6 @@ const validateConfig = (): ValidationResult => {
     );
   }
 
-  // Avertissements pour le développement
   if (config.env === "development" && missingVars.length > 0) {
     warnings.push(
       `Missing environment variables: ${missingVars.join(
@@ -410,12 +410,10 @@ const validateConfig = (): ValidationResult => {
     );
   }
 
-  // Logger les warnings
   warnings.forEach((warning) => {
     console.warn(`⚠️  ${warning}`);
   });
 
-  // Logger les erreurs
   errors.forEach((error) => {
     console.error(`❌ ${error}`);
   });
@@ -427,7 +425,7 @@ const validateConfig = (): ValidationResult => {
   };
 };
 
-// Fonctions helpers pour vérifier l'environnement
+// Fonctions helpers
 const isDevelopment = (): boolean => config.env === "development";
 const isProduction = (): boolean => config.env === "production";
 const isTest = (): boolean => config.env === "test";
@@ -447,11 +445,12 @@ if (config.env === "development") {
       port: config.redis.port,
     },
     monitoring: config.monitoring,
+    bcryptRounds: config.bcrypt.saltRounds,
     seedLevels: config.seedTraceability.seedLevels,
   });
 }
 
-// Exports nommés pour server.ts
+// Exports
 export {
   config,
   validateConfig,
@@ -462,5 +461,4 @@ export {
   ValidationResult,
 };
 
-// Export par défaut pour compatibilité
 export default config;
