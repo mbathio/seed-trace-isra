@@ -36,6 +36,7 @@ interface JwtConfig {
   expiresIn: string;
   refreshSecret: string;
   refreshExpiresIn: string;
+  accessTokenExpiry?: string;
 }
 
 interface EmailConfig {
@@ -136,8 +137,22 @@ interface ClientConfig {
   url: string | string[];
 }
 
+interface UploadConfig {
+  maxFileSize: number;
+  uploadDir: string;
+  allowedTypes: string[];
+}
+
+interface LoggingConfig {
+  level: string;
+  enableConsole: boolean;
+  enableFile: boolean;
+  filePath?: string;
+}
+
 interface ConfigType {
   env: string;
+  environment?: string;
   port: number;
   apiPrefix: string;
   appName: string;
@@ -149,6 +164,8 @@ interface ConfigType {
   jwt: JwtConfig;
   email: EmailConfig;
   storage: StorageConfig;
+  upload: UploadConfig;
+  logging: LoggingConfig;
   queue: QueueConfig;
   monitoring: MonitoringConfig;
   security: SecurityConfig;
@@ -182,6 +199,7 @@ const getEnvBoolean = (key: string, defaultValue: boolean): boolean => {
 // Configuration principale
 const config: ConfigType = {
   env: getEnvVar("NODE_ENV", "development"),
+  environment: getEnvVar("NODE_ENV", "development"), // Alias pour compatibilité
   port: getEnvNumber("PORT", 3000),
   apiPrefix: getEnvVar("API_PREFIX", "/api/v1"),
   appName: getEnvVar("APP_NAME", "ISRA Seed Traceability System"),
@@ -204,8 +222,8 @@ const config: ConfigType = {
     type: "postgres",
     host: getEnvVar("DB_HOST", "localhost"),
     port: getEnvNumber("DB_PORT", 5432),
-    username: getEnvVar("DB_USERNAME", "isra_user"),
-    password: getEnvVar("DB_PASSWORD", ""),
+    username: getEnvVar("DB_USERNAME", "user1"),
+    password: getEnvVar("DB_PASSWORD", "user1"),
     database: getEnvVar("DB_DATABASE", "isra_seeds"),
     url: getEnvVar(
       "DATABASE_URL",
@@ -238,6 +256,7 @@ const config: ConfigType = {
       "default-refresh-secret-change-me"
     ),
     refreshExpiresIn: getEnvVar("JWT_REFRESH_EXPIRES_IN", "7d"),
+    accessTokenExpiry: getEnvVar("JWT_ACCESS_EXPIRY", "15m"),
   },
 
   email: {
@@ -267,6 +286,22 @@ const config: ConfigType = {
         bucket: getEnvVar("AWS_S3_BUCKET", ""),
       },
     }),
+  },
+
+  upload: {
+    maxFileSize: getEnvNumber("MAX_FILE_SIZE", 10 * 1024 * 1024), // 10MB par défaut
+    uploadDir: getEnvVar("UPLOAD_PATH", "./uploads"),
+    allowedTypes: getEnvVar(
+      "ALLOWED_FILE_TYPES",
+      "image/jpeg,image/png,image/gif,application/pdf"
+    ).split(","),
+  },
+
+  logging: {
+    level: getEnvVar("LOG_LEVEL", "info"),
+    enableConsole: getEnvBoolean("ENABLE_CONSOLE_LOGS", true),
+    enableFile: getEnvBoolean("ENABLE_FILE_LOGS", true),
+    filePath: getEnvVar("LOG_FILE_PATH", "./logs"),
   },
 
   queue: {
