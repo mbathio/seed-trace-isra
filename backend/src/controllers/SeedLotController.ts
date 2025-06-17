@@ -1,3 +1,4 @@
+// backend/src/controllers/SeedLotController.ts - VERSION CORRIGÉE
 import { Request, Response, NextFunction } from "express";
 import { SeedLotService } from "../services/SeedLotService";
 import { ResponseHandler } from "../utils/response";
@@ -29,12 +30,14 @@ export class SeedLotController {
     try {
       const result = await SeedLotService.getSeedLots(req.query);
 
-      // ✅ CORRECTION: Retourner directement le résultat du service
-      // Le service retourne déjà { lots: [...], meta: {...} }
+      // ✅ CORRECTION: Retourner les données dans le format standard
+      // Le service retourne { lots: [...], meta: {...} }
+      // On doit retourner { success: true, data: [...], meta: {...} }
       return ResponseHandler.success(
         res,
-        result, // ✅ Passer l'objet complet avec lots et meta
-        "Lots récupérés avec succès"
+        result.lots, // ✅ Passer uniquement le tableau des lots
+        "Lots récupérés avec succès",
+        result.meta // ✅ Passer les métadonnées séparément
       );
     } catch (error) {
       next(error);

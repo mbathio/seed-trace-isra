@@ -1,63 +1,98 @@
-// backend/src/utils/response.ts - ✅ CORRIGÉ pour supporter les paramètres optionnels
+// backend/src/utils/response.ts - VERSION CORRIGÉE
 import { Response } from "express";
-import { ApiResponse } from "../types/api";
+
+export interface ApiResponse<T = any> {
+  success: boolean;
+  message: string;
+  data: T | null;
+  meta?: any;
+  errors?: string[];
+}
 
 export class ResponseHandler {
   static success<T>(
     res: Response,
     data: T,
     message = "Succès",
-    statusCode = 200,
     meta?: any
   ): Response {
     const response: ApiResponse<T> = {
       success: true,
       message,
       data,
-      meta,
     };
-    return res.status(statusCode).json(response);
-  }
 
-  static error(
-    res: Response,
-    message = "Erreur",
-    statusCode = 400,
-    errors?: string[]
-  ): Response {
-    const response: ApiResponse = {
-      success: false,
-      message,
-      data: null,
-      errors,
-    };
-    return res.status(statusCode).json(response);
+    // Ajouter les métadonnées si elles sont fournies
+    if (meta) {
+      response.meta = meta;
+    }
+
+    return res.status(200).json(response);
   }
 
   static created<T>(
     res: Response,
     data: T,
-    message = "Créé avec succès"
+    message = "Ressource créée avec succès"
   ): Response {
-    return this.success(res, data, message, 201);
+    return res.status(201).json({
+      success: true,
+      message,
+      data,
+    });
   }
 
-  static noContent(res: Response, message = "Aucun contenu"): Response {
-    return this.success(res, null, message, 204);
+  static noContent(res: Response, message = "Succès"): Response {
+    return res.status(204).json({
+      success: true,
+      message,
+      data: null,
+    });
+  }
+
+  static badRequest(
+    res: Response,
+    message = "Requête invalide",
+    errors?: string[]
+  ): Response {
+    return res.status(400).json({
+      success: false,
+      message,
+      data: null,
+      errors,
+    });
+  }
+
+  static unauthorized(res: Response, message = "Non autorisé"): Response {
+    return res.status(401).json({
+      success: false,
+      message,
+      data: null,
+    });
+  }
+
+  static forbidden(res: Response, message = "Accès interdit"): Response {
+    return res.status(403).json({
+      success: false,
+      message,
+      data: null,
+    });
   }
 
   static notFound(res: Response, message = "Ressource non trouvée"): Response {
-    return this.error(res, message, 404);
+    return res.status(404).json({
+      success: false,
+      message,
+      data: null,
+    });
   }
 
-  // ✅ CORRECTION: unauthorized ne devrait accepter que res et message
-  static unauthorized(res: Response, message = "Non autorisé"): Response {
-    return this.error(res, message, 401);
-  }
-
-  // ✅ CORRECTION: forbidden ne devrait accepter que res et message
-  static forbidden(res: Response, message = "Accès interdit"): Response {
-    return this.error(res, message, 403);
+  static conflict(res: Response, message = "Conflit"): Response {
+    return res.status(409).json({
+      success: false,
+      message,
+      data: null,
+    });
   }
 
   static validationError(
@@ -65,31 +100,42 @@ export class ResponseHandler {
     errors: string[],
     message = "Erreur de validation"
   ): Response {
-    return this.error(res, message, 422, errors);
+    return res.status(422).json({
+      success: false,
+      message,
+      data: null,
+      errors,
+    });
   }
 
   static serverError(
     res: Response,
-    message = "Erreur interne du serveur"
+    message = "Erreur serveur interne",
+    error?: any
   ): Response {
-    return this.error(res, message, 500);
+    console.error("Server error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message,
+      data: null,
+      errors:
+        process.env.NODE_ENV === "development" && error
+          ? [error.message || error.toString()]
+          : undefined,
+    });
   }
 
-  // ✅ NOUVELLE MÉTHODE: Pour les cas où on veut passer des erreurs spécifiques avec unauthorized
-  static unauthorizedWithErrors(
+  static customError(
     res: Response,
-    message = "Non autorisé",
-    errors?: string[]
+    statusCode: number,
+    message: string,
+    data?: any
   ): Response {
-    return this.error(res, message, 401, errors);
-  }
-
-  // ✅ NOUVELLE MÉTHODE: Pour les cas où on veut passer des erreurs spécifiques avec forbidden
-  static forbiddenWithErrors(
-    res: Response,
-    message = "Accès interdit",
-    errors?: string[]
-  ): Response {
-    return this.error(res, message, 403, errors);
+    return res.status(statusCode).json({
+      success: statusCode < 400,
+      message,
+      data: data || null,
+    });
   }
 }

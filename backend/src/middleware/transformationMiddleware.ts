@@ -181,7 +181,7 @@ export const seedLotTransformation = (
     };
 
     // Fonction helper pour transformer un lot
-    const transformLot = (lot: any) => {
+    const transformLot = (lot: any): any => {
       if (!lot || !lot.generation || typeof lot !== "object") return lot;
 
       if (dbToUiMap[lot.generation]) {

@@ -61,8 +61,9 @@ const SeedLots: React.FC = () => {
   const debouncedSearch = useDebounce(search, 500);
 
   // Requête pour récupérer les lots
+  // Requête pour récupérer les lots
   const {
-    data: apiResponse,
+    data: response,
     isLoading,
     error,
     refetch,
@@ -90,13 +91,9 @@ const SeedLots: React.FC = () => {
         const response = await api.get("/seed-lots", { params });
         console.log("✅ Full API Response:", response);
         console.log("📦 Response data:", response.data);
-        console.log("📦 Response data.data:", response.data.data);
 
-        // axios wrappe la réponse dans .data
-        // Le backend retourne: { success: true, data: { lots: [...], meta: {...} } }
-        // Donc: response.data = { success: true, data: { lots: [...], meta: {...} } }
-        // Et: response.data.data = { lots: [...], meta: {...} }
-        return response.data.data; // Retourner directement l'objet { lots, meta }
+        // Structure attendue du backend : { success: true, data: SeedLot[], meta: {...} }
+        return response.data; // Retourner la réponse complète
       } catch (error) {
         console.error("❌ API Error:", error);
         throw error;
@@ -105,10 +102,9 @@ const SeedLots: React.FC = () => {
     retry: 2,
   });
 
-  // Extraction directe depuis apiResponse qui contient maintenant { lots, meta }
-  const seedLots = apiResponse?.lots || [];
-  const meta = apiResponse?.meta || null;
-
+  // Extraction des données depuis la structure standard de réponse
+  const seedLots = response?.data || [];
+  const meta = response?.meta || null;
   console.log("📋 Extracted seed lots:", seedLots);
   console.log("📊 Metadata:", meta);
 
@@ -340,7 +336,7 @@ const SeedLots: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {seedLots.map((lot) => (
+                {seedLots.map((lot: SeedLot) => (
                   <TableRow
                     key={lot.id}
                     className="cursor-pointer hover:bg-gray-50"
