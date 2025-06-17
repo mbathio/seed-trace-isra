@@ -1,9 +1,10 @@
 // frontend/src/components/auth/ProtectedRoute.tsx
+
 import React from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { LoadingSpinner } from "../../layouts/LoadingSpinner";
-
+import { Button } from "../ui/button";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: string;
@@ -15,6 +16,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   if (isLoading) {
     return (
