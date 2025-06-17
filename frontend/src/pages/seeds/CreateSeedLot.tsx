@@ -1,7 +1,8 @@
 // frontend/src/pages/seeds/CreateSeedLot.tsx - VERSION CORRIGÉE
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm, Controller, SubmitHandler } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
+import type { SubmitHandler } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Save, Loader2, Sprout } from "lucide-react";
 import {
@@ -23,14 +24,14 @@ import {
 } from "../../components/ui/select";
 import { Label } from "../../components/ui/label";
 import { toast } from "react-toastify";
-import { api } from "../../services/api"; // ✅ CORRIGÉ: Utiliser l'API directement
-import { Variety } from "../../types/entities";
-import { ApiResponse } from "../../types/api";
+import { api } from "../../services/api";
+import type { Variety } from "../../types/entities";
+import type { ApiResponse } from "../../types/api";
 import { SEED_LEVELS } from "../../constants";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { seedLotValidationSchema } from "../../utils/validators";
 
-// ✅ CORRIGÉ: Interface avec types explicites
+// Interface avec types explicites
 interface CreateSeedLotForm {
   varietyId: number;
   level: "GO" | "G1" | "G2" | "G3" | "G4" | "R1" | "R2";
@@ -47,7 +48,6 @@ const CreateSeedLot: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ✅ CORRIGÉ: Resolver typé correctement
   const {
     control,
     handleSubmit,
@@ -61,7 +61,6 @@ const CreateSeedLot: React.FC = () => {
     },
   });
 
-  // ✅ CORRIGÉ: Récupération des variétés avec le bon type de retour
   const { data: varietiesResponse, isLoading: varietiesLoading } = useQuery<
     ApiResponse<Variety[]>
   >({
@@ -74,7 +73,6 @@ const CreateSeedLot: React.FC = () => {
     },
   });
 
-  // ✅ CORRIGÉ: Extraire les variétés de la réponse
   const varieties = varietiesResponse?.data || [];
 
   const createMutation = useMutation({
@@ -93,7 +91,6 @@ const CreateSeedLot: React.FC = () => {
     },
   });
 
-  // ✅ CORRIGÉ: SubmitHandler typé correctement
   const onSubmit: SubmitHandler<CreateSeedLotForm> = async (data) => {
     setIsSubmitting(true);
     try {

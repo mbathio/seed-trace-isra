@@ -1,5 +1,5 @@
-// frontend/src/pages/seeds/SeedLots.tsx
-import React, { useState, useMemo } from "react";
+// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -41,8 +41,12 @@ import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { toast } from "react-toastify";
 import { api } from "../../services/api";
-import { SeedLot } from "../../types/entities";
-import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
+import type { SeedLot } from "../../types/entities";
+import type {
+  ApiResponse,
+  PaginationParams,
+  FilterParams,
+} from "../../types/api";
 import { SEED_LEVELS } from "../../constants";
 import { formatDate, formatQuantity } from "../../utils/formatters";
 import { useDebounce } from "../../hooks/useDebounce";
