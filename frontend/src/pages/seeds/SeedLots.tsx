@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/SeedLots.tsx - VERSION AVEC GESTION D'ERREUR AMÉLIORÉE
+// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -29,11 +29,9 @@ import { SEED_LEVELS } from "../../constants";
 import { useDebounce } from "../../hooks/useDebounce";
 import { usePagination } from "../../hooks/usePagination";
 import { toast } from "react-toastify";
-import { useAuth } from "../../contexts/AuthContext";
 
 const SeedLots: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
   const [selectedLot, setSelectedLot] = useState<SeedLot | null>(null);
@@ -42,7 +40,12 @@ const SeedLots: React.FC = () => {
   const { pagination, actions } = usePagination({ initialPageSize: 10 });
 
   // Query pour récupérer les lots
-  const { data, isLoading, error, isError } = useQuery<ApiResponse<SeedLot[]>>({
+  const {
+    data: response,
+    isLoading,
+    error,
+    isError,
+  } = useQuery({
     queryKey: [
       "seed-lots",
       pagination.page,
@@ -69,15 +72,21 @@ const SeedLots: React.FC = () => {
         throw error;
       }
     },
-    enabled: isAuthenticated,
     retry: 2,
   });
+
+  // Extraire les données de la réponse
+  const seedLots = response?.data?.lots || response?.data || [];
+  const meta = response?.meta || null;
+
+  console.log("Seed lots data:", seedLots);
+  console.log("Meta data:", meta);
 
   // Fonction pour obtenir le QR Code
   const fetchQRCode = async (lotId: string) => {
     try {
       const response = await api.get(`/seed-lots/${lotId}/qr-code`);
-      return response.data.data.qrCode;
+      return response.data.data?.qrCode || response.data.qrCode;
     } catch (error) {
       console.error("QR Code fetch error:", error);
       toast.error("Erreur lors de la génération du QR Code");
@@ -152,34 +161,13 @@ const SeedLots: React.FC = () => {
   };
 
   // Gestion des erreurs
-  if (!isAuthenticated) {
-    return (
-      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
-        <Alert className="max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Vous devez être connecté pour accéder à cette page.
-            <Button
-              className="ml-2"
-              onClick={() => navigate("/auth/login")}
-              variant="link"
-            >
-              Se connecter
-            </Button>
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
   if (isError) {
     return (
       <div className="p-6 bg-gray-50 min-h-screen">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Erreur lors du chargement des lots. Vérifiez que le serveur backend
-            est démarré sur le port 3001.
+            Erreur lors du chargement des lots.
             {error && (
               <div className="mt-2 text-sm">
                 Détails: {error.message || "Erreur inconnue"}
@@ -190,8 +178,6 @@ const SeedLots: React.FC = () => {
       </div>
     );
   }
-
-  const seedLots = data?.data || [];
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -221,7 +207,10 @@ const SeedLots: React.FC = () => {
         {/* Header de la card */}
         <div className="p-4 border-b">
           <h2 className="text-lg font-semibold mb-4">
-            Liste des Lots {seedLots.length > 0 && `(${seedLots.length})`}
+            Liste des Lots{" "}
+            {Array.isArray(seedLots) &&
+              seedLots.length > 0 &&
+              `(${seedLots.length})`}
           </h2>
 
           {/* Filtres */}
@@ -260,7 +249,7 @@ const SeedLots: React.FC = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
               <p>Chargement des lots...</p>
             </div>
-          ) : seedLots.length === 0 ? (
+          ) : !Array.isArray(seedLots) || seedLots.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 mb-4">
                 {search || levelFilter
@@ -300,7 +289,7 @@ const SeedLots: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {seedLots.map((lot) => (
+                {seedLots.map((lot: SeedLot) => (
                   <TableRow
                     key={lot.id}
                     className={`hover:bg-gray-50 cursor-pointer ${
@@ -377,17 +366,17 @@ const SeedLots: React.FC = () => {
         </div>
 
         {/* Pagination */}
-        {data?.meta && data.meta.totalPages > 1 && (
+        {meta && meta.totalPages > 1 && (
           <div className="p-4 border-t flex items-center justify-between">
             <p className="text-sm text-gray-600">
-              Page {data.meta.page} sur {data.meta.totalPages}
+              Page {meta.page} sur {meta.totalPages}
             </p>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={actions.previousPage}
-                disabled={!data.meta.hasPreviousPage}
+                disabled={!meta.hasPreviousPage}
               >
                 Précédent
               </Button>
@@ -395,7 +384,7 @@ const SeedLots: React.FC = () => {
                 variant="outline"
                 size="sm"
                 onClick={actions.nextPage}
-                disabled={!data.meta.hasNextPage}
+                disabled={!meta.hasNextPage}
               >
                 Suivant
               </Button>
