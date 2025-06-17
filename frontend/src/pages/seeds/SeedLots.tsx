@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE
+// frontend/src/pages/seeds/SeedLots.tsx - VERSION COMPLÈTE CORRIGÉE
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -42,11 +42,7 @@ import { Badge } from "../../components/ui/badge";
 import { toast } from "react-toastify";
 import { api } from "../../services/api";
 import type { SeedLot } from "../../types/entities";
-import type {
-  ApiResponse,
-  PaginationParams,
-  FilterParams,
-} from "../../types/api";
+import type { PaginationParams, FilterParams } from "../../types/api";
 import { SEED_LEVELS } from "../../constants";
 import { formatDate, formatQuantity } from "../../utils/formatters";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -66,21 +62,11 @@ const SeedLots: React.FC = () => {
 
   // Requête pour récupérer les lots
   const {
-    data: response,
+    data: apiResponse,
     isLoading,
     error,
     refetch,
-  } = useQuery<
-    ApiResponse<{
-      lots: SeedLot[];
-      meta: {
-        total: number;
-        page: number;
-        pageSize: number;
-        totalPages: number;
-      };
-    }>
-  >({
+  } = useQuery({
     queryKey: [
       "seed-lots",
       pagination.page,
@@ -103,10 +89,14 @@ const SeedLots: React.FC = () => {
       try {
         const response = await api.get("/seed-lots", { params });
         console.log("✅ Full API Response:", response);
-        console.log("📦 Response data structure:", response.data);
+        console.log("📦 Response data:", response.data);
+        console.log("📦 Response data.data:", response.data.data);
 
+        // axios wrappe la réponse dans .data
         // Le backend retourne: { success: true, data: { lots: [...], meta: {...} } }
-        return response.data;
+        // Donc: response.data = { success: true, data: { lots: [...], meta: {...} } }
+        // Et: response.data.data = { lots: [...], meta: {...} }
+        return response.data.data; // Retourner directement l'objet { lots, meta }
       } catch (error) {
         console.error("❌ API Error:", error);
         throw error;
@@ -115,9 +105,9 @@ const SeedLots: React.FC = () => {
     retry: 2,
   });
 
-  // Extraction correcte des données selon la structure du backend
-  const seedLots = response?.data?.lots || [];
-  const meta = response?.data?.meta || null;
+  // Extraction directe depuis apiResponse qui contient maintenant { lots, meta }
+  const seedLots = apiResponse?.lots || [];
+  const meta = apiResponse?.meta || null;
 
   console.log("📋 Extracted seed lots:", seedLots);
   console.log("📊 Metadata:", meta);
@@ -161,13 +151,19 @@ const SeedLots: React.FC = () => {
   // Fonction pour obtenir la classe CSS du statut
   const getStatusClass = (status: string) => {
     switch (status) {
-      case "active":
+      case "ACTIVE":
         return "bg-green-100 text-green-800";
-      case "in-stock":
+      case "IN_STOCK":
         return "bg-blue-100 text-blue-800";
-      case "out-of-stock":
+      case "CERTIFIED":
+        return "bg-emerald-100 text-emerald-800";
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-800";
+      case "REJECTED":
         return "bg-red-100 text-red-800";
-      case "expired":
+      case "DISTRIBUTED":
+        return "bg-purple-100 text-purple-800";
+      case "SOLD":
         return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
@@ -177,14 +173,20 @@ const SeedLots: React.FC = () => {
   // Fonction pour obtenir le label du statut
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "active":
+      case "ACTIVE":
         return "Actif";
-      case "in-stock":
+      case "IN_STOCK":
         return "En stock";
-      case "out-of-stock":
-        return "Épuisé";
-      case "expired":
-        return "Expiré";
+      case "CERTIFIED":
+        return "Certifié";
+      case "PENDING":
+        return "En attente";
+      case "REJECTED":
+        return "Rejeté";
+      case "DISTRIBUTED":
+        return "Distribué";
+      case "SOLD":
+        return "Vendu";
       default:
         return status;
     }
@@ -225,7 +227,7 @@ const SeedLots: React.FC = () => {
             Erreur lors du chargement des lots de semences.
             {error && (
               <div className="mt-2 text-sm">
-                Détails: {error.message || "Erreur inconnue"}
+                Détails: {(error as any).message || "Erreur inconnue"}
               </div>
             )}
           </AlertDescription>
@@ -262,7 +264,7 @@ const SeedLots: React.FC = () => {
         {/* Header de la card */}
         <div className="p-4 border-b">
           <h2 className="text-lg font-semibold mb-4">
-            Liste des Lots {meta && `(${meta.total} total)`}
+            Liste des Lots {meta && `(${meta.totalCount} total)`}
           </h2>
 
           {/* Filtres */}
@@ -401,8 +403,8 @@ const SeedLots: React.FC = () => {
           <div className="px-4 py-3 border-t flex items-center justify-between">
             <div className="text-sm text-gray-700">
               Affichage de {(meta.page - 1) * meta.pageSize + 1} à{" "}
-              {Math.min(meta.page * meta.pageSize, meta.total)} sur {meta.total}{" "}
-              résultats
+              {Math.min(meta.page * meta.pageSize, meta.totalCount)} sur{" "}
+              {meta.totalCount} résultats
             </div>
             <div className="flex gap-2">
               <Button
