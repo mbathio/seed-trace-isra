@@ -31,3 +31,8 @@ export const formatFileSize = (bytes: number): string => {
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + " " + sizes[i];
 };
+
+// ✅ AJOUT: Fonction formatQuantity manquante
+export const formatQuantity = (quantity: number): string => {
+  return new Intl.NumberFormat("fr-FR").format(quantity) + " kg";
+};

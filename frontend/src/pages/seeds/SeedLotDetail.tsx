@@ -41,7 +41,7 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import { seedLotService } from "../../services/seedLotService"; // ✅ CORRIGÉ: Service spécialisé
-import { SeedLot } from "../../types/entities";
+import type { SeedLot } from "../../types/entities";
 import { formatDate, formatNumber } from "../../utils/formatters";
 
 interface LabelProps {
