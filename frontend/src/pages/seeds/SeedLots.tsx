@@ -1,16 +1,18 @@
-// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE AVEC CONSTANTES
+// frontend/src/pages/seeds/SeedLots.tsx - VERSION AVEC GESTION D'ERREUR AMÉLIORÉE
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { Plus, Download, Eye, QrCode } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
+import { useNavigate } from "react-router-dom";
+import { Plus, Search, Eye, Download, QrCode, AlertCircle } from "lucide-react";
+import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
+import { Alert, AlertDescription } from "../../components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 import {
   Table,
   TableBody,
@@ -19,161 +21,228 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../components/ui/select";
-import { SearchInput } from "../../components/forms/SearchInput";
-import { seedLotService } from "../../services/seedLotService";
+import { api } from "../../services/api";
 import { SeedLot } from "../../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
-import { formatDate, formatNumber } from "../../utils/formatters";
-import { SEED_LEVELS, LOT_STATUSES, getStatusConfig } from "../../constants"; // ✅ AJOUTÉ: Import des constantes et utilitaires
-import { DataTransformer } from "../../utils/transformers"; // ✅ AJOUTÉ: Import du transformateur
+import { formatDate } from "../../utils/formatters";
+import { SEED_LEVELS } from "../../constants";
 import { useDebounce } from "../../hooks/useDebounce";
 import { usePagination } from "../../hooks/usePagination";
+import { toast } from "react-toastify";
+import { useAuth } from "../../contexts/AuthContext";
 
 const SeedLots: React.FC = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<FilterParams>({});
+  const [levelFilter, setLevelFilter] = useState("");
+  const [selectedLot, setSelectedLot] = useState<SeedLot | null>(null);
+  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const debouncedSearch = useDebounce(search, 300);
   const { pagination, actions } = usePagination({ initialPageSize: 10 });
 
-  // ✅ CORRIGÉ: Query avec transformation automatique
-  const { data, isLoading, error } = useQuery<ApiResponse<SeedLot[]>>({
+  // Query pour récupérer les lots
+  const { data, isLoading, error, isError } = useQuery<ApiResponse<SeedLot[]>>({
     queryKey: [
       "seed-lots",
       pagination.page,
       pagination.pageSize,
       debouncedSearch,
-      filters,
+      levelFilter,
     ],
     queryFn: async () => {
+      console.log("Fetching seed lots...");
+
       const params: PaginationParams & FilterParams = {
         page: pagination.page,
         pageSize: pagination.pageSize,
         search: debouncedSearch || undefined,
-        ...filters,
+        level: levelFilter || undefined,
       };
 
-      const response = await seedLotService.getAll(params);
-
-      // ✅ Transformer les données reçues de l'API
-      const transformedData = {
-        ...response.data,
-        data: response.data.data.map((lot) =>
-          DataTransformer.transformSeedLotFromAPI(lot)
-        ),
-      };
-
-      return transformedData;
+      try {
+        const response = await api.get("/seed-lots", { params });
+        console.log("API Response:", response.data);
+        return response.data;
+      } catch (error) {
+        console.error("API Error:", error);
+        throw error;
+      }
     },
+    enabled: isAuthenticated,
+    retry: 2,
   });
 
-  // ✅ CORRIGÉ: Utilisation des constantes pour les badges de statut
-  const getStatusBadge = (status: string) => {
-    const config = getStatusConfig(status, LOT_STATUSES);
-    const colorClasses = {
-      orange: "bg-orange-100 text-orange-800 border-orange-200",
-      green: "bg-green-100 text-green-800 border-green-200",
-      red: "bg-red-100 text-red-800 border-red-200",
-      blue: "bg-blue-100 text-blue-800 border-blue-200",
-      emerald: "bg-emerald-100 text-emerald-800 border-emerald-200",
-      purple: "bg-purple-100 text-purple-800 border-purple-200",
-      gray: "bg-gray-100 text-gray-800 border-gray-200",
-    };
-
-    const colorClass =
-      colorClasses[config.color as keyof typeof colorClasses] ||
-      colorClasses.gray;
-
-    return (
-      <Badge className={`${colorClass} font-medium`}>{config.label}</Badge>
-    );
+  // Fonction pour obtenir le QR Code
+  const fetchQRCode = async (lotId: string) => {
+    try {
+      const response = await api.get(`/seed-lots/${lotId}/qr-code`);
+      return response.data.data.qrCode;
+    } catch (error) {
+      console.error("QR Code fetch error:", error);
+      toast.error("Erreur lors de la génération du QR Code");
+      return null;
+    }
   };
 
-  // ✅ CORRIGÉ: Fonction pour les badges de niveau (niveaux restent identiques UI/DB)
-  const getLevelBadge = (level: string) => {
-    const colors: Record<string, string> = {
-      GO: "bg-red-100 text-red-800 border-red-200",
-      G1: "bg-orange-100 text-orange-800 border-orange-200",
-      G2: "bg-yellow-100 text-yellow-800 border-yellow-200",
-      G3: "bg-green-100 text-green-800 border-green-200",
-      G4: "bg-blue-100 text-blue-800 border-blue-200",
-      R1: "bg-purple-100 text-purple-800 border-purple-200",
-      R2: "bg-pink-100 text-pink-800 border-pink-200",
-    };
-
-    const colorClass =
-      colors[level] || "bg-gray-100 text-gray-800 border-gray-200";
-
-    return (
-      <Badge className={`${colorClass} font-medium font-mono`}>{level}</Badge>
-    );
+  // Fonction pour sélectionner un lot et générer son QR Code
+  const handleSelectLot = async (lot: SeedLot) => {
+    setSelectedLot(lot);
+    if (lot.qrCode) {
+      setQrCodeData(lot.qrCode);
+    } else {
+      const qrCode = await fetchQRCode(lot.id);
+      if (qrCode) {
+        setQrCodeData(qrCode);
+      }
+    }
   };
 
-  if (error) {
+  // Fonction pour télécharger le QR Code
+  const handleDownloadQRCode = () => {
+    if (!qrCodeData || !selectedLot) return;
+
+    const link = document.createElement("a");
+    link.href = qrCodeData;
+    link.download = `QR_Code_${selectedLot.id}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("QR Code téléchargé");
+  };
+
+  // Fonction pour obtenir la classe CSS du statut
+  const getStatusClass = (status: string) => {
+    const upperStatus = status?.toUpperCase() || "";
+    switch (upperStatus) {
+      case "CERTIFIED":
+        return "bg-red-500 text-white";
+      case "PENDING":
+        return "bg-yellow-500 text-white";
+      case "ACTIVE":
+        return "bg-green-500 text-white";
+      case "IN_STOCK":
+        return "bg-blue-500 text-white";
+      case "DISTRIBUTED":
+        return "bg-purple-500 text-white";
+      case "SOLD":
+        return "bg-gray-500 text-white";
+      default:
+        return "bg-gray-400 text-white";
+    }
+  };
+
+  // Fonction pour obtenir le label du statut
+  const getStatusLabel = (status: string) => {
+    const statusMap: Record<string, string> = {
+      PENDING: "En attente",
+      CERTIFIED: "Éliminé",
+      REJECTED: "Rejeté",
+      IN_STOCK: "En stock",
+      ACTIVE: "Actif",
+      DISTRIBUTED: "Distribué",
+      SOLD: "Vendu",
+    };
+    return statusMap[status?.toUpperCase()] || status || "Inconnu";
+  };
+
+  // Fonction pour formater la quantité
+  const formatQuantity = (quantity: number) => {
+    return `${quantity || 0} kg`;
+  };
+
+  // Gestion des erreurs
+  if (!isAuthenticated) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600">Erreur lors du chargement des lots</p>
-        <p className="text-sm text-muted-foreground mt-2">
-          Vérifiez que le serveur backend est démarré sur le port 3001
-        </p>
+      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+        <Alert className="max-w-md">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Vous devez être connecté pour accéder à cette page.
+            <Button
+              className="ml-2"
+              onClick={() => navigate("/auth/login")}
+              variant="link"
+            >
+              Se connecter
+            </Button>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
 
+  if (isError) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Erreur lors du chargement des lots. Vérifiez que le serveur backend
+            est démarré sur le port 3001.
+            {error && (
+              <div className="mt-2 text-sm">
+                Détails: {error.message || "Erreur inconnue"}
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const seedLots = data?.data || [];
+
   return (
-    <div className="space-y-6">
+    <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Lots de semences</h1>
-          <p className="text-muted-foreground">
-            Gérez vos lots de semences et leur traçabilité
-          </p>
-        </div>
-        <div className="flex space-x-2">
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Exporter
-          </Button>
-          <Button asChild>
-            <Link to="/dashboard/seeds/create">
-              <Plus className="h-4 w-4 mr-2" />
-              Nouveau lot
-            </Link>
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">
+              Gestion des Lots
+            </h1>
+            <p className="text-gray-600">
+              Gérer et visualiser les lots de semences
+            </p>
+          </div>
+          <Button
+            className="bg-green-600 hover:bg-green-700 text-white"
+            onClick={() => navigate("/dashboard/seed-lots/create")}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nouveau Lot
           </Button>
         </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <SearchInput
+      {/* Liste des Lots Card */}
+      <div className="bg-white rounded-lg shadow">
+        {/* Header de la card */}
+        <div className="p-4 border-b">
+          <h2 className="text-lg font-semibold mb-4">
+            Liste des Lots {seedLots.length > 0 && `(${seedLots.length})`}
+          </h2>
+
+          {/* Filtres */}
+          <div className="flex gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Input
+                type="text"
+                placeholder="Rechercher un lot..."
                 value={search}
-                onChange={setSearch}
-                placeholder="Rechercher par ID, variété, notes..."
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10"
               />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             </div>
 
-            <Select
-              value={filters.level || ""}
-              onValueChange={(value) =>
-                setFilters((prev) => ({ ...prev, level: value || undefined }))
-              }
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Niveau" />
+            <Select value={levelFilter} onValueChange={setLevelFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Tous les niveaux" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Tous les niveaux</SelectItem>
-                {/* ✅ CORRIGÉ: Utilisation des constantes */}
                 {SEED_LEVELS.map((level) => (
                   <SelectItem key={level.value} value={level.value}>
                     {level.label}
@@ -181,85 +250,121 @@ const SeedLots: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
-
-            <Select
-              value={filters.status || ""}
-              onValueChange={(value) =>
-                setFilters((prev) => ({ ...prev, status: value || undefined }))
-              }
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Tous les statuts</SelectItem>
-                {/* ✅ CORRIGÉ: Utilisation des constantes */}
-                {LOT_STATUSES.map((status) => (
-                  <SelectItem key={status.value} value={status.value}>
-                    {status.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Results */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{data?.meta?.totalCount || 0} lot(s) trouvé(s)</CardTitle>
-        </CardHeader>
-        <CardContent>
+        {/* Table */}
+        <div className="overflow-x-auto">
           {isLoading ? (
-            <div className="text-center py-8">
+            <div className="p-8 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
-              <p>Chargement...</p>
+              <p>Chargement des lots...</p>
+            </div>
+          ) : seedLots.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 mb-4">
+                {search || levelFilter
+                  ? "Aucun lot ne correspond à vos critères de recherche."
+                  : "Aucun lot de semences trouvé."}
+              </p>
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => navigate("/dashboard/seed-lots/create")}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Créer le premier lot
+              </Button>
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Variété</TableHead>
-                  <TableHead>Niveau</TableHead>
-                  <TableHead>Quantité</TableHead>
-                  <TableHead>Production</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Multiplicateur</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="font-medium text-gray-700">
+                    Niveau
+                  </TableHead>
+                  <TableHead className="font-medium text-gray-700">
+                    Variété
+                  </TableHead>
+                  <TableHead className="font-medium text-gray-700">
+                    Quantité
+                  </TableHead>
+                  <TableHead className="font-medium text-gray-700">
+                    Date de production
+                  </TableHead>
+                  <TableHead className="font-medium text-gray-700">
+                    Statut
+                  </TableHead>
+                  <TableHead className="font-medium text-gray-700">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data?.data?.map((lot) => (
-                  <TableRow key={lot.id}>
-                    <TableCell className="font-mono">{lot.id}</TableCell>
+                {seedLots.map((lot) => (
+                  <TableRow
+                    key={lot.id}
+                    className={`hover:bg-gray-50 cursor-pointer ${
+                      selectedLot?.id === lot.id ? "bg-blue-50" : ""
+                    }`}
+                    onClick={() => handleSelectLot(lot)}
+                  >
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center justify-center px-3 py-1 text-xs font-medium rounded-full ${
+                          lot.level === "GO"
+                            ? "bg-gray-200 text-gray-800"
+                            : lot.level === "G1"
+                            ? "bg-blue-200 text-blue-800"
+                            : lot.level === "G2"
+                            ? "bg-green-200 text-green-800"
+                            : lot.level === "G3"
+                            ? "bg-yellow-200 text-yellow-800"
+                            : "bg-purple-200 text-purple-800"
+                        }`}
+                      >
+                        {lot.level}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{lot.variety.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {lot.variety.code}
+                        <p className="font-medium">
+                          {lot.variety?.name || "Sans variété"}
                         </p>
+                        <p className="text-sm text-gray-500">{lot.id}</p>
                       </div>
                     </TableCell>
-                    <TableCell>{getLevelBadge(lot.level)}</TableCell>
-                    <TableCell>{formatNumber(lot.quantity)} kg</TableCell>
+                    <TableCell>{formatQuantity(lot.quantity)}</TableCell>
                     <TableCell>{formatDate(lot.productionDate)}</TableCell>
-                    <TableCell>{getStatusBadge(lot.status)}</TableCell>
-                    <TableCell>{lot.multiplier?.name || "-"}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-1">
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded ${getStatusClass(
+                          lot.status
+                        )}`}
+                      >
+                        {getStatusLabel(lot.status)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div
+                        className="flex gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Button
-                          asChild
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          onClick={() =>
+                            navigate(`/dashboard/seed-lots/${lot.id}`)
+                          }
+                          className="hover:bg-gray-100"
                         >
-                          <Link to={`/dashboard/seeds/${lot.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
+                          <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleSelectLot(lot)}
+                          className="hover:bg-gray-100"
+                        >
                           <QrCode className="h-4 w-4" />
                         </Button>
                       </div>
@@ -269,52 +374,97 @@ const SeedLots: React.FC = () => {
               </TableBody>
             </Table>
           )}
+        </div>
 
-          {/* Empty state */}
-          {!isLoading && (!data?.data || data.data.length === 0) && (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">
-                {search || filters.level || filters.status
-                  ? "Aucun lot ne correspond à vos critères de recherche."
-                  : "Aucun lot de semences trouvé."}
-              </p>
-              <Button asChild>
-                <Link to="/dashboard/seeds/create">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Créer le premier lot
-                </Link>
+        {/* Pagination */}
+        {data?.meta && data.meta.totalPages > 1 && (
+          <div className="p-4 border-t flex items-center justify-between">
+            <p className="text-sm text-gray-600">
+              Page {data.meta.page} sur {data.meta.totalPages}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={actions.previousPage}
+                disabled={!data.meta.hasPreviousPage}
+              >
+                Précédent
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={actions.nextPage}
+                disabled={!data.meta.hasNextPage}
+              >
+                Suivant
               </Button>
             </div>
-          )}
+          </div>
+        )}
+      </div>
 
-          {/* Pagination */}
-          {data?.meta && data.meta.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-muted-foreground">
-                Page {data.meta.page} sur {data.meta.totalPages}
-              </p>
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={actions.previousPage}
-                  disabled={!data.meta.hasPreviousPage}
-                >
-                  Précédent
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={actions.nextPage}
-                  disabled={!data.meta.hasNextPage}
-                >
-                  Suivant
-                </Button>
+      {/* QR Code Section */}
+      <div className="mt-6 bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold mb-4">QR Code</h2>
+
+        {selectedLot && qrCodeData ? (
+          <div className="space-y-4">
+            {/* Informations du lot sélectionné */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-medium mb-2">Lot sélectionné</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-gray-600">ID:</span>
+                  <span className="ml-2 font-medium">{selectedLot.id}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Variété:</span>
+                  <span className="ml-2 font-medium">
+                    {selectedLot.variety?.name || "N/A"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Niveau:</span>
+                  <span className="ml-2 font-medium">{selectedLot.level}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Quantité:</span>
+                  <span className="ml-2 font-medium">
+                    {formatQuantity(selectedLot.quantity)}
+                  </span>
+                </div>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            {/* QR Code */}
+            <div className="flex flex-col items-center space-y-4">
+              <div className="p-4 bg-white border-2 border-gray-200 rounded-lg">
+                <img
+                  src={qrCodeData}
+                  alt={`QR Code for ${selectedLot.id}`}
+                  className="w-64 h-64"
+                />
+              </div>
+
+              <Button
+                onClick={handleDownloadQRCode}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Télécharger le QR Code
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <QrCode className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-600">
+              Sélectionnez un lot pour générer son QR code
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
