@@ -1,18 +1,18 @@
-// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+// frontend/src/pages/seeds/SeedLots.tsx
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Eye, Download, QrCode, AlertCircle } from "lucide-react";
-import { Input } from "../../components/ui/input";
-import { Button } from "../../components/ui/button";
-import { Alert, AlertDescription } from "../../components/ui/alert";
+import { useQuery } from "@tanstack/react-query";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../components/ui/select";
+  Plus,
+  Search,
+  Download,
+  Eye,
+  Package,
+  QrCode,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -21,31 +21,62 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import { Alert, AlertDescription } from "../../components/ui/alert";
+import { Badge } from "../../components/ui/badge";
+import { toast } from "react-toastify";
 import { api } from "../../services/api";
 import { SeedLot } from "../../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
-import { formatDate } from "../../utils/formatters";
 import { SEED_LEVELS } from "../../constants";
+import { formatDate, formatQuantity } from "../../utils/formatters";
 import { useDebounce } from "../../hooks/useDebounce";
-import { usePagination } from "../../hooks/usePagination";
-import { toast } from "react-toastify";
 
 const SeedLots: React.FC = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [levelFilter, setLevelFilter] = useState("");
+  const [levelFilter, setLevelFilter] = useState<string>("");
   const [selectedLot, setSelectedLot] = useState<SeedLot | null>(null);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
-  const debouncedSearch = useDebounce(search, 300);
-  const { pagination, actions } = usePagination({ initialPageSize: 10 });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    pageSize: 10,
+  });
 
-  // Query pour récupérer les lots
+  const debouncedSearch = useDebounce(search, 500);
+
+  // Requête pour récupérer les lots
   const {
     data: response,
     isLoading,
     error,
-    isError,
-  } = useQuery({
+    refetch,
+  } = useQuery<
+    ApiResponse<{
+      lots: SeedLot[];
+      meta: {
+        total: number;
+        page: number;
+        pageSize: number;
+        totalPages: number;
+      };
+    }>
+  >({
     queryKey: [
       "seed-lots",
       pagination.page,
@@ -54,7 +85,7 @@ const SeedLots: React.FC = () => {
       levelFilter,
     ],
     queryFn: async () => {
-      console.log("Fetching seed lots...");
+      console.log("🔍 Fetching seed lots...");
 
       const params: PaginationParams & FilterParams = {
         page: pagination.page,
@@ -63,30 +94,36 @@ const SeedLots: React.FC = () => {
         level: levelFilter || undefined,
       };
 
+      console.log("📤 Request params:", params);
+
       try {
         const response = await api.get("/seed-lots", { params });
-        console.log("API Response:", response.data);
+        console.log("✅ Full API Response:", response);
+        console.log("📦 Response data structure:", response.data);
+
+        // Le backend retourne: { success: true, data: { lots: [...], meta: {...} } }
         return response.data;
       } catch (error) {
-        console.error("API Error:", error);
+        console.error("❌ API Error:", error);
         throw error;
       }
     },
     retry: 2,
   });
 
-  // Extraire les données de la réponse
+  // Extraction correcte des données selon la structure du backend
   const seedLots = response?.data?.lots || [];
-  const meta = response?.meta || null;
+  const meta = response?.data?.meta || null;
 
-  console.log("Seed lots data:", seedLots);
-  console.log("Meta data:", meta);
+  console.log("📋 Extracted seed lots:", seedLots);
+  console.log("📊 Metadata:", meta);
 
   // Fonction pour obtenir le QR Code
   const fetchQRCode = async (lotId: string) => {
     try {
       const response = await api.get(`/seed-lots/${lotId}/qr-code`);
-      return response.data.data?.qrCode || response.data.qrCode;
+      // Le backend retourne: { success: true, data: { qrCode: "..." } }
+      return response.data.data?.qrCode || null;
     } catch (error) {
       console.error("QR Code fetch error:", error);
       toast.error("Erreur lors de la génération du QR Code");
@@ -112,64 +149,76 @@ const SeedLots: React.FC = () => {
     if (!qrCodeData || !selectedLot) return;
 
     const link = document.createElement("a");
+    link.download = `QR-${selectedLot.id}.png`;
     link.href = qrCodeData;
-    link.download = `QR_Code_${selectedLot.id}.png`;
-    document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    toast.success("QR Code téléchargé");
   };
 
-  // REMPLACER la fonction getStatusClass complète PAR :
+  // Fonction pour obtenir la classe CSS du statut
   const getStatusClass = (status: string) => {
     switch (status) {
-      case "certified":
-        return "bg-green-500 text-white";
-      case "pending":
-        return "bg-yellow-500 text-white";
       case "active":
-        return "bg-blue-500 text-white";
+        return "bg-green-100 text-green-800";
       case "in-stock":
-        return "bg-indigo-500 text-white";
-      case "distributed":
-        return "bg-purple-500 text-white";
-      case "sold":
-        return "bg-gray-500 text-white";
-      case "rejected":
-        return "bg-red-500 text-white";
+        return "bg-blue-100 text-blue-800";
+      case "out-of-stock":
+        return "bg-red-100 text-red-800";
+      case "expired":
+        return "bg-gray-100 text-gray-800";
       default:
-        return "bg-gray-400 text-white";
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   // Fonction pour obtenir le label du statut
-  // REMPLACER la fonction getStatusLabel complète PAR :
   const getStatusLabel = (status: string) => {
-    const statusMap: Record<string, string> = {
-      pending: "En attente",
-      certified: "Certifié",
-      rejected: "Rejeté",
-      "in-stock": "En stock",
-      active: "Actif",
-      distributed: "Distribué",
-      sold: "Vendu",
-    };
-    return statusMap[status] || status || "Inconnu";
+    switch (status) {
+      case "active":
+        return "Actif";
+      case "in-stock":
+        return "En stock";
+      case "out-of-stock":
+        return "Épuisé";
+      case "expired":
+        return "Expiré";
+      default:
+        return status;
+    }
   };
 
-  // Fonction pour formater la quantité
-  const formatQuantity = (quantity: number) => {
-    return `${quantity || 0} kg`;
+  // Fonction pour obtenir la classe CSS du niveau
+  const getLevelClass = (level: string) => {
+    switch (level) {
+      case "GO":
+        return "bg-gray-200 text-gray-800";
+      case "G1":
+        return "bg-blue-200 text-blue-800";
+      case "G2":
+        return "bg-green-200 text-green-800";
+      case "G3":
+        return "bg-yellow-200 text-yellow-800";
+      case "G4":
+        return "bg-purple-200 text-purple-800";
+      case "R1":
+        return "bg-orange-200 text-orange-800";
+      case "R2":
+        return "bg-pink-200 text-pink-800";
+      default:
+        return "bg-gray-200 text-gray-800";
+    }
   };
 
-  // Gestion des erreurs
-  if (isError) {
+  // Gestion du changement de page
+  const handlePageChange = (newPage: number) => {
+    setPagination({ ...pagination, page: newPage });
+  };
+
+  if (error) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="p-6">
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Erreur lors du chargement des lots.
+            Erreur lors du chargement des lots de semences.
             {error && (
               <div className="mt-2 text-sm">
                 Détails: {error.message || "Erreur inconnue"}
@@ -204,15 +253,12 @@ const SeedLots: React.FC = () => {
         </div>
       </div>
 
-      {/* Liste des Lots Card */}
+      {/* Card principale */}
       <div className="bg-white rounded-lg shadow">
         {/* Header de la card */}
         <div className="p-4 border-b">
           <h2 className="text-lg font-semibold mb-4">
-            Liste des Lots{" "}
-            {Array.isArray(seedLots) &&
-              seedLots.length > 0 &&
-              `(${seedLots.length})`}
+            Liste des Lots {meta && `(${meta.total} total)`}
           </h2>
 
           {/* Filtres */}
@@ -241,6 +287,15 @@ const SeedLots: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
+
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              disabled={isLoading}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Actualiser
+            </Button>
           </div>
         </div>
 
@@ -251,70 +306,44 @@ const SeedLots: React.FC = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
               <p>Chargement des lots...</p>
             </div>
-          ) : !Array.isArray(seedLots) || seedLots.length === 0 ? (
+          ) : seedLots.length === 0 ? (
             <div className="text-center py-12">
+              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500 mb-4">
                 {search || levelFilter
-                  ? "Aucun lot ne correspond à vos critères de recherche."
-                  : "Aucun lot de semences trouvé."}
+                  ? "Aucun lot trouvé avec ces critères"
+                  : "Aucun lot de semences enregistré"}
               </p>
-              <Button
-                className="bg-green-600 hover:bg-green-700 text-white"
-                onClick={() => navigate("/dashboard/seed-lots/create")}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Créer le premier lot
-              </Button>
+              {!search && !levelFilter && (
+                <Button onClick={() => navigate("/dashboard/seed-lots/create")}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer le premier lot
+                </Button>
+              )}
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="font-medium text-gray-700">
-                    Niveau
-                  </TableHead>
-                  <TableHead className="font-medium text-gray-700">
-                    Variété
-                  </TableHead>
-                  <TableHead className="font-medium text-gray-700">
-                    Quantité
-                  </TableHead>
-                  <TableHead className="font-medium text-gray-700">
-                    Date de production
-                  </TableHead>
-                  <TableHead className="font-medium text-gray-700">
-                    Statut
-                  </TableHead>
-                  <TableHead className="font-medium text-gray-700">
-                    Actions
-                  </TableHead>
+                <TableRow>
+                  <TableHead>Niveau</TableHead>
+                  <TableHead>Identification</TableHead>
+                  <TableHead>Quantité</TableHead>
+                  <TableHead>Date de production</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {seedLots.map((lot: SeedLot) => (
+                {seedLots.map((lot) => (
                   <TableRow
                     key={lot.id}
-                    className={`hover:bg-gray-50 cursor-pointer ${
-                      selectedLot?.id === lot.id ? "bg-blue-50" : ""
-                    }`}
-                    onClick={() => handleSelectLot(lot)}
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => navigate(`/dashboard/seed-lots/${lot.id}`)}
                   >
                     <TableCell>
-                      <span
-                        className={`inline-flex items-center justify-center px-3 py-1 text-xs font-medium rounded-full ${
-                          lot.level === "GO"
-                            ? "bg-gray-200 text-gray-800"
-                            : lot.level === "G1"
-                            ? "bg-blue-200 text-blue-800"
-                            : lot.level === "G2"
-                            ? "bg-green-200 text-green-800"
-                            : lot.level === "G3"
-                            ? "bg-yellow-200 text-yellow-800"
-                            : "bg-purple-200 text-purple-800"
-                        }`}
-                      >
+                      <Badge className={getLevelClass(lot.level)}>
                         {lot.level}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div>
@@ -327,17 +356,13 @@ const SeedLots: React.FC = () => {
                     <TableCell>{formatQuantity(lot.quantity)}</TableCell>
                     <TableCell>{formatDate(lot.productionDate)}</TableCell>
                     <TableCell>
-                      <span
-                        className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded ${getStatusClass(
-                          lot.status
-                        )}`}
-                      >
+                      <Badge className={getStatusClass(lot.status)}>
                         {getStatusLabel(lot.status)}
-                      </span>
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div
-                        className="flex gap-2"
+                        className="flex gap-2 justify-end"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Button
@@ -369,93 +394,81 @@ const SeedLots: React.FC = () => {
 
         {/* Pagination */}
         {meta && meta.totalPages > 1 && (
-          <div className="p-4 border-t flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              Page {meta.page} sur {meta.totalPages}
-            </p>
+          <div className="px-4 py-3 border-t flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              Affichage de {(meta.page - 1) * meta.pageSize + 1} à{" "}
+              {Math.min(meta.page * meta.pageSize, meta.total)} sur {meta.total}{" "}
+              résultats
+            </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={actions.previousPage}
-                disabled={!meta.hasPreviousPage}
+                onClick={() => handlePageChange(meta.page - 1)}
+                disabled={meta.page <= 1}
               >
+                <ChevronLeft className="h-4 w-4" />
                 Précédent
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={actions.nextPage}
-                disabled={!meta.hasNextPage}
+                onClick={() => handlePageChange(meta.page + 1)}
+                disabled={meta.page >= meta.totalPages}
               >
                 Suivant
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
         )}
       </div>
 
-      {/* QR Code Section */}
-      <div className="mt-6 bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold mb-4">QR Code</h2>
-
-        {selectedLot && qrCodeData ? (
-          <div className="space-y-4">
-            {/* Informations du lot sélectionné */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium mb-2">Lot sélectionné</h3>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-gray-600">ID:</span>
-                  <span className="ml-2 font-medium">{selectedLot.id}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Variété:</span>
-                  <span className="ml-2 font-medium">
-                    {selectedLot.variety?.name || "N/A"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Niveau:</span>
-                  <span className="ml-2 font-medium">{selectedLot.level}</span>
-                </div>
-                <div>
-                  <span className="text-gray-600">Quantité:</span>
-                  <span className="ml-2 font-medium">
-                    {formatQuantity(selectedLot.quantity)}
-                  </span>
-                </div>
+      {/* Modal QR Code */}
+      <Dialog
+        open={!!selectedLot && !!qrCodeData}
+        onOpenChange={() => {
+          setSelectedLot(null);
+          setQrCodeData(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>QR Code - Lot {selectedLot?.id}</DialogTitle>
+            <DialogDescription>
+              {selectedLot?.variety?.name} - Niveau {selectedLot?.level}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center py-4">
+            {qrCodeData ? (
+              <img
+                src={qrCodeData}
+                alt={`QR Code ${selectedLot?.id}`}
+                className="w-64 h-64"
+              />
+            ) : (
+              <div className="w-64 h-64 bg-gray-100 flex items-center justify-center">
+                <p className="text-gray-500">Génération en cours...</p>
               </div>
-            </div>
-
-            {/* QR Code */}
-            <div className="flex flex-col items-center space-y-4">
-              <div className="p-4 bg-white border-2 border-gray-200 rounded-lg">
-                <img
-                  src={qrCodeData}
-                  alt={`QR Code for ${selectedLot.id}`}
-                  className="w-64 h-64"
-                />
-              </div>
-
-              <Button
-                onClick={handleDownloadQRCode}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Télécharger le QR Code
-              </Button>
-            </div>
+            )}
           </div>
-        ) : (
-          <div className="text-center py-8">
-            <QrCode className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600">
-              Sélectionnez un lot pour générer son QR code
-            </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedLot(null);
+                setQrCodeData(null);
+              }}
+            >
+              Fermer
+            </Button>
+            <Button onClick={handleDownloadQRCode} disabled={!qrCodeData}>
+              <Download className="h-4 w-4 mr-2" />
+              Télécharger
+            </Button>
           </div>
-        )}
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
