@@ -23,7 +23,7 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Separator } from "../../components/ui/separator";
 import { api } from "../../services/api";
-import { QualityControl } from "../../types/entities";
+import type { QualityControl } from "../../types/entities";
 import { formatDate } from "../../utils/formatters";
 import { QUALITY_TEST_RESULTS, getStatusConfig } from "../../constants";
 
@@ -240,14 +240,14 @@ const QualityControlDetail: React.FC = () => {
             <Separator />
 
             <div className="flex items-center space-x-4">
-              {qualityControl.result === "pass" ? (
+              {qualityControl.result === "PASS" ? (
                 <CheckCircle className="h-8 w-8 text-green-500" />
               ) : (
                 <XCircle className="h-8 w-8 text-red-500" />
               )}
               <div>
                 <p className="font-medium">
-                  {qualityControl.result === "pass"
+                  {qualityControl.result === "PASS"
                     ? "Lot certifié conforme"
                     : "Lot non conforme"}
                 </p>
