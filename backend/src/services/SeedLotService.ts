@@ -139,7 +139,8 @@ export class SeedLotService {
 
   static async getSeedLots(
     query: PaginationQuery & any
-  ): Promise<{ lots: any[]; total: number; meta: any }> {
+  ): Promise<{ lots: any[]; meta: any }> {
+    // ✅ Retour typé explicitement
     try {
       const {
         page = 1,
@@ -176,7 +177,6 @@ export class SeedLotService {
       }
 
       if (status) {
-        // ✅ TRANSFORMATION : Transformer le statut du frontend vers la DB
         where.status = DataTransformer.transformInputStatus(
           status
         ) as LotStatus;
@@ -237,14 +237,14 @@ export class SeedLotService {
 
       const totalPages = Math.ceil(total / pageSizeNum);
 
-      // ✅ TRANSFORMATION : Transformer tous les lots pour le frontend
+      // ✅ Transformer tous les lots pour le frontend
       const transformedLots = lots.map((lot) =>
         DataTransformer.transformSeedLot(lot)
       );
 
+      // ✅ IMPORTANT: Retourner la structure attendue par le frontend
       return {
-        lots: transformedLots,
-        total,
+        lots: transformedLots, // ✅ "lots" et non "data"
         meta: {
           page: pageNum,
           pageSize: pageSizeNum,

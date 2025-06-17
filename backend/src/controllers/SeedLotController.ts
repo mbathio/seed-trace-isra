@@ -1,4 +1,3 @@
-// backend/src/controllers/SeedLotController.ts
 import { Request, Response, NextFunction } from "express";
 import { SeedLotService } from "../services/SeedLotService";
 import { ResponseHandler } from "../utils/response";
@@ -29,12 +28,12 @@ export class SeedLotController {
   ): Promise<Response | void> {
     try {
       const result = await SeedLotService.getSeedLots(req.query);
+
+      // ✅ CORRECTION: Retourner directement le résultat du service
+      // Le service retourne déjà { lots: [...], meta: {...} }
       return ResponseHandler.success(
         res,
-        {
-          lots: result.lots,
-          meta: result.meta,
-        },
+        result, // ✅ Passer l'objet complet avec lots et meta
         "Lots récupérés avec succès"
       );
     } catch (error) {
