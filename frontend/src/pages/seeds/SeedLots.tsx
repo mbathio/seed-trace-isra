@@ -76,7 +76,7 @@ const SeedLots: React.FC = () => {
   });
 
   // Extraire les données de la réponse
-  const seedLots = response?.data?.lots || response?.data || [];
+  const seedLots = response?.data?.lots || [];
   const meta = response?.meta || null;
 
   console.log("Seed lots data:", seedLots);
@@ -120,39 +120,41 @@ const SeedLots: React.FC = () => {
     toast.success("QR Code téléchargé");
   };
 
-  // Fonction pour obtenir la classe CSS du statut
+  // REMPLACER la fonction getStatusClass complète PAR :
   const getStatusClass = (status: string) => {
-    const upperStatus = status?.toUpperCase() || "";
-    switch (upperStatus) {
-      case "CERTIFIED":
-        return "bg-red-500 text-white";
-      case "PENDING":
-        return "bg-yellow-500 text-white";
-      case "ACTIVE":
+    switch (status) {
+      case "certified":
         return "bg-green-500 text-white";
-      case "IN_STOCK":
+      case "pending":
+        return "bg-yellow-500 text-white";
+      case "active":
         return "bg-blue-500 text-white";
-      case "DISTRIBUTED":
+      case "in-stock":
+        return "bg-indigo-500 text-white";
+      case "distributed":
         return "bg-purple-500 text-white";
-      case "SOLD":
+      case "sold":
         return "bg-gray-500 text-white";
+      case "rejected":
+        return "bg-red-500 text-white";
       default:
         return "bg-gray-400 text-white";
     }
   };
 
   // Fonction pour obtenir le label du statut
+  // REMPLACER la fonction getStatusLabel complète PAR :
   const getStatusLabel = (status: string) => {
     const statusMap: Record<string, string> = {
-      PENDING: "En attente",
-      CERTIFIED: "Éliminé",
-      REJECTED: "Rejeté",
-      IN_STOCK: "En stock",
-      ACTIVE: "Actif",
-      DISTRIBUTED: "Distribué",
-      SOLD: "Vendu",
+      pending: "En attente",
+      certified: "Certifié",
+      rejected: "Rejeté",
+      "in-stock": "En stock",
+      active: "Actif",
+      distributed: "Distribué",
+      sold: "Vendu",
     };
-    return statusMap[status?.toUpperCase()] || status || "Inconnu";
+    return statusMap[status] || status || "Inconnu";
   };
 
   // Fonction pour formater la quantité

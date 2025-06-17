@@ -31,10 +31,11 @@ export class SeedLotController {
       const result = await SeedLotService.getSeedLots(req.query);
       return ResponseHandler.success(
         res,
-        result.lots,
-        "Lots récupérés avec succès",
-        200,
-        result.meta
+        {
+          lots: result.lots,
+          meta: result.meta,
+        },
+        "Lots récupérés avec succès"
       );
     } catch (error) {
       next(error);
