@@ -188,4 +188,42 @@ export class AuthService {
       throw error;
     }
   }
+
+  static async updatePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string
+  ): Promise<void> {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { password: true },
+      });
+
+      if (!user) {
+        throw new Error("Utilisateur non trouvé");
+      }
+
+      const isCurrentPasswordValid = await EncryptionService.comparePassword(
+        currentPassword,
+        user.password
+      );
+
+      if (!isCurrentPasswordValid) {
+        throw new Error("Mot de passe actuel incorrect");
+      }
+
+      const hashedNewPassword = await EncryptionService.hashPassword(
+        newPassword
+      );
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedNewPassword },
+      });
+    } catch (error) {
+      logger.error("Erreur lors de la mise à jour du mot de passe:", error);
+      throw error;
+    }
+  }
 }

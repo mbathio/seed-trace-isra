@@ -1,4 +1,4 @@
-// backend/src/controllers/ParcelController.ts
+// backend/src/controllers/ParcelController.ts - Corrigé
 import { Request, Response, NextFunction } from "express";
 import { ParcelService } from "../services/ParcelService";
 import { ResponseHandler } from "../utils/response";
@@ -29,7 +29,6 @@ export class ParcelController {
         res,
         result.parcels,
         "Parcelles récupérées avec succès",
-        200,
         result.meta
       );
     } catch (error) {

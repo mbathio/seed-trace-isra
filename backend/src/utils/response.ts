@@ -1,4 +1,4 @@
-// backend/src/utils/response.ts - VERSION CORRIGÉE
+// backend/src/utils/response.ts - VERSION COMPLÈTE CORRIGÉE
 import { Response } from "express";
 
 export interface ApiResponse<T = any> {
@@ -43,11 +43,7 @@ export class ResponseHandler {
   }
 
   static noContent(res: Response, message = "Succès"): Response {
-    return res.status(204).json({
-      success: true,
-      message,
-      data: null,
-    });
+    return res.status(204).send();
   }
 
   static badRequest(

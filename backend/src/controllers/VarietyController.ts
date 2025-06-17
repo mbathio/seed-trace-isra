@@ -1,4 +1,4 @@
-// backend/src/controllers/VarietyController.ts
+// backend/src/controllers/VarietyController.ts - Corrigé
 import { Request, Response, NextFunction } from "express";
 import { VarietyService } from "../services/VarietyService";
 import { ResponseHandler } from "../utils/response";
@@ -29,7 +29,6 @@ export class VarietyController {
         res,
         result.varieties,
         "Variétés récupérées avec succès",
-        200,
         result.meta
       );
     } catch (error) {

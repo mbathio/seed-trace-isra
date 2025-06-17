@@ -1,4 +1,4 @@
-// backend/src/controllers/MultiplierController.ts
+// backend/src/controllers/MultiplierController.ts - Corrigé
 import { Request, Response, NextFunction } from "express";
 import { MultiplierService } from "../services/MultiplierService";
 import { ResponseHandler } from "../utils/response";
@@ -33,7 +33,6 @@ export class MultiplierController {
         res,
         result.multipliers,
         "Multiplicateurs récupérés avec succès",
-        200,
         result.meta
       );
     } catch (error) {

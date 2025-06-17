@@ -1,4 +1,4 @@
-// backend/src/controllers/ProductionController.ts
+// backend/src/controllers/ProductionController.ts - Corrigé
 import { Request, Response, NextFunction } from "express";
 import { ProductionService } from "../services/ProductionService";
 import { ResponseHandler } from "../utils/response";
@@ -33,7 +33,6 @@ export class ProductionController {
         res,
         result.productions,
         "Productions récupérées avec succès",
-        200,
         result.meta
       );
     } catch (error) {

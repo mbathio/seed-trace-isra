@@ -1,4 +1,4 @@
-// backend/src/controllers/UserController.ts
+// backend/src/controllers/UserController.ts - Corrigé
 import { Request, Response, NextFunction } from "express";
 import { UserService } from "../services/UserService";
 import { ResponseHandler } from "../utils/response";
@@ -16,7 +16,6 @@ export class UserController {
         res,
         result.users,
         "Utilisateurs récupérés avec succès",
-        200,
         result.meta
       );
     } catch (error) {
@@ -54,7 +53,7 @@ export class UserController {
       return ResponseHandler.created(res, user, "Utilisateur créé avec succès");
     } catch (error) {
       if (error instanceof Error && error.message.includes("existe déjà")) {
-        return ResponseHandler.error(res, error.message, 409);
+        return ResponseHandler.conflict(res, error.message);
       }
       next(error);
     }
@@ -111,7 +110,7 @@ export class UserController {
       );
     } catch (error) {
       if (error instanceof Error && error.message.includes("incorrect")) {
-        return ResponseHandler.error(res, error.message, 400);
+        return ResponseHandler.badRequest(res, error.message);
       }
       next(error);
     }

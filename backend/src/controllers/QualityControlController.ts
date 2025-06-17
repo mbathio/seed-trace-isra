@@ -1,4 +1,4 @@
-// backend/src/controllers/QualityControlController.ts
+// backend/src/controllers/QualityControlController.ts - Corrigé
 import { Request, Response, NextFunction } from "express";
 import { QualityControlService } from "../services/QualityControlService";
 import { ResponseHandler } from "../utils/response";
@@ -41,7 +41,6 @@ export class QualityControlController {
         res,
         result.controls,
         "Contrôles qualité récupérés avec succès",
-        200,
         result.meta
       );
     } catch (error) {

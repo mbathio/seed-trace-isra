@@ -1,4 +1,4 @@
-// backend/src/controllers/ReportController.ts
+// backend/src/controllers/ReportController.ts - Corrigé
 import { Request, Response, NextFunction } from "express";
 import { ReportService } from "../services/ReportService";
 import { ResponseHandler } from "../utils/response";
@@ -16,7 +16,6 @@ export class ReportController {
         res,
         result.reports,
         "Rapports récupérés avec succès",
-        200,
         result.meta
       );
     } catch (error) {
