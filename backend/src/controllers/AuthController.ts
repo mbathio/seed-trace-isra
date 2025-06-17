@@ -41,7 +41,7 @@ export class AuthController {
       return ResponseHandler.created(res, user, "Utilisateur créé avec succès");
     } catch (error) {
       if (error instanceof Error && error.message.includes("existe déjà")) {
-        return ResponseHandler.error(res, error.message, 409);
+        return ResponseHandler.conflict(res, error.message);
       }
       next(error);
     }
