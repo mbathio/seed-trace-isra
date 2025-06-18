@@ -182,16 +182,20 @@ export const seedLotTransformation = (
 
     // Fonction helper pour transformer un lot
     const transformLot = (lot: any): any => {
-      if (!lot || !lot.generation || typeof lot !== "object") return lot;
+      if (!lot || typeof lot !== "object") return lot;
 
-      if (dbToUiMap[lot.generation]) {
-        return {
-          ...lot,
-          generation: dbToUiMap[lot.generation],
-        };
+      const transformed = { ...lot };
+      if (lot.generation) {
+        transformed.level = lot.generation.toLowerCase(); // G0 -> g0
+        delete transformed.generation; // Supprimer l'ancien champ
       }
 
-      return lot;
+      // Transformer les valeurs DB vers UI
+      if (transformed.level && dbToUiMap[transformed.level.toUpperCase()]) {
+        transformed.level = dbToUiMap[transformed.level.toUpperCase()];
+      }
+
+      return transformed;
     };
 
     // Cloner les données pour éviter les mutations

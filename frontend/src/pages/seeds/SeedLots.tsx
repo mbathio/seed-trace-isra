@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/SeedLots.tsx - VERSION COMPLÈTE CORRIGÉE
+// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
+  Leaf,
 } from "lucide-react";
 import {
   Table,
@@ -37,13 +38,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { toast } from "react-toastify";
-import { api } from "../../services/api";
+import { api, apiService } from "../../services/api";
 import type { SeedLot } from "../../types/entities";
-import type { PaginationParams, FilterParams } from "../../types/api";
-import { SEED_LEVELS } from "../../constants";
+import { SEED_LEVELS, LOT_STATUSES } from "../../constants";
 import { formatDate, formatQuantity } from "../../utils/formatters";
 import { useDebounce } from "../../hooks/useDebounce";
 
@@ -51,6 +57,7 @@ const SeedLots: React.FC = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const [selectedLot, setSelectedLot] = useState<SeedLot | null>(null);
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
@@ -60,7 +67,6 @@ const SeedLots: React.FC = () => {
 
   const debouncedSearch = useDebounce(search, 500);
 
-  // Requête pour récupérer les lots
   // Requête pour récupérer les lots
   const {
     data: response,
@@ -74,45 +80,50 @@ const SeedLots: React.FC = () => {
       pagination.pageSize,
       debouncedSearch,
       levelFilter,
+      statusFilter,
     ],
     queryFn: async () => {
-      console.log("🔍 Fetching seed lots...");
-
-      const params: PaginationParams & FilterParams = {
+      const params: any = {
         page: pagination.page,
         pageSize: pagination.pageSize,
-        search: debouncedSearch || undefined,
-        level: levelFilter || undefined,
       };
 
-      console.log("📤 Request params:", params);
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (levelFilter) params.level = levelFilter;
+      if (statusFilter) params.status = statusFilter;
 
-      try {
-        const response = await api.get("/seed-lots", { params });
-        console.log("✅ Full API Response:", response);
-        console.log("📦 Response data:", response.data);
+      const response = await api.get("/seed-lots", { params });
+      console.log("API Response:", response.data);
 
-        // Structure attendue du backend : { success: true, data: SeedLot[], meta: {...} }
-        return response.data; // Retourner la réponse complète
-      } catch (error) {
-        console.error("❌ API Error:", error);
-        throw error;
+      // Le backend retourne { success: true, data: [...], meta: {...} }
+      // MAIS le service SeedLotService retourne { lots: [...], meta: {...} }
+      // On doit gérer les deux cas
+
+      if (response.data.lots) {
+        // Structure du service
+        return {
+          seedLots: response.data.lots,
+          meta: response.data.meta,
+        };
+      } else {
+        // Structure standard API
+        return {
+          seedLots: response.data.data || [],
+          meta: response.data.meta || null,
+        };
       }
     },
     retry: 2,
   });
 
-  // Extraction des données depuis la structure standard de réponse
-  const seedLots = response?.data || [];
+  // Extraction des données
+  const seedLots = response?.seedLots || [];
   const meta = response?.meta || null;
-  console.log("📋 Extracted seed lots:", seedLots);
-  console.log("📊 Metadata:", meta);
 
   // Fonction pour obtenir le QR Code
   const fetchQRCode = async (lotId: string) => {
     try {
       const response = await api.get(`/seed-lots/${lotId}/qr-code`);
-      // Le backend retourne: { success: true, data: { qrCode: "..." } }
       return response.data.data?.qrCode || null;
     } catch (error) {
       console.error("QR Code fetch error:", error);
@@ -144,75 +155,42 @@ const SeedLots: React.FC = () => {
     link.click();
   };
 
-  // Fonction pour obtenir la classe CSS du statut
-  const getStatusClass = (status: string) => {
-    switch (status) {
-      case "ACTIVE":
-        return "bg-green-100 text-green-800";
-      case "IN_STOCK":
-        return "bg-blue-100 text-blue-800";
-      case "CERTIFIED":
-        return "bg-emerald-100 text-emerald-800";
-      case "PENDING":
-        return "bg-yellow-100 text-yellow-800";
-      case "REJECTED":
-        return "bg-red-100 text-red-800";
-      case "DISTRIBUTED":
-        return "bg-purple-100 text-purple-800";
-      case "SOLD":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
+  // Fonction pour obtenir la config du statut
+  const getStatusConfig = (status: string) => {
+    return (
+      LOT_STATUSES.find((s) => s.value === status) || {
+        value: status,
+        label: status,
+        color: "gray",
+        icon: "Circle",
+      }
+    );
   };
 
-  // Fonction pour obtenir le label du statut
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "ACTIVE":
-        return "Actif";
-      case "IN_STOCK":
-        return "En stock";
-      case "CERTIFIED":
-        return "Certifié";
-      case "PENDING":
-        return "En attente";
-      case "REJECTED":
-        return "Rejeté";
-      case "DISTRIBUTED":
-        return "Distribué";
-      case "SOLD":
-        return "Vendu";
-      default:
-        return status;
-    }
-  };
-
-  // Fonction pour obtenir la classe CSS du niveau
-  const getLevelClass = (level: string) => {
-    switch (level) {
-      case "GO":
-        return "bg-gray-200 text-gray-800";
-      case "G1":
-        return "bg-blue-200 text-blue-800";
-      case "G2":
-        return "bg-green-200 text-green-800";
-      case "G3":
-        return "bg-yellow-200 text-yellow-800";
-      case "G4":
-        return "bg-purple-200 text-purple-800";
-      case "R1":
-        return "bg-orange-200 text-orange-800";
-      case "R2":
-        return "bg-pink-200 text-pink-800";
-      default:
-        return "bg-gray-200 text-gray-800";
-    }
+  // Fonction pour obtenir la config du niveau
+  const getLevelConfig = (level: string) => {
+    return (
+      SEED_LEVELS.find((l) => l.value === level) || {
+        value: level,
+        label: level,
+      }
+    );
   };
 
   // Gestion du changement de page
   const handlePageChange = (newPage: number) => {
     setPagination({ ...pagination, page: newPage });
+  };
+
+  // Fonction pour exporter les données
+  const handleExport = async () => {
+    try {
+      toast.info("Export en cours...");
+      await apiService.downloadFile("/export/seed-lots", "lots_semences.csv");
+      toast.success("Export réussi !");
+    } catch (error) {
+      toast.error("Erreur lors de l'export");
+    }
   };
 
   if (error) {
@@ -233,39 +211,46 @@ const SeedLots: React.FC = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">
-              Gestion des Lots
-            </h1>
-            <p className="text-gray-600">
-              Gérer et visualiser les lots de semences
-            </p>
-          </div>
-          <Button
-            className="bg-green-600 hover:bg-green-700 text-white"
-            onClick={() => navigate("/dashboard/seed-lots/create")}
-          >
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Lots de semences</h1>
+          <p className="text-muted-foreground">
+            Gérer et suivre les lots de semences de production
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            Exporter
+          </Button>
+          <Button onClick={() => navigate("/dashboard/seed-lots/create")}>
             <Plus className="h-4 w-4 mr-2" />
-            Nouveau Lot
+            Nouveau lot
           </Button>
         </div>
       </div>
 
-      {/* Card principale */}
-      <div className="bg-white rounded-lg shadow">
-        {/* Header de la card */}
-        <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold mb-4">
-            Liste des Lots {meta && `(${meta.totalCount} total)`}
-          </h2>
-
+      {/* Carte principale */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <div className="flex items-center justify-between">
+              <span>Liste des lots</span>
+              {meta && (
+                <span className="text-sm font-normal text-muted-foreground">
+                  {meta.totalCount} {meta.totalCount > 1 ? "lots" : "lot"}
+                </span>
+              )}
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           {/* Filtres */}
-          <div className="flex gap-4">
+          <div className="flex gap-4 mb-6">
             <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Rechercher un lot..."
@@ -273,7 +258,6 @@ const SeedLots: React.FC = () => {
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
               />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             </div>
 
             <Select value={levelFilter} onValueChange={setLevelFilter}>
@@ -290,6 +274,20 @@ const SeedLots: React.FC = () => {
               </SelectContent>
             </Select>
 
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Tous les statuts" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Tous les statuts</SelectItem>
+                {LOT_STATUSES.map((status) => (
+                  <SelectItem key={status.value} value={status.value}>
+                    {status.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Button
               variant="outline"
               onClick={() => refetch()}
@@ -299,132 +297,154 @@ const SeedLots: React.FC = () => {
               Actualiser
             </Button>
           </div>
-        </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          {isLoading ? (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
-              <p>Chargement des lots...</p>
-            </div>
-          ) : seedLots.length === 0 ? (
-            <div className="text-center py-12">
-              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 mb-4">
-                {search || levelFilter
-                  ? "Aucun lot trouvé avec ces critères"
-                  : "Aucun lot de semences enregistré"}
-              </p>
-              {!search && !levelFilter && (
-                <Button onClick={() => navigate("/dashboard/seed-lots/create")}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Créer le premier lot
-                </Button>
-              )}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Niveau</TableHead>
-                  <TableHead>Identification</TableHead>
-                  <TableHead>Quantité</TableHead>
-                  <TableHead>Date de production</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {seedLots.map((lot: SeedLot) => (
-                  <TableRow
-                    key={lot.id}
-                    className="cursor-pointer hover:bg-gray-50"
-                    onClick={() => navigate(`/dashboard/seed-lots/${lot.id}`)}
+          {/* Table */}
+          <div className="rounded-md border">
+            {isLoading ? (
+              <div className="p-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Chargement des lots...</p>
+              </div>
+            ) : seedLots.length === 0 ? (
+              <div className="text-center py-12">
+                <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">
+                  {search || levelFilter || statusFilter
+                    ? "Aucun lot trouvé avec ces critères"
+                    : "Aucun lot de semences enregistré"}
+                </p>
+                {!search && !levelFilter && !statusFilter && (
+                  <Button
+                    onClick={() => navigate("/dashboard/seed-lots/create")}
                   >
-                    <TableCell>
-                      <Badge className={getLevelClass(lot.level)}>
-                        {lot.level}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">
-                          {lot.variety?.name || "Sans variété"}
-                        </p>
-                        <p className="text-sm text-gray-500">{lot.id}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>{formatQuantity(lot.quantity)}</TableCell>
-                    <TableCell>{formatDate(lot.productionDate)}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusClass(lot.status)}>
-                        {getStatusLabel(lot.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div
-                        className="flex gap-2 justify-end"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            navigate(`/dashboard/seed-lots/${lot.id}`)
-                          }
-                          className="hover:bg-gray-100"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleSelectLot(lot)}
-                          className="hover:bg-gray-100"
-                        >
-                          <QrCode className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Créer le premier lot
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Variété</TableHead>
+                    <TableHead>Niveau</TableHead>
+                    <TableHead>Quantité</TableHead>
+                    <TableHead>Production</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {seedLots.map((lot: SeedLot) => {
+                    const statusConfig = getStatusConfig(lot.status);
+                    const levelConfig = getLevelConfig(lot.level);
 
-        {/* Pagination */}
-        {meta && meta.totalPages > 1 && (
-          <div className="px-4 py-3 border-t flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Affichage de {(meta.page - 1) * meta.pageSize + 1} à{" "}
-              {Math.min(meta.page * meta.pageSize, meta.totalCount)} sur{" "}
-              {meta.totalCount} résultats
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(meta.page - 1)}
-                disabled={meta.page <= 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Précédent
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(meta.page + 1)}
-                disabled={meta.page >= meta.totalPages}
-              >
-                Suivant
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+                    return (
+                      <TableRow
+                        key={lot.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() =>
+                          navigate(`/dashboard/seed-lots/${lot.id}`)
+                        }
+                      >
+                        <TableCell className="font-mono">{lot.id}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Leaf className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="font-medium">
+                                {lot.variety?.name || "Sans variété"}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {lot.variety?.code}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{levelConfig.label}</Badge>
+                        </TableCell>
+                        <TableCell>{formatQuantity(lot.quantity)}</TableCell>
+                        <TableCell>{formatDate(lot.productionDate)}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              statusConfig.color === "green"
+                                ? "default"
+                                : statusConfig.color === "red"
+                                ? "destructive"
+                                : statusConfig.color === "orange"
+                                ? "secondary"
+                                : "outline"
+                            }
+                          >
+                            {statusConfig.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div
+                            className="flex gap-2 justify-end"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                navigate(`/dashboard/seed-lots/${lot.id}`)
+                              }
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleSelectLot(lot)}
+                            >
+                              <QrCode className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
           </div>
-        )}
-      </div>
+
+          {/* Pagination */}
+          {meta && meta.totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4">
+              <div className="text-sm text-muted-foreground">
+                Affichage de {(meta.page - 1) * meta.pageSize + 1} à{" "}
+                {Math.min(meta.page * meta.pageSize, meta.totalCount)} sur{" "}
+                {meta.totalCount} résultats
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(meta.page - 1)}
+                  disabled={meta.page <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Précédent
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(meta.page + 1)}
+                  disabled={meta.page >= meta.totalPages}
+                >
+                  Suivant
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Modal QR Code */}
       <Dialog
@@ -449,8 +469,8 @@ const SeedLots: React.FC = () => {
                 className="w-64 h-64"
               />
             ) : (
-              <div className="w-64 h-64 bg-gray-100 flex items-center justify-center">
-                <p className="text-gray-500">Génération en cours...</p>
+              <div className="w-64 h-64 bg-muted flex items-center justify-center rounded">
+                <p className="text-muted-foreground">Génération en cours...</p>
               </div>
             )}
           </div>

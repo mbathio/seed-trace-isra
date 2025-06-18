@@ -1,377 +1,237 @@
-// ===== 1. backend/src/services/SeedLotService.ts - MISE À JOUR AVEC TRANSFORMATEURS =====
-import { prisma } from "../config/database";
-import { EncryptionService } from "../utils/encryption";
-import { QRCodeService } from "../utils/qrCode";
+// backend/src/services/SeedLotService.ts
+import { PrismaClient, Prisma } from "@prisma/client";
+import {
+  generateLotId,
+  getNextLevel,
+  isValidLevelTransition,
+} from "../utils/seedLotHelpers";
 import { logger } from "../utils/logger";
-import { CreateSeedLotData, UpdateSeedLotData } from "../types/entities";
-import { PaginationQuery } from "../types/api";
-import { SeedLevel, LotStatus } from "@prisma/client";
-import DataTransformer from "../utils/transformers"; // ✅ AJOUTÉ
 
-// ✅ MISE À JOUR : Classe d'erreur personnalisée
+const prisma = new PrismaClient();
+
+// Interface pour les erreurs personnalisées
 export class SeedLotError extends Error {
-  constructor(message: string, public code?: string) {
+  constructor(public code: string, message: string) {
     super(message);
     this.name = "SeedLotError";
   }
 }
 
-export class SeedLotService {
-  static async createSeedLot(data: CreateSeedLotData): Promise<any> {
-    try {
-      // Générer un ID unique pour le lot
-      const lotId = EncryptionService.generateLotId(data.level);
+// Interface pour les paramètres de requête
+interface GetSeedLotsParams {
+  page?: string | number;
+  pageSize?: string | number;
+  search?: string;
+  level?: string;
+  status?: string;
+  varietyId?: string | number;
+  multiplierId?: string | number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
 
-      // Gestion correcte de varietyId (number ou string)
-      let varietyId: number;
-      if (typeof data.varietyId === "string") {
-        const parsedId = parseInt(data.varietyId);
-        if (!isNaN(parsedId)) {
-          varietyId = parsedId;
-        } else {
-          const variety = await prisma.variety.findFirst({
-            where: { code: data.varietyId, isActive: true },
-          });
-          if (!variety) {
-            throw new SeedLotError(
-              `Variété non trouvée avec le code: ${data.varietyId}`,
-              "VARIETY_NOT_FOUND"
-            );
-          }
-          varietyId = variety.id;
-        }
-      } else {
-        varietyId = data.varietyId;
+// Interface pour les données de création
+interface CreateSeedLotData {
+  varietyId: number;
+  level: string;
+  quantity: number;
+  productionDate: string;
+  status?: string;
+  multiplierId?: number;
+  parcelId?: number;
+  parentLotId?: string;
+  notes?: string;
+}
+
+// Interface pour les données de mise à jour
+interface UpdateSeedLotData {
+  quantity?: number;
+  status?: string;
+  notes?: string;
+  multiplierId?: number;
+  parcelId?: number;
+}
+
+export class SeedLotService {
+  /**
+   * Créer un nouveau lot de semences
+   */
+  static async createSeedLot(data: CreateSeedLotData) {
+    try {
+      logger.info("Creating seed lot", { data });
+
+      // Vérifier l'existence de la variété
+      const variety = await prisma.variety.findUnique({
+        where: { id: data.varietyId },
+      });
+
+      if (!variety) {
+        throw new SeedLotError("VARIETY_NOT_FOUND", "Variété non trouvée");
       }
 
-      // Validation de la hiérarchie parent-enfant si parentLotId est fourni
+      // Vérifier le lot parent si spécifié
       if (data.parentLotId) {
         const parentLot = await prisma.seedLot.findUnique({
-          where: { id: data.parentLotId, isActive: true },
+          where: { id: data.parentLotId },
         });
 
         if (!parentLot) {
           throw new SeedLotError(
-            "Lot parent non trouvé",
-            "PARENT_LOT_NOT_FOUND"
+            "PARENT_LOT_NOT_FOUND",
+            "Lot parent non trouvé"
           );
         }
 
-        // Vérifier la hiérarchie des niveaux
-        const levelHierarchy = ["GO", "G1", "G2", "G3", "G4", "R1", "R2"];
-        const parentIndex = levelHierarchy.indexOf(parentLot.level);
-        const childIndex = levelHierarchy.indexOf(data.level);
-
-        if (parentIndex >= childIndex) {
+        // Vérifier la cohérence de la hiérarchie
+        if (!isValidLevelTransition(parentLot.level, data.level)) {
+          const expectedLevel = getNextLevel(parentLot.level);
           throw new SeedLotError(
-            `Un lot ${data.level} ne peut pas être créé à partir d'un lot ${parentLot.level}`,
-            "INVALID_HIERARCHY"
+            "INVALID_HIERARCHY",
+            `Le niveau doit être ${expectedLevel} pour un lot enfant de ${parentLot.level}`
           );
         }
       }
 
-      // ✅ TRANSFORMATION : Transformer le statut du frontend vers la DB
-      const dbStatus = data.status
-        ? (DataTransformer.transformInputStatus(data.status) as LotStatus)
-        : LotStatus.PENDING;
+      // Générer l'ID du lot
+      const lotId = await generateLotId(data.level, variety.code);
 
-      // Créer le lot de semences
+      // Créer le lot
       const seedLot = await prisma.seedLot.create({
         data: {
           id: lotId,
-          varietyId,
-          level: data.level as SeedLevel,
+          varietyId: data.varietyId,
+          level: data.level,
           quantity: data.quantity,
           productionDate: new Date(data.productionDate),
-          expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
+          status: data.status || "PENDING",
           multiplierId: data.multiplierId,
           parcelId: data.parcelId,
           parentLotId: data.parentLotId,
           notes: data.notes,
-          batchNumber: data.batchNumber,
-          status: dbStatus,
         },
         include: {
           variety: true,
           multiplier: true,
           parcel: true,
-          parentLot: {
-            include: {
-              variety: true,
-            },
-          },
+          parentLot: true,
         },
       });
 
-      // Générer le QR code
-      const qrCodeData = await QRCodeService.generateQRCode({
-        lotId: seedLot.id,
-        varietyName: seedLot.variety.name,
-        level: seedLot.level,
-        timestamp: new Date().toISOString(),
-      });
-
-      // Mettre à jour le lot avec le QR code
-      const updatedSeedLot = await prisma.seedLot.update({
-        where: { id: lotId },
-        data: { qrCode: qrCodeData },
-        include: {
-          variety: true,
-          multiplier: true,
-          parcel: true,
-          parentLot: {
-            include: {
-              variety: true,
-            },
-          },
-        },
-      });
-
-      logger.info(`Lot de semences créé avec succès: ${lotId}`);
-
-      // ✅ TRANSFORMATION : Transformer les données pour le frontend
-      return DataTransformer.transformSeedLot(updatedSeedLot);
+      logger.info(`Seed lot created successfully: ${seedLot.id}`);
+      return seedLot;
     } catch (error) {
-      logger.error("Erreur lors de la création du lot:", error);
+      logger.error("Error creating seed lot", { error });
       throw error;
     }
   }
 
-  static async getSeedLots(
-    query: PaginationQuery & any
-  ): Promise<{ lots: any[]; meta: any }> {
-    // ✅ Retour typé explicitement
+  /**
+   * Récupérer la liste des lots avec pagination et filtres
+   */
+  static async getSeedLots(params: GetSeedLotsParams) {
     try {
-      const {
-        page = 1,
-        pageSize = 10,
-        search,
-        level,
-        status,
-        varietyId,
-        multiplierId,
-        sortBy = "productionDate",
-        sortOrder = "desc",
-      } = query;
+      // Paramètres de pagination
+      const page = Number(params.page) || 1;
+      const pageSize = Number(params.pageSize) || 10;
+      const skip = (page - 1) * pageSize;
 
-      const pageNum = parseInt(page.toString());
-      const pageSizeNum = parseInt(pageSize.toString());
-      const skip = (pageNum - 1) * pageSizeNum;
+      // Construction de la clause WHERE
+      const where: Prisma.SeedLotWhereInput = {};
 
-      const where: any = {
-        isActive: true,
-      };
-
-      if (search) {
+      // Recherche textuelle
+      if (params.search) {
         where.OR = [
-          { id: { contains: search, mode: "insensitive" } },
-          { variety: { name: { contains: search, mode: "insensitive" } } },
-          { variety: { code: { contains: search, mode: "insensitive" } } },
-          { notes: { contains: search, mode: "insensitive" } },
-          { batchNumber: { contains: search, mode: "insensitive" } },
+          { id: { contains: params.search, mode: "insensitive" } },
+          { notes: { contains: params.search, mode: "insensitive" } },
+          {
+            variety: {
+              OR: [
+                { name: { contains: params.search, mode: "insensitive" } },
+                { code: { contains: params.search, mode: "insensitive" } },
+              ],
+            },
+          },
         ];
       }
 
-      if (level) {
-        where.level = level as SeedLevel;
+      // Filtres spécifiques
+      if (params.level) {
+        where.level = params.level;
+      }
+      if (params.status) {
+        where.status = params.status;
+      }
+      if (params.varietyId) {
+        where.varietyId = Number(params.varietyId);
+      }
+      if (params.multiplierId) {
+        where.multiplierId = Number(params.multiplierId);
       }
 
-      if (status) {
-        where.status = DataTransformer.transformInputStatus(
-          status
-        ) as LotStatus;
-      }
+      // Tri
+      const orderBy: any = {};
+      const sortBy = params.sortBy || "createdAt";
+      const sortOrder = params.sortOrder || "desc";
+      orderBy[sortBy] = sortOrder;
 
-      if (varietyId) {
-        if (typeof varietyId === "string") {
-          const parsedId = parseInt(varietyId);
-          if (!isNaN(parsedId)) {
-            where.varietyId = parsedId;
-          } else {
-            where.variety = { code: varietyId };
-          }
-        } else {
-          where.varietyId = varietyId;
-        }
-      }
-
-      if (multiplierId) {
-        where.multiplierId = parseInt(multiplierId.toString());
-      }
-
-      const [lots, total] = await Promise.all([
+      // Exécution des requêtes en parallèle
+      const [seedLots, totalCount] = await Promise.all([
         prisma.seedLot.findMany({
           where,
+          skip,
+          take: pageSize,
+          orderBy,
           include: {
             variety: true,
             multiplier: true,
-            parcel: true,
             parentLot: {
               include: {
                 variety: true,
               },
             },
             qualityControls: {
-              orderBy: { controlDate: "desc" },
-              take: 1,
-              include: {
-                inspector: {
-                  select: { id: true, name: true, email: true },
-                },
+              orderBy: {
+                controlDate: "desc",
               },
+              take: 1,
             },
             _count: {
               select: {
                 childLots: true,
-                qualityControls: true,
-                productions: true,
               },
             },
           },
-          orderBy: { [sortBy]: sortOrder },
-          skip,
-          take: pageSizeNum,
         }),
         prisma.seedLot.count({ where }),
       ]);
 
-      const totalPages = Math.ceil(total / pageSizeNum);
+      // Calcul des métadonnées
+      const totalPages = Math.ceil(totalCount / pageSize);
 
-      // ✅ Transformer tous les lots pour le frontend
-      const transformedLots = lots.map((lot) =>
-        DataTransformer.transformSeedLot(lot)
-      );
-
-      // ✅ IMPORTANT: Retourner la structure attendue par le frontend
       return {
-        lots: transformedLots, // ✅ "lots" et non "data"
+        lots: seedLots,
         meta: {
-          page: pageNum,
-          pageSize: pageSizeNum,
-          totalCount: total,
+          totalCount,
+          page,
+          pageSize,
           totalPages,
-          hasNextPage: pageNum < totalPages,
-          hasPreviousPage: pageNum > 1,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
         },
       };
     } catch (error) {
-      logger.error("Erreur lors de la récupération des lots:", error);
+      logger.error("Error fetching seed lots", { error });
       throw error;
     }
   }
 
-  static async getSeedLotById(id: string): Promise<any | null> {
+  /**
+   * Récupérer un lot par son ID
+   */
+  static async getSeedLotById(id: string) {
     try {
       const seedLot = await prisma.seedLot.findUnique({
-        where: { id, isActive: true },
-        include: {
-          variety: true,
-          multiplier: true,
-          parcel: {
-            include: {
-              soilAnalyses: {
-                orderBy: { analysisDate: "desc" },
-                take: 1,
-              },
-            },
-          },
-          parentLot: {
-            include: {
-              variety: true,
-              multiplier: true,
-            },
-          },
-          childLots: {
-            where: { isActive: true },
-            include: {
-              variety: true,
-              multiplier: true,
-              qualityControls: {
-                orderBy: { controlDate: "desc" },
-                take: 1,
-              },
-            },
-          },
-          qualityControls: {
-            include: {
-              inspector: {
-                select: { id: true, name: true, email: true, role: true },
-              },
-            },
-            orderBy: { controlDate: "desc" },
-          },
-          productions: {
-            include: {
-              multiplier: true,
-              parcel: true,
-              _count: {
-                select: {
-                  activities: true,
-                  issues: true,
-                  weatherData: true,
-                },
-              },
-            },
-            orderBy: { startDate: "desc" },
-          },
-        },
-      });
-
-      if (!seedLot) {
-        return null;
-      }
-
-      // ✅ TRANSFORMATION : Transformer les données pour le frontend
-      return DataTransformer.transformSeedLot(seedLot);
-    } catch (error) {
-      logger.error("Erreur lors de la récupération du lot:", error);
-      throw error;
-    }
-  }
-
-  static async updateSeedLot(
-    id: string,
-    data: UpdateSeedLotData
-  ): Promise<any> {
-    try {
-      const existingLot = await prisma.seedLot.findUnique({
-        where: { id, isActive: true },
-      });
-
-      if (!existingLot) {
-        throw new SeedLotError("Lot de semences non trouvé", "LOT_NOT_FOUND");
-      }
-
-      const updateData: any = {};
-
-      if (data.quantity !== undefined) {
-        updateData.quantity = data.quantity;
-      }
-
-      if (data.status) {
-        // ✅ TRANSFORMATION : Transformer le statut du frontend vers la DB
-        updateData.status = DataTransformer.transformInputStatus(
-          data.status
-        ) as LotStatus;
-      }
-
-      if (data.notes !== undefined) {
-        updateData.notes = data.notes;
-      }
-
-      if (data.expiryDate) {
-        updateData.expiryDate = new Date(data.expiryDate);
-      }
-
-      if (data.batchNumber !== undefined) {
-        updateData.batchNumber = data.batchNumber;
-      }
-
-      updateData.updatedAt = new Date();
-
-      const seedLot = await prisma.seedLot.update({
         where: { id },
-        data: updateData,
         include: {
           variety: true,
           multiplier: true,
@@ -381,10 +241,83 @@ export class SeedLotService {
               variety: true,
             },
           },
-          qualityControls: {
-            orderBy: { controlDate: "desc" },
-            take: 1,
+          childLots: {
+            include: {
+              variety: true,
+            },
           },
+          qualityControls: {
+            orderBy: {
+              controlDate: "desc",
+            },
+          },
+          productions: {
+            include: {
+              activities: true,
+            },
+          },
+        },
+      });
+
+      if (!seedLot) {
+        throw new SeedLotError("LOT_NOT_FOUND", "Lot non trouvé");
+      }
+
+      return seedLot;
+    } catch (error) {
+      logger.error("Error fetching seed lot", { error, id });
+      throw error;
+    }
+  }
+
+  /**
+   * Mettre à jour un lot
+   */
+  static async updateSeedLot(id: string, data: UpdateSeedLotData) {
+    try {
+      // Vérifier l'existence du lot
+      const existingLot = await prisma.seedLot.findUnique({
+        where: { id },
+      });
+
+      if (!existingLot) {
+        throw new SeedLotError("LOT_NOT_FOUND", "Lot non trouvé");
+      }
+
+      // Mettre à jour le lot
+      const updatedLot = await prisma.seedLot.update({
+        where: { id },
+        data: {
+          quantity: data.quantity,
+          status: data.status,
+          notes: data.notes,
+          multiplierId: data.multiplierId,
+          parcelId: data.parcelId,
+        },
+        include: {
+          variety: true,
+          multiplier: true,
+          parcel: true,
+        },
+      });
+
+      logger.info(`Seed lot updated: ${id}`);
+      return updatedLot;
+    } catch (error) {
+      logger.error("Error updating seed lot", { error, id });
+      throw error;
+    }
+  }
+
+  /**
+   * Supprimer un lot
+   */
+  static async deleteSeedLot(id: string) {
+    try {
+      // Vérifier l'existence et les dépendances
+      const seedLot = await prisma.seedLot.findUnique({
+        where: { id },
+        include: {
           _count: {
             select: {
               childLots: true,
@@ -395,333 +328,197 @@ export class SeedLotService {
         },
       });
 
-      logger.info(`Lot de semences mis à jour: ${id}`);
-
-      // ✅ TRANSFORMATION : Transformer les données pour le frontend
-      return DataTransformer.transformSeedLot(seedLot);
-    } catch (error) {
-      logger.error("Erreur lors de la mise à jour du lot:", error);
-      throw error;
-    }
-  }
-
-  static async deleteSeedLot(id: string): Promise<void> {
-    try {
-      const existingLot = await prisma.seedLot.findUnique({
-        where: { id, isActive: true },
-      });
-
-      if (!existingLot) {
-        throw new SeedLotError("Lot de semences non trouvé", "LOT_NOT_FOUND");
+      if (!seedLot) {
+        throw new SeedLotError("LOT_NOT_FOUND", "Lot non trouvé");
       }
 
-      // Vérifier s'il y a des lots enfants
-      const childLotsCount = await prisma.seedLot.count({
-        where: { parentLotId: id, isActive: true },
-      });
-
-      if (childLotsCount > 0) {
+      // Empêcher la suppression si le lot a des enfants
+      if (seedLot._count.childLots > 0) {
         throw new SeedLotError(
-          "Impossible de supprimer ce lot car il a des lots enfants actifs",
-          "HAS_CHILD_LOTS"
+          "HAS_CHILD_LOTS",
+          "Impossible de supprimer un lot qui a des lots enfants"
         );
       }
 
-      // Soft delete
-      await prisma.seedLot.update({
+      // Supprimer le lot
+      await prisma.seedLot.delete({
         where: { id },
+      });
+
+      logger.info(`Seed lot deleted: ${id}`);
+      return { success: true };
+    } catch (error) {
+      logger.error("Error deleting seed lot", { error, id });
+      throw error;
+    }
+  }
+
+  /**
+   * Créer un lot enfant à partir d'un lot parent
+   */
+  static async createChildLot(
+    parentId: string,
+    data: Omit<CreateSeedLotData, "parentLotId" | "level">
+  ) {
+    try {
+      // Récupérer le lot parent
+      const parentLot = await prisma.seedLot.findUnique({
+        where: { id: parentId },
+        include: { variety: true },
+      });
+
+      if (!parentLot) {
+        throw new SeedLotError("PARENT_LOT_NOT_FOUND", "Lot parent non trouvé");
+      }
+
+      // Déterminer le niveau du lot enfant
+      const childLevel = getNextLevel(parentLot.level);
+      if (!childLevel) {
+        throw new SeedLotError(
+          "INVALID_HIERARCHY",
+          `Le lot ${parentLot.level} ne peut pas avoir de lots enfants`
+        );
+      }
+
+      // Vérifier la quantité disponible
+      if (data.quantity > parentLot.quantity) {
+        throw new SeedLotError(
+          "INSUFFICIENT_QUANTITY",
+          "Quantité demandée supérieure à la quantité disponible du lot parent"
+        );
+      }
+
+      // Créer le lot enfant
+      const childLot = await this.createSeedLot({
+        ...data,
+        level: childLevel,
+        parentLotId: parentId,
+      });
+
+      // Mettre à jour la quantité du lot parent
+      await prisma.seedLot.update({
+        where: { id: parentId },
         data: {
-          isActive: false,
-          updatedAt: new Date(),
+          quantity: parentLot.quantity - data.quantity,
         },
       });
 
-      logger.info(`Lot ${id} supprimé avec succès`);
+      return childLot;
     } catch (error) {
-      logger.error("Erreur lors de la suppression du lot:", error);
+      logger.error("Error creating child lot", { error, parentId });
       throw error;
     }
   }
 
-  static async getGenealogyTree(lotId: string): Promise<any | null> {
+  /**
+   * Récupérer l'arbre généalogique d'un lot
+   */
+  static async getGenealogyTree(id: string) {
     try {
-      const lot = await this.getSeedLotById(lotId);
-      if (!lot) {
-        return null;
-      }
+      const buildTree = async (
+        lotId: string,
+        depth: number = 0
+      ): Promise<any> => {
+        if (depth > 10) return null; // Limite de profondeur
 
-      // Récupérer tous les ancêtres
-      const ancestors = await this.getAncestors(lotId);
-
-      // Récupérer tous les descendants
-      const descendants = await this.getDescendants(lotId);
-
-      return {
-        currentLot: lot,
-        ancestors,
-        descendants,
-        totalGenerations: this.calculateGenerations(ancestors, descendants),
-      };
-    } catch (error) {
-      logger.error("Erreur lors de la récupération de la généalogie:", error);
-      throw error;
-    }
-  }
-
-  private static async getAncestors(lotId: string): Promise<any[]> {
-    try {
-      const ancestors = [];
-      let currentLotId = lotId;
-
-      while (currentLotId) {
         const lot = await prisma.seedLot.findUnique({
-          where: { id: currentLotId, isActive: true },
+          where: { id: lotId },
           include: {
             variety: true,
-            parentLot: {
-              include: {
-                variety: true,
-                multiplier: true,
-              },
-            },
-            multiplier: true,
+            childLots: true,
           },
         });
 
-        if (!lot || !lot.parentLotId) {
-          break;
-        }
+        if (!lot) return null;
 
-        // ✅ TRANSFORMATION : Transformer et ajouter le lot parent
-        ancestors.push(DataTransformer.transformSeedLot(lot.parentLot));
-        currentLotId = lot.parentLotId;
+        const children = await Promise.all(
+          lot.childLots.map((child) => buildTree(child.id, depth + 1))
+        );
+
+        return {
+          id: lot.id,
+          level: lot.level,
+          variety: lot.variety,
+          quantity: lot.quantity,
+          productionDate: lot.productionDate,
+          status: lot.status,
+          children: children.filter(Boolean),
+        };
+      };
+
+      const genealogyTree = await buildTree(id);
+
+      if (!genealogyTree) {
+        throw new SeedLotError("LOT_NOT_FOUND", "Lot non trouvé");
       }
 
-      return ancestors;
+      return genealogyTree;
     } catch (error) {
-      logger.error("Erreur lors de la récupération des ancêtres:", error);
+      logger.error("Error fetching genealogy tree", { error, id });
       throw error;
     }
   }
 
-  private static async getDescendants(lotId: string): Promise<any[]> {
-    try {
-      const descendants = await prisma.seedLot.findMany({
-        where: { parentLotId: lotId, isActive: true },
-        include: {
-          variety: true,
-          multiplier: true,
-          qualityControls: {
-            orderBy: { controlDate: "desc" },
-            take: 1,
-          },
-          _count: {
-            select: {
-              childLots: true,
-            },
-          },
-        },
-      });
-
-      // Récupérer récursivement les descendants de chaque descendant
-      const transformedDescendants = [];
-      for (const descendant of descendants) {
-        // ✅ TRANSFORMATION : Transformer chaque descendant
-        const transformed = DataTransformer.transformSeedLot(descendant);
-        transformed.childLots = await this.getDescendants(descendant.id);
-        transformedDescendants.push(transformed);
-      }
-
-      return transformedDescendants;
-    } catch (error) {
-      logger.error("Erreur lors de la récupération des descendants:", error);
-      throw error;
-    }
-  }
-
-  private static calculateGenerations(
-    ancestors: any[],
-    descendants: any[]
-  ): number {
-    const ancestorGenerations = ancestors.length;
-    const descendantGenerations = this.getMaxDepth(descendants);
-    return ancestorGenerations + descendantGenerations + 1; // +1 pour le lot actuel
-  }
-
-  private static getMaxDepth(descendants: any[]): number {
-    if (descendants.length === 0) return 0;
-
-    let maxDepth = 0;
-    for (const descendant of descendants) {
-      const depth = 1 + this.getMaxDepth(descendant.childLots || []);
-      maxDepth = Math.max(maxDepth, depth);
-    }
-
-    return maxDepth;
-  }
-
-  // ✅ NOUVEAUX MÉTHODES AVEC TRANSFORMATIONS
-
-  static async getStatsByVariety(varietyId: number): Promise<any> {
-    try {
-      const stats = await prisma.seedLot.groupBy({
-        by: ["level", "status"],
-        where: {
-          varietyId,
-          isActive: true,
-        },
-        _count: {
-          id: true,
-        },
-        _sum: {
-          quantity: true,
-        },
-      });
-
-      // ✅ TRANSFORMATION : Transformer les données pour le frontend
-      const transformedStats = stats.map((stat) => ({
-        level: stat.level,
-        status: DataTransformer.transformLotStatusDBToUI(stat.status),
-        count: stat._count.id,
-        totalQuantity: stat._sum.quantity || 0,
-      }));
-
-      return transformedStats;
-    } catch (error) {
-      logger.error(
-        "Erreur lors du calcul des statistiques par variété:",
-        error
-      );
-      throw error;
-    }
-  }
-
-  static async checkExpiringLots(daysAhead: number = 30): Promise<any[]> {
-    try {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + daysAhead);
-
-      const expiringLots = await prisma.seedLot.findMany({
-        where: {
-          isActive: true,
-          expiryDate: {
-            gte: new Date(),
-            lte: futureDate,
-          },
-          status: {
-            notIn: [LotStatus.REJECTED, LotStatus.SOLD],
-          },
-        },
-        include: {
-          variety: true,
-          multiplier: true,
-        },
-        orderBy: {
-          expiryDate: "asc",
-        },
-      });
-
-      // ✅ TRANSFORMATION : Transformer les données pour le frontend
-      return expiringLots.map((lot) => DataTransformer.transformSeedLot(lot));
-    } catch (error) {
-      logger.error("Erreur lors de la vérification des lots expirants:", error);
-      throw error;
-    }
-  }
-
+  /**
+   * Transférer un lot entre multiplicateurs
+   */
   static async transferLot(
     lotId: string,
-    newMultiplierId: number,
+    targetMultiplierId: number,
     quantity: number,
     notes?: string
-  ): Promise<any> {
+  ) {
     try {
+      // Vérifier le lot source
       const sourceLot = await prisma.seedLot.findUnique({
-        where: { id: lotId, isActive: true },
+        where: { id: lotId },
       });
 
       if (!sourceLot) {
-        throw new SeedLotError("Lot source non trouvé", "SOURCE_LOT_NOT_FOUND");
+        throw new SeedLotError("SOURCE_LOT_NOT_FOUND", "Lot source non trouvé");
       }
 
-      if (sourceLot.quantity < quantity) {
+      if (quantity > sourceLot.quantity) {
         throw new SeedLotError(
-          "Quantité insuffisante dans le lot source",
-          "INSUFFICIENT_QUANTITY"
+          "INSUFFICIENT_QUANTITY",
+          "Quantité insuffisante dans le lot source"
         );
       }
 
-      // Créer une transaction pour assurer l'intégrité
-      const result = await prisma.$transaction(async (tx) => {
-        // Réduire la quantité du lot source
-        const updatedSourceLot = await tx.seedLot.update({
-          where: { id: lotId },
-          data: {
-            quantity: sourceLot.quantity - quantity,
-            updatedAt: new Date(),
-          },
-        });
-
-        // Créer un nouveau lot pour le nouveau multiplicateur
-        const newLotId = EncryptionService.generateLotId(sourceLot.level);
-        const newLot = await tx.seedLot.create({
-          data: {
-            id: newLotId,
-            varietyId: sourceLot.varietyId,
-            level: sourceLot.level,
-            quantity,
-            productionDate: sourceLot.productionDate,
-            expiryDate: sourceLot.expiryDate,
-            multiplierId: newMultiplierId,
-            parcelId: sourceLot.parcelId,
-            parentLotId: sourceLot.parentLotId,
-            status: sourceLot.status,
-            notes: notes || `Transféré depuis le lot ${lotId}`,
-          },
-          include: {
-            variety: true,
-            multiplier: true,
-            parcel: true,
-          },
-        });
-
-        // Générer le QR code pour le nouveau lot
-        const qrCodeData = await QRCodeService.generateQRCode({
-          lotId: newLot.id,
-          varietyName: newLot.variety.name,
-          level: newLot.level,
-          timestamp: new Date().toISOString(),
-        });
-
-        const finalNewLot = await tx.seedLot.update({
-          where: { id: newLotId },
-          data: { qrCode: qrCodeData },
-          include: {
-            variety: true,
-            multiplier: true,
-            parcel: true,
-          },
-        });
-
-        return {
-          updatedSourceLot,
-          newLot: finalNewLot,
-        };
+      // Vérifier le multiplicateur cible
+      const targetMultiplier = await prisma.multiplier.findUnique({
+        where: { id: targetMultiplierId },
       });
 
-      logger.info(
-        `Transfert de lot réussi: ${quantity}kg de ${lotId} vers ${result.newLot.id}`
-      );
+      if (!targetMultiplier) {
+        throw new SeedLotError(
+          "MULTIPLIER_NOT_FOUND",
+          "Multiplicateur non trouvé"
+        );
+      }
 
-      // ✅ TRANSFORMATION : Transformer les données pour le frontend
-      return {
-        updatedSourceLot: DataTransformer.transformSeedLot(
-          result.updatedSourceLot
-        ),
-        newLot: DataTransformer.transformSeedLot(result.newLot),
-      };
+      // Créer le lot transféré
+      const transferredLot = await this.createSeedLot({
+        varietyId: sourceLot.varietyId,
+        level: sourceLot.level,
+        quantity,
+        productionDate: sourceLot.productionDate.toISOString(),
+        multiplierId: targetMultiplierId,
+        parentLotId: lotId,
+        notes: notes || `Transféré depuis ${lotId}`,
+      });
+
+      // Mettre à jour la quantité du lot source
+      await prisma.seedLot.update({
+        where: { id: lotId },
+        data: {
+          quantity: sourceLot.quantity - quantity,
+        },
+      });
+
+      return transferredLot;
     } catch (error) {
-      logger.error("Erreur lors du transfert du lot:", error);
+      logger.error("Error transferring lot", { error, lotId });
       throw error;
     }
   }
