@@ -10,28 +10,50 @@ export const seedLotService = {
       params,
     });
     // Transformer les données reçues
-    response.data.data = response.data.data.map((lot) =>
-      DataTransformer.transformSeedLotFromAPI(lot)
-    );
+    if (response.data.data) {
+      response.data.data = response.data.data.map((lot) =>
+        DataTransformer.transformSeedLotFromAPI(lot)
+      );
+    }
     return response;
   },
 
   async getById(id: string) {
     const response = await api.get<ApiResponse<SeedLot>>(`/seed-lots/${id}`);
-    response.data.data = DataTransformer.transformSeedLotFromAPI(
-      response.data.data
-    );
+    if (response.data.data) {
+      response.data.data = DataTransformer.transformSeedLotFromAPI(
+        response.data.data
+      );
+    }
     return response;
   },
 
   async create(data: any) {
     const transformedData = DataTransformer.transformSeedLotForAPI(data);
-    return await api.post("/seed-lots", transformedData);
+    const response = await api.post<ApiResponse<SeedLot>>(
+      "/seed-lots",
+      transformedData
+    );
+    if (response.data.data) {
+      response.data.data = DataTransformer.transformSeedLotFromAPI(
+        response.data.data
+      );
+    }
+    return response;
   },
 
   async update(id: string, data: any) {
     const transformedData = DataTransformer.transformSeedLotForAPI(data);
-    return await api.put(`/seed-lots/${id}`, transformedData);
+    const response = await api.put<ApiResponse<SeedLot>>(
+      `/seed-lots/${id}`,
+      transformedData
+    );
+    if (response.data.data) {
+      response.data.data = DataTransformer.transformSeedLotFromAPI(
+        response.data.data
+      );
+    }
+    return response;
   },
 
   async delete(id: string) {
@@ -39,10 +61,76 @@ export const seedLotService = {
   },
 
   async getGenealogy(id: string) {
-    return await api.get(`/seed-lots/${id}/genealogy`);
+    const response = await api.get<ApiResponse<any>>(
+      `/seed-lots/${id}/genealogy`
+    );
+    // Transformer récursivement l'arbre généalogique
+    if (response.data.data) {
+      const transformTree = (node: any): any => {
+        const transformed = DataTransformer.transformSeedLotFromAPI(node);
+        if (node.children && Array.isArray(node.children)) {
+          transformed.children = node.children.map(transformTree);
+        }
+        return transformed;
+      };
+      response.data.data = transformTree(response.data.data);
+    }
+    return response;
   },
 
   async getQRCode(id: string) {
-    return await api.get(`/seed-lots/${id}/qr-code`);
+    return await api.get<ApiResponse<string>>(`/seed-lots/${id}/qr-code`);
+  },
+
+  // ✅ NOUVELLES MÉTHODES
+  async createChildLot(parentId: string, data: any) {
+    const transformedData = DataTransformer.transformSeedLotForAPI(data);
+    const response = await api.post<ApiResponse<SeedLot>>(
+      `/seed-lots/${parentId}/child-lots`,
+      transformedData
+    );
+    if (response.data.data) {
+      response.data.data = DataTransformer.transformSeedLotFromAPI(
+        response.data.data
+      );
+    }
+    return response;
+  },
+
+  async transferLot(
+    id: string,
+    data: {
+      targetMultiplierId: number;
+      quantity: number;
+      notes?: string;
+    }
+  ) {
+    const response = await api.post<ApiResponse<SeedLot>>(
+      `/seed-lots/${id}/transfer`,
+      data
+    );
+    if (response.data.data) {
+      response.data.data = DataTransformer.transformSeedLotFromAPI(
+        response.data.data
+      );
+    }
+    return response;
+  },
+
+  // Méthode utilitaire pour l'export
+  async export(format: "csv" | "xlsx" | "json" = "csv", params?: FilterParams) {
+    const response = await api.get(`/export/seed-lots`, {
+      params: { format, ...params },
+      responseType: "blob",
+    });
+    return response.data;
+  },
+
+  // Méthode pour obtenir les statistiques
+  async getStatistics(params?: FilterParams) {
+    const response = await api.get<ApiResponse<any>>("/seed-lots/statistics", {
+      params,
+    });
+    return response.data;
   },
 };

@@ -52,6 +52,7 @@ import type { SeedLot } from "../../types/entities";
 import { SEED_LEVELS, LOT_STATUSES } from "../../constants";
 import { formatDate, formatQuantity } from "../../utils/formatters";
 import { useDebounce } from "../../hooks/useDebounce";
+import { seedLotService } from "../../services/seedLotService"; // ✅ Utiliser le service
 
 const SeedLots: React.FC = () => {
   const navigate = useNavigate();
@@ -98,6 +99,7 @@ const SeedLots: React.FC = () => {
       // Le backend retourne { success: true, data: [...], meta: {...} }
       // MAIS le service SeedLotService retourne { lots: [...], meta: {...} }
       // On doit gérer les deux cas
+      const result = await seedLotService.getAll(params);
 
       if (response.data.lots) {
         // Structure du service
@@ -108,8 +110,8 @@ const SeedLots: React.FC = () => {
       } else {
         // Structure standard API
         return {
-          seedLots: response.data.data || [],
-          meta: response.data.meta || null,
+          seedLots: result.data.data || [],
+          meta: result.data.meta || null,
         };
       }
     },
@@ -123,8 +125,8 @@ const SeedLots: React.FC = () => {
   // Fonction pour obtenir le QR Code
   const fetchQRCode = async (lotId: string) => {
     try {
-      const response = await api.get(`/seed-lots/${lotId}/qr-code`);
-      return response.data.data?.qrCode || null;
+      const response = await seedLotService.getQRCode(lotId);
+      return response.data.data || null;
     } catch (error) {
       console.error("QR Code fetch error:", error);
       toast.error("Erreur lors de la génération du QR Code");
@@ -186,7 +188,20 @@ const SeedLots: React.FC = () => {
   const handleExport = async () => {
     try {
       toast.info("Export en cours...");
-      await apiService.downloadFile("/export/seed-lots", "lots_semences.csv");
+      const blob = await seedLotService.export("csv", {
+        search: debouncedSearch,
+        level: levelFilter,
+        status: statusFilter,
+      });
+
+      // Créer un lien de téléchargement
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "lots_semences.csv";
+      link.click();
+      window.URL.revokeObjectURL(url);
+
       toast.success("Export réussi !");
     } catch (error) {
       toast.error("Erreur lors de l'export");

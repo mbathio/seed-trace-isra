@@ -86,7 +86,8 @@ export class UserController {
   ): Promise<Response | void> {
     try {
       await UserService.deleteUser(parseInt(req.params.id));
-      return ResponseHandler.noContent(res, "Utilisateur supprimé avec succès");
+      // ✅ CORRECTION: noContent ne prend qu'un seul argument
+      return ResponseHandler.noContent(res);
     } catch (error) {
       next(error);
     }

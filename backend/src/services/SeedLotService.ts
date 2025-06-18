@@ -1,5 +1,5 @@
 // backend/src/services/SeedLotService.ts
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient, Prisma, SeedLevel, LotStatus } from "@prisma/client";
 import {
   generateLotId,
   getNextLevel,
@@ -36,11 +36,13 @@ interface CreateSeedLotData {
   level: string;
   quantity: number;
   productionDate: string;
+  expiryDate?: string;
   status?: string;
   multiplierId?: number;
   parcelId?: number;
   parentLotId?: string;
   notes?: string;
+  batchNumber?: string;
 }
 
 // Interface pour les données de mise à jour
@@ -95,19 +97,31 @@ export class SeedLotService {
       // Générer l'ID du lot
       const lotId = await generateLotId(data.level, variety.code);
 
+      // Convertir level et status en enums Prisma
+      const seedLevel = data.level as SeedLevel;
+      const lotStatus = (data.status || "PENDING") as LotStatus;
+
       // Créer le lot
       const seedLot = await prisma.seedLot.create({
         data: {
           id: lotId,
-          varietyId: data.varietyId,
-          level: data.level,
+          variety: { connect: { id: data.varietyId } },
+          level: seedLevel, // Utiliser l'enum
           quantity: data.quantity,
           productionDate: new Date(data.productionDate),
-          status: data.status || "PENDING",
-          multiplierId: data.multiplierId,
-          parcelId: data.parcelId,
-          parentLotId: data.parentLotId,
+          expiryDate: data.expiryDate ? new Date(data.expiryDate) : undefined,
+          status: lotStatus, // Utiliser l'enum
+          multiplier: data.multiplierId
+            ? { connect: { id: data.multiplierId } }
+            : undefined,
+          parcel: data.parcelId
+            ? { connect: { id: data.parcelId } }
+            : undefined,
+          parentLot: data.parentLotId
+            ? { connect: { id: data.parentLotId } }
+            : undefined,
           notes: data.notes,
+          batchNumber: data.batchNumber,
         },
         include: {
           variety: true,
@@ -154,12 +168,12 @@ export class SeedLotService {
         ];
       }
 
-      // Filtres spécifiques
+      // Filtres spécifiques avec conversion en enums
       if (params.level) {
-        where.level = params.level;
+        where.level = params.level as SeedLevel;
       }
       if (params.status) {
-        where.status = params.status;
+        where.status = params.status as LotStatus;
       }
       if (params.varietyId) {
         where.varietyId = Number(params.varietyId);
@@ -284,16 +298,34 @@ export class SeedLotService {
         throw new SeedLotError("LOT_NOT_FOUND", "Lot non trouvé");
       }
 
+      // Construire l'objet de mise à jour avec les relations Prisma
+      const updateData: Prisma.SeedLotUpdateInput = {
+        quantity: data.quantity,
+        notes: data.notes,
+      };
+
+      // Ajouter status seulement s'il est fourni
+      if (data.status) {
+        updateData.status = data.status as LotStatus;
+      }
+
+      // Gérer les relations avec connect/disconnect
+      if (data.multiplierId !== undefined) {
+        updateData.multiplier = data.multiplierId
+          ? { connect: { id: data.multiplierId } }
+          : { disconnect: true };
+      }
+
+      if (data.parcelId !== undefined) {
+        updateData.parcel = data.parcelId
+          ? { connect: { id: data.parcelId } }
+          : { disconnect: true };
+      }
+
       // Mettre à jour le lot
       const updatedLot = await prisma.seedLot.update({
         where: { id },
-        data: {
-          quantity: data.quantity,
-          status: data.status,
-          notes: data.notes,
-          multiplierId: data.multiplierId,
-          parcelId: data.parcelId,
-        },
+        data: updateData,
         include: {
           variety: true,
           multiplier: true,
@@ -506,6 +538,7 @@ export class SeedLotService {
         multiplierId: targetMultiplierId,
         parentLotId: lotId,
         notes: notes || `Transféré depuis ${lotId}`,
+        status: sourceLot.status, // Conserver le statut du lot source
       });
 
       // Mettre à jour la quantité du lot source

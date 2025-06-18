@@ -17,7 +17,11 @@ export class SeedLotController {
   /**
    * Récupère la liste des lots avec pagination et filtres
    */
-  static async getSeedLots(req: Request, res: Response, next: NextFunction) {
+  static async getSeedLots(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
     try {
       logger.info("Getting seed lots with params:", req.query);
 
@@ -26,7 +30,7 @@ export class SeedLotController {
       // Retourner les données dans le format standard
       return ResponseHandler.success(
         res,
-        result.lots,
+        result.data, // Changé de result.lots à result.data
         "Lots récupérés avec succès",
         result.meta
       );
@@ -38,7 +42,11 @@ export class SeedLotController {
   /**
    * Récupère un lot par son ID
    */
-  static async getSeedLotById(req: Request, res: Response, next: NextFunction) {
+  static async getSeedLotById(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
     try {
       const { id } = req.params;
       const seedLot = await SeedLotService.getSeedLotById(id);
@@ -52,7 +60,11 @@ export class SeedLotController {
   /**
    * Crée un nouveau lot
    */
-  static async createSeedLot(req: Request, res: Response, next: NextFunction) {
+  static async createSeedLot(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
     try {
       logger.info("Creating seed lot with data:", req.body);
 
@@ -71,7 +83,11 @@ export class SeedLotController {
   /**
    * Met à jour un lot
    */
-  static async updateSeedLot(req: Request, res: Response, next: NextFunction) {
+  static async updateSeedLot(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
     try {
       const { id } = req.params;
 
@@ -90,13 +106,18 @@ export class SeedLotController {
   /**
    * Supprime un lot
    */
-  static async deleteSeedLot(req: Request, res: Response, next: NextFunction) {
+  static async deleteSeedLot(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
     try {
       const { id } = req.params;
 
       await SeedLotService.deleteSeedLot(id);
 
-      return ResponseHandler.deleted(res, "Lot supprimé avec succès");
+      // Utiliser noContent pour les suppressions
+      return ResponseHandler.noContent(res);
     } catch (error) {
       next(error);
     }
@@ -109,7 +130,7 @@ export class SeedLotController {
     req: Request,
     res: Response,
     next: NextFunction
-  ) {
+  ): Promise<Response | void> {
     try {
       const { id } = req.params;
 
@@ -128,7 +149,11 @@ export class SeedLotController {
   /**
    * Génère le QR Code d'un lot
    */
-  static async getQRCode(req: Request, res: Response, next: NextFunction) {
+  static async getQRCode(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
     try {
       const { id } = req.params;
 
@@ -166,7 +191,11 @@ export class SeedLotController {
   /**
    * Crée un lot enfant
    */
-  static async createChildLot(req: Request, res: Response, next: NextFunction) {
+  static async createChildLot(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
     try {
       const { id } = req.params;
 
@@ -185,7 +214,11 @@ export class SeedLotController {
   /**
    * Transfère un lot
    */
-  static async transferLot(req: Request, res: Response, next: NextFunction) {
+  static async transferLot(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
     try {
       const { id } = req.params;
       const { targetMultiplierId, quantity, notes } = req.body;
