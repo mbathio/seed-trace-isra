@@ -134,4 +134,18 @@ export class ResponseHandler {
       data: data || null,
     });
   }
+
+  static error(
+    res: Response,
+    message: string,
+    statusCode: number = 400,
+    errors?: string[]
+  ): Response {
+    return res.status(statusCode).json({
+      success: false,
+      message,
+      data: null,
+      errors,
+    });
+  }
 }
