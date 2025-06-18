@@ -99,19 +99,17 @@ const SeedLots: React.FC = () => {
       // Le backend retourne { success: true, data: [...], meta: {...} }
       // MAIS le service SeedLotService retourne { lots: [...], meta: {...} }
       // On doit gérer les deux cas
-      const result = await seedLotService.getAll(params);
 
-      if (response.data.lots) {
-        // Structure du service
+      if (response.data.success && response.data.data) {
         return {
-          seedLots: response.data.lots,
-          meta: response.data.meta,
+          seedLots: response.data.data.lots || [],
+          meta: response.data.data.meta || null,
         };
       } else {
-        // Structure standard API
+        // Fallback si la structure est différente
         return {
-          seedLots: result.data.data || [],
-          meta: result.data.meta || null,
+          seedLots: [],
+          meta: null,
         };
       }
     },

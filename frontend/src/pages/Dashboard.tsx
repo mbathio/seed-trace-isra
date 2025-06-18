@@ -1,4 +1,3 @@
-// frontend/src/pages/DashboardPage.tsx - PAGE DASHBOARD CORRIGÉE
 import React from "react";
 import { Link } from "react-router-dom";
 import {
@@ -14,6 +13,9 @@ import {
   Leaf,
   BarChart3,
   PlusCircle,
+  Calendar,
+  MapPin,
+  Loader2,
 } from "lucide-react";
 import {
   Card,
@@ -21,105 +23,242 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { StatsCard } from "../components/charts/StatsCard";
-import { ProductionChart } from "../components/charts/ProductionChart";
-import { useApiQuery } from "../hooks/useApi";
-import { LoadingSpinner } from "../layouts/LoadingSpinner";
-import { DashboardStats } from "../types/entities";
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 
-// ✅ CORRECTION: Type pour les données de graphique
+// Types
+interface DashboardStats {
+  overview: {
+    totalSeedLots: number;
+    activeSeedLots: number;
+    totalProductions: number;
+    completedProductions: number;
+    totalQualityControls: number;
+    passedQualityControls: number;
+    activeMultipliers: number;
+    totalVarieties: number;
+  };
+  rates: {
+    productionCompletionRate: number;
+    qualityPassRate: number;
+  };
+  distribution: {
+    lotsByLevel: Array<{
+      level: string;
+      count: number;
+      totalQuantity: number;
+    }>;
+    topVarieties: Array<{
+      variety: {
+        id: number;
+        name: string;
+        code: string;
+      };
+      count: number;
+      totalQuantity: number;
+    }>;
+  };
+  activity: {
+    recentProductions: number;
+  };
+}
+
 interface ChartDataPoint {
   month: string;
   productions: number;
   yield: number;
 }
 
-const DashboardPage: React.FC = () => {
-  // Récupération des statistiques du dashboard
-  const {
-    data: stats,
-    isLoading: statsLoading,
-    error: statsError,
-  } = useApiQuery<DashboardStats>(
-    ["dashboard", "stats"],
-    "/statistics/dashboard",
-    {},
-    {
-      refetchInterval: 5 * 60 * 1000, // Actualiser toutes les 5 minutes
-    }
-  );
+// Composant de carte de statistiques
+const StatsCard: React.FC<{
+  title: string;
+  value: string | number;
+  icon: React.ElementType;
+  color: string;
+  change?: {
+    value: number;
+    type: "increase" | "decrease";
+  };
+}> = ({ title, value, icon: Icon, color, change }) => (
+  <Card className="hover:shadow-lg transition-shadow">
+    <CardContent className="p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <div className="flex items-baseline mt-2">
+            <p className="text-2xl font-bold">{value}</p>
+            {change && (
+              <span
+                className={`ml-2 text-sm font-medium ${
+                  change.type === "increase" ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {change.type === "increase" ? "+" : "-"}
+                {Math.abs(change.value)}%
+              </span>
+            )}
+          </div>
+        </div>
+        <div
+          className={`p-3 rounded-full bg-opacity-10 ${color.replace(
+            "text-",
+            "bg-"
+          )}`}
+        >
+          <Icon className={`h-6 w-6 ${color}`} />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
 
-  // Récupération des tendances mensuelles
-  const { data: trends, isLoading: trendsLoading } = useApiQuery<
-    ChartDataPoint[]
-  >(["dashboard", "trends"], "/statistics/trends", { months: 6 });
+// Hook simulé pour les données (remplace useApiQuery)
+const useDashboardData = () => {
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [stats, setStats] = React.useState<DashboardStats | null>(null);
+  const [trends, setTrends] = React.useState<ChartDataPoint[]>([]);
 
-  // ✅ CORRECTION: Données factices typées correctement
-  const defaultChartData: ChartDataPoint[] = [
-    { month: "Jan", productions: 12, yield: 8.5 },
-    { month: "Fév", productions: 15, yield: 9.2 },
-    { month: "Mar", productions: 18, yield: 9.8 },
-    { month: "Avr", productions: 22, yield: 10.1 },
-    { month: "Mai", productions: 25, yield: 9.9 },
-    { month: "Jun", productions: 28, yield: 10.3 },
+  React.useEffect(() => {
+    // Simuler le chargement des données
+    setTimeout(() => {
+      // Données de statistiques
+      setStats({
+        overview: {
+          totalSeedLots: 524,
+          activeSeedLots: 187,
+          totalProductions: 42,
+          completedProductions: 28,
+          totalQualityControls: 156,
+          passedQualityControls: 148,
+          activeMultipliers: 12,
+          totalVarieties: 18,
+        },
+        rates: {
+          productionCompletionRate: 66.7,
+          qualityPassRate: 94.9,
+        },
+        distribution: {
+          lotsByLevel: [
+            { level: "G0", count: 12, totalQuantity: 450 },
+            { level: "G1", count: 24, totalQuantity: 1200 },
+            { level: "G2", count: 36, totalQuantity: 2800 },
+            { level: "G3", count: 48, totalQuantity: 4500 },
+            { level: "G4", count: 28, totalQuantity: 2100 },
+            { level: "R1", count: 32, totalQuantity: 3200 },
+            { level: "R2", count: 7, totalQuantity: 500 },
+          ],
+          topVarieties: [
+            {
+              variety: { id: 1, name: "ISRIZ 15", code: "ISRIZ-15" },
+              count: 45,
+              totalQuantity: 3500,
+            },
+            {
+              variety: { id: 2, name: "Sahel 108", code: "SAHEL-108" },
+              count: 38,
+              totalQuantity: 2800,
+            },
+            {
+              variety: { id: 3, name: "ISRIZ 13", code: "ISRIZ-13" },
+              count: 32,
+              totalQuantity: 2400,
+            },
+            {
+              variety: { id: 4, name: "Sahel 117", code: "SAHEL-117" },
+              count: 28,
+              totalQuantity: 2100,
+            },
+            {
+              variety: { id: 5, name: "ISRIZ 17", code: "ISRIZ-17" },
+              count: 24,
+              totalQuantity: 1800,
+            },
+          ],
+        },
+        activity: {
+          recentProductions: 8,
+        },
+      });
+
+      // Données de tendances
+      setTrends([
+        { month: "Jan", productions: 12, yield: 8.5 },
+        { month: "Fév", productions: 15, yield: 9.2 },
+        { month: "Mar", productions: 18, yield: 9.8 },
+        { month: "Avr", productions: 22, yield: 10.1 },
+        { month: "Mai", productions: 25, yield: 9.9 },
+        { month: "Jun", productions: 28, yield: 10.3 },
+      ]);
+
+      setIsLoading(false);
+    }, 1000);
+  }, []);
+
+  return { stats, trends, isLoading };
+};
+
+// Composant principal
+export default function DashboardPage() {
+  const { stats, trends, isLoading } = useDashboardData();
+
+  // Couleurs pour les graphiques
+  const COLORS = [
+    "#10b981",
+    "#3b82f6",
+    "#f59e0b",
+    "#ef4444",
+    "#8b5cf6",
+    "#06b6d4",
+    "#f97316",
   ];
 
-  // ✅ CORRECTION: Gestion des données du graphique avec type correct
-  const chartData = trends || defaultChartData;
-
-  if (statsLoading) {
+  if (isLoading) {
     return (
-      <LoadingSpinner size="lg" message="Chargement du tableau de bord..." />
-    );
-  }
-
-  if (statsError) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-[600px]">
         <div className="text-center">
-          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Erreur de chargement</h2>
-          <p className="text-muted-foreground mb-4">
-            Impossible de charger les données du tableau de bord
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">
+            Chargement du tableau de bord...
           </p>
-          <Button onClick={() => window.location.reload()}>Réessayer</Button>
         </div>
       </div>
     );
   }
 
-  // Statistiques par défaut si pas de données
-  const defaultStats: DashboardStats = {
-    overview: {
-      totalSeedLots: 0,
-      activeSeedLots: 0,
-      totalProductions: 0,
-      completedProductions: 0,
-      totalQualityControls: 0,
-      passedQualityControls: 0,
-      activeMultipliers: 0,
-      totalVarieties: 0,
-    },
-    rates: {
-      productionCompletionRate: 0,
-      qualityPassRate: 0,
-    },
-    distribution: {
-      lotsByLevel: [],
-      topVarieties: [],
-    },
-    activity: {
-      recentProductions: 0,
-    },
-  };
-
-  const dashboardData = stats || defaultStats;
+  if (!stats) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Erreur de chargement</h2>
+          <p className="text-muted-foreground">
+            Impossible de charger les données du tableau de bord
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* En-tête du dashboard */}
+    <div className="space-y-6 p-6">
+      {/* En-tête */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Tableau de bord</h1>
@@ -129,7 +268,7 @@ const DashboardPage: React.FC = () => {
         </div>
         <div className="flex space-x-2">
           <Button asChild>
-            <Link to="/dashboard/seeds/create">
+            <Link to="/dashboard/seed-lots/create">
               <PlusCircle className="h-4 w-4 mr-2" />
               Nouveau lot
             </Link>
@@ -137,47 +276,50 @@ const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Cartes de statistiques principales */}
+      {/* Cartes de statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title="Lots de semences"
-          value={dashboardData.overview.totalSeedLots}
+          value={stats.overview.totalSeedLots}
           icon={Package}
           color="text-blue-600"
           change={{
-            value: dashboardData.overview.activeSeedLots,
+            value: Math.round(
+              (stats.overview.activeSeedLots / stats.overview.totalSeedLots) *
+                100
+            ),
             type: "increase",
           }}
         />
         <StatsCard
           title="Productions"
-          value={dashboardData.overview.totalProductions}
+          value={stats.overview.totalProductions}
           icon={Tractor}
           color="text-green-600"
           change={{
-            value: Math.round(dashboardData.rates.productionCompletionRate),
+            value: Math.round(stats.rates.productionCompletionRate),
             type: "increase",
           }}
         />
         <StatsCard
           title="Contrôles qualité"
-          value={dashboardData.overview.totalQualityControls}
+          value={stats.overview.totalQualityControls}
           icon={FlaskConical}
           color="text-purple-600"
           change={{
-            value: Math.round(dashboardData.rates.qualityPassRate),
+            value: Math.round(stats.rates.qualityPassRate),
             type: "increase",
           }}
         />
         <StatsCard
           title="Multiplicateurs actifs"
-          value={dashboardData.overview.activeMultipliers}
+          value={stats.overview.activeMultipliers}
           icon={Users}
           color="text-orange-600"
         />
       </div>
 
-      {/* Section des graphiques et aperçus */}
+      {/* Graphiques */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Graphique des productions */}
         <Card>
@@ -191,11 +333,29 @@ const DashboardPage: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {trendsLoading ? (
-              <LoadingSpinner size="md" />
-            ) : (
-              <ProductionChart data={chartData} type="line" />
-            )}
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={trends}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="productions"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  name="Productions"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="yield"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  name="Rendement (t/ha)"
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
@@ -211,37 +371,33 @@ const DashboardPage: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {dashboardData.distribution.lotsByLevel.length > 0 ? (
-                dashboardData.distribution.lotsByLevel.map((item) => (
-                  <div
-                    key={item.level}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      <span className="font-medium">{item.level}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold">{item.count} lots</div>
-                      <div className="text-sm text-muted-foreground">
-                        {item.totalQuantity}kg
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <Sprout className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-muted-foreground">Aucun lot de semences</p>
-                </div>
-              )}
-            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={stats.distribution.lotsByLevel}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ level, count }) => `${level}: ${count}`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="count"
+                >
+                  {stats.distribution.lotsByLevel.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
 
-      {/* Section des actions rapides et aperçus */}
+      {/* Sections supplémentaires */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Actions rapides */}
         <Card>
@@ -253,13 +409,13 @@ const DashboardPage: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <Button asChild variant="outline" className="w-full justify-start">
-              <Link to="/dashboard/seeds/create">
+              <Link to="/dashboard/seed-lots/create">
                 <Package className="h-4 w-4 mr-2" />
                 Créer un lot de semences
               </Link>
             </Button>
             <Button asChild variant="outline" className="w-full justify-start">
-              <Link to="/dashboard/quality/create">
+              <Link to="/dashboard/quality-controls/create">
                 <FlaskConical className="h-4 w-4 mr-2" />
                 Nouveau contrôle qualité
               </Link>
@@ -279,59 +435,46 @@ const DashboardPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Aperçu des variétés principales */}
+        {/* Top variétés */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Variétés principales
-              <Link to="/dashboard/varieties">
-                <Button variant="ghost" size="sm">
-                  Voir tout
-                </Button>
-              </Link>
+              <span>Variétés principales</span>
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/dashboard/varieties">Voir tout</Link>
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {dashboardData.distribution.topVarieties.length > 0 ? (
-                dashboardData.distribution.topVarieties.slice(0, 5).map(
-                  (
-                    item // ✅ CORRECTION: Suppression du paramètre index inutilisé
-                  ) => (
+              {stats.distribution.topVarieties.map((item, index) => (
+                <div
+                  key={item.variety.id}
+                  className="flex items-center justify-between"
+                >
+                  <div className="flex items-center space-x-3">
                     <div
-                      key={item.variety.id}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span className="text-sm font-medium">
-                          {item.variety.name}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-semibold">
-                          {item.count}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          lots
-                        </div>
-                      </div>
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    />
+                    <div>
+                      <p className="font-medium">{item.variety.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.variety.code}
+                      </p>
                     </div>
-                  )
-                )
-              ) : (
-                <div className="text-center py-8">
-                  <Leaf className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Aucune variété
-                  </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold">{item.count}</p>
+                    <p className="text-xs text-muted-foreground">lots</p>
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Alertes et notifications */}
+        {/* Alertes */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -342,8 +485,8 @@ const DashboardPage: React.FC = () => {
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-start space-x-3 p-3 bg-orange-50 rounded-lg">
-                <Clock className="h-4 w-4 text-orange-500 mt-0.5" />
-                <div className="flex-1">
+                <Clock className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                <div>
                   <p className="text-sm font-medium">Lots expirant bientôt</p>
                   <p className="text-xs text-muted-foreground">
                     3 lots expirent dans les 30 prochains jours
@@ -352,8 +495,8 @@ const DashboardPage: React.FC = () => {
               </div>
 
               <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
-                <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5" />
-                <div className="flex-1">
+                <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                <div>
                   <p className="text-sm font-medium">Contrôles en attente</p>
                   <p className="text-xs text-muted-foreground">
                     5 lots nécessitent un contrôle qualité
@@ -362,12 +505,12 @@ const DashboardPage: React.FC = () => {
               </div>
 
               <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
-                <TrendingUp className="h-4 w-4 text-green-500 mt-0.5" />
-                <div className="flex-1">
+                <TrendingUp className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                <div>
                   <p className="text-sm font-medium">Productions récentes</p>
                   <p className="text-xs text-muted-foreground">
-                    {dashboardData.activity.recentProductions} nouvelles
-                    productions ce mois
+                    {stats.activity.recentProductions} nouvelles productions ce
+                    mois
                   </p>
                 </div>
               </div>
@@ -376,15 +519,18 @@ const DashboardPage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Section des liens rapides */}
+      {/* Statistiques détaillées */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <Link to="/dashboard/seeds">
+          <Link to="/dashboard/seed-lots">
             <CardContent className="p-6 text-center">
               <Package className="h-8 w-8 mx-auto mb-2 text-blue-600" />
               <h3 className="font-semibold">Lots de semences</h3>
+              <p className="text-2xl font-bold text-blue-600">
+                {stats.overview.totalSeedLots}
+              </p>
               <p className="text-sm text-muted-foreground">
-                {dashboardData.overview.totalSeedLots} lots
+                {stats.overview.activeSeedLots} actifs
               </p>
             </CardContent>
           </Link>
@@ -395,9 +541,10 @@ const DashboardPage: React.FC = () => {
             <CardContent className="p-6 text-center">
               <Leaf className="h-8 w-8 mx-auto mb-2 text-green-600" />
               <h3 className="font-semibold">Variétés</h3>
-              <p className="text-sm text-muted-foreground">
-                {dashboardData.overview.totalVarieties} variétés
+              <p className="text-2xl font-bold text-green-600">
+                {stats.overview.totalVarieties}
               </p>
+              <p className="text-sm text-muted-foreground">Enregistrées</p>
             </CardContent>
           </Link>
         </Card>
@@ -407,27 +554,81 @@ const DashboardPage: React.FC = () => {
             <CardContent className="p-6 text-center">
               <Users className="h-8 w-8 mx-auto mb-2 text-orange-600" />
               <h3 className="font-semibold">Multiplicateurs</h3>
-              <p className="text-sm text-muted-foreground">
-                {dashboardData.overview.activeMultipliers} actifs
+              <p className="text-2xl font-bold text-orange-600">
+                {stats.overview.activeMultipliers}
               </p>
+              <p className="text-sm text-muted-foreground">Actifs</p>
             </CardContent>
           </Link>
         </Card>
 
         <Card className="hover:shadow-md transition-shadow cursor-pointer">
-          <Link to="/dashboard/quality">
+          <Link to="/dashboard/quality-controls">
             <CardContent className="p-6 text-center">
               <FlaskConical className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-              <h3 className="font-semibold">Contrôles qualité</h3>
-              <p className="text-sm text-muted-foreground">
-                {dashboardData.overview.totalQualityControls} contrôles
+              <h3 className="font-semibold">Taux de réussite</h3>
+              <p className="text-2xl font-bold text-purple-600">
+                {Math.round(stats.rates.qualityPassRate)}%
               </p>
+              <p className="text-sm text-muted-foreground">Contrôles réussis</p>
             </CardContent>
           </Link>
         </Card>
       </div>
+
+      {/* Activité récente */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Activité récente</CardTitle>
+          <CardDescription>Dernières actions dans le système</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <div className="p-2 bg-green-100 rounded-full">
+                <Package className="h-4 w-4 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium">Nouveau lot créé</p>
+                <p className="text-sm text-muted-foreground">
+                  ISRIZ-15 - 500kg - Niveau G3
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground">Il y a 2h</p>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center space-x-4">
+              <div className="p-2 bg-purple-100 rounded-full">
+                <FlaskConical className="h-4 w-4 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium">Contrôle qualité réussi</p>
+                <p className="text-sm text-muted-foreground">
+                  Lot SL-G2-2024-045 - Germination 92%
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground">Il y a 4h</p>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center space-x-4">
+              <div className="p-2 bg-blue-100 rounded-full">
+                <Tractor className="h-4 w-4 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium">Production terminée</p>
+                <p className="text-sm text-muted-foreground">
+                  Parcelle Nord - Rendement 9.8 t/ha
+                </p>
+              </div>
+              <p className="text-sm text-muted-foreground">Hier</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
-};
-
-export default DashboardPage;
+}
