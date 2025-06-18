@@ -21,7 +21,7 @@ describe("Auth Endpoints", () => {
     it("should login with valid credentials", async () => {
       const res = await request(app).post("/api/auth/login").send({
         email: "adiop@isra.sn",
-        password: "12345",
+        password: "123456",
       });
 
       // Debug : afficher la réponse en cas d'erreur
