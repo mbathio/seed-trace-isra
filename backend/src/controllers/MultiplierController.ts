@@ -89,10 +89,7 @@ export class MultiplierController {
   ): Promise<Response | void> {
     try {
       await MultiplierService.deleteMultiplier(parseInt(req.params.id));
-      return ResponseHandler.noContent(
-        res,
-        "Multiplicateur supprimé avec succès"
-      );
+      return ResponseHandler.noContent(res);
     } catch (error) {
       next(error);
     }

@@ -26,6 +26,8 @@ export interface PaginationParams {
 // ✅ CORRIGÉ: Interface FilterParams étendue avec toutes les propriétés nécessaires
 export interface FilterParams {
   // Filtres généraux
+  search?: string; // ✅ AJOUTÉ: Propriété search manquante
+
   level?: string;
   status?: string;
   cropType?: string;

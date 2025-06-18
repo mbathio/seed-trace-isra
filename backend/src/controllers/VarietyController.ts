@@ -85,7 +85,7 @@ export class VarietyController {
   ): Promise<Response | void> {
     try {
       await VarietyService.deleteVariety(req.params.id);
-      return ResponseHandler.noContent(res, "Variété supprimée avec succès");
+      return ResponseHandler.noContent(res);
     } catch (error) {
       next(error);
     }

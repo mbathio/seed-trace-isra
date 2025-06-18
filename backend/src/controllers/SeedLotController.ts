@@ -30,7 +30,7 @@ export class SeedLotController {
       // Retourner les données dans le format standard
       return ResponseHandler.success(
         res,
-        result.data, // Changé de result.lots à result.data
+        result.lots, // Changé de result.lots à result.data
         "Lots récupérés avec succès",
         result.meta
       );

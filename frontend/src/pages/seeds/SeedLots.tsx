@@ -47,7 +47,7 @@ import {
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { toast } from "react-toastify";
-import { api, apiService } from "../../services/api";
+import { api } from "../../services/api";
 import type { SeedLot } from "../../types/entities";
 import { SEED_LEVELS, LOT_STATUSES } from "../../constants";
 import { formatDate, formatQuantity } from "../../utils/formatters";

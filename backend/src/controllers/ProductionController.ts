@@ -89,7 +89,7 @@ export class ProductionController {
   ): Promise<Response | void> {
     try {
       await ProductionService.deleteProduction(parseInt(req.params.id));
-      return ResponseHandler.noContent(res, "Production supprimée avec succès");
+      return ResponseHandler.noContent(res);
     } catch (error) {
       next(error);
     }

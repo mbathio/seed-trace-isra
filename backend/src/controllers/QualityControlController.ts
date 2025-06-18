@@ -99,10 +99,7 @@ export class QualityControlController {
   ): Promise<Response | void> {
     try {
       await QualityControlService.deleteQualityControl(parseInt(req.params.id));
-      return ResponseHandler.noContent(
-        res,
-        "Contrôle qualité supprimé avec succès"
-      );
+      return ResponseHandler.noContent(res);
     } catch (error) {
       next(error);
     }

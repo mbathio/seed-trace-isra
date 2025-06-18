@@ -83,7 +83,7 @@ export class ParcelController {
   ): Promise<Response | void> {
     try {
       await ParcelService.deleteParcel(parseInt(req.params.id));
-      return ResponseHandler.noContent(res, "Parcelle supprimée avec succès");
+      return ResponseHandler.noContent(res);
     } catch (error) {
       next(error);
     }

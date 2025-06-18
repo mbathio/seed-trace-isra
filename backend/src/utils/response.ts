@@ -1,296 +1,123 @@
 // backend/src/utils/response.ts
 import { Response } from "express";
 
-/**
- * Interface standard pour toutes les réponses API
- */
-interface ApiResponse<T = any> {
+export interface ApiResponse<T = any> {
   success: boolean;
   message: string;
-  data?: T;
-  meta?: any;
+  data: T | null;
   errors?: string[];
+  meta?: {
+    page?: number;
+    pageSize?: number;
+    totalCount?: number;
+    totalPages?: number;
+    hasNextPage?: boolean;
+    hasPreviousPage?: boolean;
+  };
 }
 
-/**
- * Classe utilitaire pour générer des réponses API uniformes
- */
 export class ResponseHandler {
-  /**
-   * Réponse de succès générique
-   */
   static success<T>(
     res: Response,
     data: T,
-    message: string = "Opération réussie",
+    message = "Opération réussie",
     meta?: any
   ): Response {
     const response: ApiResponse<T> = {
       success: true,
       message,
       data,
+      ...(meta && { meta }),
     };
-
-    if (meta) {
-      response.meta = meta;
-    }
-
     return res.status(200).json(response);
   }
 
-  /**
-   * Réponse pour une création réussie
-   */
   static created<T>(
     res: Response,
     data: T,
-    message: string = "Ressource créée avec succès"
+    message = "Ressource créée avec succès"
   ): Response {
-    return res.status(201).json({
+    const response: ApiResponse<T> = {
       success: true,
       message,
       data,
-    });
+    };
+    return res.status(201).json(response);
   }
 
-  /**
-   * Réponse pour une mise à jour réussie
-   */
   static updated<T>(
     res: Response,
     data: T,
-    message: string = "Ressource mise à jour avec succès"
+    message = "Ressource mise à jour avec succès"
   ): Response {
-    return res.status(200).json({
+    const response: ApiResponse<T> = {
       success: true,
       message,
       data,
-    });
-  }
-
-  /**
-   * Réponse pour une suppression réussie
-   */
-  static deleted(
-    res: Response,
-    message: string = "Ressource supprimée avec succès"
-  ): Response {
-    return res.status(200).json({
-      success: true,
-      message,
-      data: null,
-    });
-  }
-
-  /**
-   * Réponse d'erreur générique
-   */
-  static error(
-    res: Response,
-    message: string = "Une erreur est survenue",
-    statusCode: number = 400,
-    errors?: string[]
-  ): Response {
-    const response: ApiResponse = {
-      success: false,
-      message,
     };
+    return res.status(200).json(response);
+  }
 
-    if (errors && errors.length > 0) {
-      response.errors = errors;
+  static noContent(res: Response, message?: string): Response {
+    // 204 No Content ne doit pas avoir de body selon la spec HTTP
+    // Si un message est fourni, on le log en développement
+    if (message && process.env.NODE_ENV === "development") {
+      console.log(`204 No Content: ${message}`);
     }
-
-    return res.status(statusCode).json(response);
-  }
-
-  /**
-   * Réponse pour ressource non trouvée
-   */
-  static notFound(
-    res: Response,
-    message: string = "Ressource non trouvée"
-  ): Response {
-    return res.status(404).json({
-      success: false,
-      message,
-      data: null,
-    });
-  }
-
-  /**
-   * Réponse pour accès non autorisé
-   */
-  static unauthorized(
-    res: Response,
-    message: string = "Accès non autorisé"
-  ): Response {
-    return res.status(401).json({
-      success: false,
-      message,
-      data: null,
-    });
-  }
-
-  /**
-   * Réponse pour accès interdit
-   */
-  static forbidden(
-    res: Response,
-    message: string = "Accès interdit"
-  ): Response {
-    return res.status(403).json({
-      success: false,
-      message,
-      data: null,
-    });
-  }
-
-  /**
-   * Réponse pour validation échouée
-   */
-  static validationError(
-    res: Response,
-    errors: any[],
-    message: string = "Erreur de validation"
-  ): Response {
-    return res.status(422).json({
-      success: false,
-      message,
-      errors,
-    });
-  }
-
-  /**
-   * Réponse pour conflit (ex: duplication)
-   */
-  static conflict(
-    res: Response,
-    message: string = "Conflit avec une ressource existante"
-  ): Response {
-    return res.status(409).json({
-      success: false,
-      message,
-      data: null,
-    });
-  }
-
-  /**
-   * Réponse pour erreur serveur
-   */
-  static serverError(
-    res: Response,
-    message: string = "Erreur interne du serveur",
-    error?: any
-  ): Response {
-    const response: ApiResponse = {
-      success: false,
-      message,
-    };
-
-    // En développement, inclure les détails de l'erreur
-    if (process.env.NODE_ENV === "development" && error) {
-      response.data = {
-        error: error.message || error,
-        stack: error.stack,
-      };
-    }
-
-    return res.status(500).json(response);
-  }
-
-  /**
-   * Réponse pour liste paginée
-   */
-  static paginated<T>(
-    res: Response,
-    data: T[],
-    pagination: {
-      page: number;
-      pageSize: number;
-      totalCount: number;
-      totalPages: number;
-    },
-    message: string = "Liste récupérée avec succès"
-  ): Response {
-    return res.status(200).json({
-      success: true,
-      message,
-      data,
-      meta: {
-        pagination: {
-          ...pagination,
-          hasNextPage: pagination.page < pagination.totalPages,
-          hasPreviousPage: pagination.page > 1,
-        },
-      },
-    });
-  }
-
-  /**
-   * Réponse pour opération sans contenu
-   */
-  static noContent(res: Response): Response {
     return res.status(204).send();
   }
 
-  /**
-   * Réponse pour requête mal formée
-   */
-  static badRequest(
+  static error(
     res: Response,
-    message: string = "Requête invalide",
+    message = "Une erreur s'est produite",
+    statusCode = 500,
     errors?: string[]
   ): Response {
     const response: ApiResponse = {
       success: false,
       message,
-    };
-
-    if (errors) {
-      response.errors = errors;
-    }
-
-    return res.status(400).json(response);
-  }
-
-  /**
-   * Réponse pour limite de taux dépassée
-   */
-  static tooManyRequests(
-    res: Response,
-    message: string = "Trop de requêtes, veuillez réessayer plus tard"
-  ): Response {
-    return res.status(429).json({
-      success: false,
-      message,
       data: null,
-    });
+      ...(errors && { errors }),
+    };
+    return res.status(statusCode).json(response);
   }
 
-  /**
-   * Réponse personnalisée
-   */
-  static custom(
+  static badRequest(
     res: Response,
-    statusCode: number,
-    success: boolean,
-    message: string,
-    data?: any,
-    meta?: any
+    message = "Requête invalide",
+    errors?: string[]
   ): Response {
-    const response: ApiResponse = {
-      success,
-      message,
-    };
+    return this.error(res, message, 400, errors);
+  }
 
-    if (data !== undefined) {
-      response.data = data;
-    }
+  static unauthorized(res: Response, message = "Non autorisé"): Response {
+    return this.error(res, message, 401);
+  }
 
-    if (meta) {
-      response.meta = meta;
-    }
+  static forbidden(res: Response, message = "Accès interdit"): Response {
+    return this.error(res, message, 403);
+  }
 
-    return res.status(statusCode).json(response);
+  static notFound(res: Response, message = "Ressource non trouvée"): Response {
+    return this.error(res, message, 404);
+  }
+
+  static conflict(res: Response, message = "Conflit de données"): Response {
+    return this.error(res, message, 409);
+  }
+
+  static validationError(
+    res: Response,
+    errors: string[],
+    message = "Erreur de validation"
+  ): Response {
+    return this.error(res, message, 422, errors);
+  }
+
+  static serverError(
+    res: Response,
+    message = "Erreur serveur interne"
+  ): Response {
+    return this.error(res, message, 500);
   }
 }
