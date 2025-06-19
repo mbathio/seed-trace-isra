@@ -6,16 +6,28 @@ import { DataTransformer } from "../utils/transformers";
 
 export const seedLotService = {
   async getAll(params?: PaginationParams & FilterParams) {
-    const response = await api.get<ApiResponse<SeedLot[]>>("/seed-lots", {
+    const response = await api.get<ApiResponse<any>>("/seed-lots", {
       params,
     });
-    // Transformer les données reçues
-    if (response.data.data) {
-      response.data.data = response.data.data.map((lot) =>
-        DataTransformer.transformSeedLotFromAPI(lot)
-      );
-    }
-    return response;
+
+    // Gérer la structure de réponse
+    const seedLots = response.data.data || [];
+    const meta = response.data.meta || null;
+
+    // Transformer les données si nécessaire
+    const transformedSeedLots = seedLots.map((lot: any) => ({
+      ...lot,
+      // Transformer les enums si nécessaire
+      status: lot.status?.toLowerCase().replace(/_/g, "-"),
+      level: lot.level,
+    }));
+
+    return {
+      data: {
+        data: transformedSeedLots,
+        meta: meta,
+      },
+    };
   },
 
   async getById(id: string) {

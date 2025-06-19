@@ -51,6 +51,21 @@ interface CreateVarietyForm {
   releaseYear?: number;
 }
 
+const transformVarietyForAPI = (data: CreateVarietyForm) => {
+  return {
+    ...data,
+    cropType: data.cropType.toUpperCase(), // Transformer en majuscules pour l'API
+  };
+};
+
+const createMutation = useMutation({
+  mutationFn: async (data: CreateVarietyForm) => {
+    const transformedData = transformVarietyForAPI(data);
+    const response = await api.post("/varieties", transformedData);
+    return response.data;
+  },
+});
+
 // ✅ Schéma de validation local adapté à l'interface
 const createVarietySchema = yup.object({
   code: yup

@@ -102,8 +102,8 @@ const SeedLots: React.FC = () => {
 
       if (response.data.success && response.data.data) {
         return {
-          seedLots: response.data.data.lots || [],
-          meta: response.data.data.meta || null,
+          seedLots: response.data.data || [],
+          meta: response.data.meta || null,
         };
       } else {
         // Fallback si la structure est différente

@@ -223,7 +223,7 @@ export class SeedLotService {
       const totalPages = Math.ceil(totalCount / pageSize);
 
       return {
-        lots: seedLots,
+        data: seedLots,
         meta: {
           totalCount,
           page,
