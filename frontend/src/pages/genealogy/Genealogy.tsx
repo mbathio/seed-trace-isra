@@ -42,7 +42,8 @@ const Genealogy: React.FC = () => {
   const debouncedSearch = useDebounce(search, 300);
 
   // ✅ CORRIGÉ: Récupérer la liste des lots avec le service unifié
-  const { data: seedLots } = useQuery<ApiResponse<SeedLot[]>>({
+  const seedLots = seedLotsResponse?.data || []; // ✅ CORRIGÉ: Récupérer la liste des lots avec le service unifié
+  const { data: seedLotsResponse } = useQuery<ApiResponse<SeedLot[]>>({
     queryKey: ["seed-lots-for-genealogy", debouncedSearch], // ✅ CORRIGÉ: Clé cohérente
     queryFn: async () => {
       const params = {
@@ -51,10 +52,15 @@ const Genealogy: React.FC = () => {
       };
 
       const response = await seedLotService.getAll(params); // ✅ CORRIGÉ: Service unifié
-      return response.data;
+      // Retourner la structure complète ApiResponse
+      return {
+        success: true,
+        message: "Lots récupérés avec succès",
+        data: response.data.data,
+        meta: response.data.meta,
+      };
     },
   });
-
   // ✅ CORRIGÉ: Récupérer la généalogie avec le service unifié
   const { data: genealogyData, isLoading } = useQuery<GenealogyNode>({
     queryKey: ["genealogy", selectedLot], // ✅ CORRIGÉ: Clé cohérente

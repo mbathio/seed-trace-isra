@@ -13,8 +13,6 @@ import {
   Leaf,
   BarChart3,
   PlusCircle,
-  Calendar,
-  MapPin,
   Loader2,
 } from "lucide-react";
 import {

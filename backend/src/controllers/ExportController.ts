@@ -37,10 +37,12 @@ export class ExportController {
       });
 
       // Récupérer les lots avec les filtres (limité à 5000 pour éviter la surcharge)
-      const { lots } = await SeedLotService.getSeedLots({
+      const result = await SeedLotService.getSeedLots({
         ...filters,
         pageSize: 5000,
       });
+
+      const lots = result.data;
 
       if (lots.length === 0) {
         return ResponseHandler.error(
@@ -216,8 +218,9 @@ export class ExportController {
         }
 
         case "pdf": {
-          const pdfBuffer =
-            await ExportService.exportQualityReportToPDF(exportData);
+          const pdfBuffer = await ExportService.exportQualityReportToPDF(
+            exportData
+          );
           const filename = ExportService.generateFilename(
             "rapport_qualite",
             "pdf"
@@ -234,8 +237,9 @@ export class ExportController {
         }
 
         case "json": {
-          const jsonReport =
-            await ExportService.exportQualityReportToJSON(exportData);
+          const jsonReport = await ExportService.exportQualityReportToJSON(
+            exportData
+          );
           const filename = ExportService.generateFilename(
             "rapport_qualite",
             "json"
@@ -270,8 +274,9 @@ export class ExportController {
             Observations: qc.observations || "",
           }));
 
-          const excelBuffer =
-            await ExportService.exportSeedLotsToExcel(excelData);
+          const excelBuffer = await ExportService.exportSeedLotsToExcel(
+            excelData
+          );
           const filename = ExportService.generateFilename(
             "rapport_qualite",
             "xlsx"
