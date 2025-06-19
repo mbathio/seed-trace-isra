@@ -1,4 +1,4 @@
-// frontend/src/pages/varieties/CreateVariety.tsx
+// frontend/src/pages/varieties/CreateVariety.tsx - CORRIGÉ
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
@@ -46,25 +46,10 @@ interface CreateVarietyForm {
   description?: string;
   maturityDays: number;
   yieldPotential?: number;
-  resistances: string[]; // Make required, not optional
+  resistances: string[];
   origin?: string;
   releaseYear?: number;
 }
-
-const transformVarietyForAPI = (data: CreateVarietyForm) => {
-  return {
-    ...data,
-    cropType: data.cropType.toUpperCase(), // Transformer en majuscules pour l'API
-  };
-};
-
-const createMutation = useMutation({
-  mutationFn: async (data: CreateVarietyForm) => {
-    const transformedData = transformVarietyForAPI(data);
-    const response = await api.post("/varieties", transformedData);
-    return response.data;
-  },
-});
 
 // ✅ Schéma de validation local adapté à l'interface
 const createVarietySchema = yup.object({
@@ -440,7 +425,9 @@ const CreateVariety: React.FC = () => {
                       type="button"
                       onClick={() => removeResistance(index)}
                       className="ml-1 text-red-500 hover:text-red-700"
-                    ></button>
+                    >
+                      ×
+                    </button>
                   </Badge>
                 ))}
               </div>

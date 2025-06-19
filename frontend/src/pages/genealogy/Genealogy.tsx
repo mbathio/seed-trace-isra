@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Input } from "../../components/ui/input";
-import { seedLotService } from "../../services/seedLotService"; // ✅ CORRIGÉ: Service spécialisé
+import { seedLotService } from "../../services/seedLotService";
 import { SeedLot } from "../../types/entities";
 import { ApiResponse } from "../../types/api";
 import { formatDate } from "../../utils/formatters";
@@ -41,18 +41,16 @@ const Genealogy: React.FC = () => {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
 
-  // ✅ CORRIGÉ: Récupérer la liste des lots avec le service unifié
-  const seedLots = seedLotsResponse?.data || []; // ✅ CORRIGÉ: Récupérer la liste des lots avec le service unifié
+  // ✅ CORRIGÉ: Déclarer d'abord la query
   const { data: seedLotsResponse } = useQuery<ApiResponse<SeedLot[]>>({
-    queryKey: ["seed-lots-for-genealogy", debouncedSearch], // ✅ CORRIGÉ: Clé cohérente
+    queryKey: ["seed-lots-for-genealogy", debouncedSearch],
     queryFn: async () => {
       const params = {
         search: debouncedSearch || undefined,
         pageSize: 100,
       };
 
-      const response = await seedLotService.getAll(params); // ✅ CORRIGÉ: Service unifié
-      // Retourner la structure complète ApiResponse
+      const response = await seedLotService.getAll(params);
       return {
         success: true,
         message: "Lots récupérés avec succès",
@@ -61,11 +59,15 @@ const Genealogy: React.FC = () => {
       };
     },
   });
+
+  // ✅ CORRIGÉ: Utiliser seedLotsResponse après sa déclaration
+  const seedLots = seedLotsResponse?.data || [];
+
   // ✅ CORRIGÉ: Récupérer la généalogie avec le service unifié
   const { data: genealogyData, isLoading } = useQuery<GenealogyNode>({
-    queryKey: ["genealogy", selectedLot], // ✅ CORRIGÉ: Clé cohérente
+    queryKey: ["genealogy", selectedLot],
     queryFn: async () => {
-      const response = await seedLotService.getGenealogy(selectedLot); // ✅ CORRIGÉ: Service unifié
+      const response = await seedLotService.getGenealogy(selectedLot);
       return response.data.data;
     },
     enabled: !!selectedLot,
@@ -224,7 +226,7 @@ const Genealogy: React.FC = () => {
                 <SelectValue placeholder="Sélectionner un lot pour visualiser sa généalogie" />
               </SelectTrigger>
               <SelectContent>
-                {seedLots?.data?.map((lot) => (
+                {seedLots.map((lot: SeedLot) => (
                   <SelectItem key={lot.id} value={lot.id}>
                     {lot.id} - {lot.variety.name} ({lot.level})
                   </SelectItem>
