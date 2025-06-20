@@ -379,7 +379,7 @@ export default function DashboardPage() {
                   fill="#8884d8"
                   dataKey="count"
                 >
-                  {stats.distribution.lotsByLevel.map((entry, index) => (
+                  {stats.distribution.lotsByLevel.map((_, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}

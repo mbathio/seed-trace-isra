@@ -21,6 +21,7 @@ interface ExtendedQueryOptions extends Partial<AxiosRequestConfig> {
 }
 
 // ✅ CORRECTION 2: Type générique TVariables avec contrainte AxiosRequestConfig
+// ✅ CORRECTION 2: Type générique TVariables avec contrainte AxiosRequestConfig
 export const useApiQuery = <T>(
   key: (string | number)[],
   url: string,
@@ -52,15 +53,11 @@ export const useApiQuery = <T>(
       }
     },
     retry: options?.retry ?? DEFAULT_QUERY_CONFIG.RETRY_ATTEMPTS,
-    retryDelay: options?.retryDelay ?? 1000,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     staleTime: options?.staleTime ?? DEFAULT_QUERY_CONFIG.STALE_TIME,
-    cacheTime: options?.cacheTime ?? DEFAULT_QUERY_CONFIG.CACHE_TIME,
-    onSuccess: options?.onSuccess,
-    onError: (error: any) => {
-      console.error("Query error:", error);
-      options?.onError?.(error);
-    },
+    gcTime: options?.cacheTime ?? DEFAULT_QUERY_CONFIG.CACHE_TIME, // ✅ gcTime au lieu de cacheTime
+    enabled: options?.enabled ?? true,
     ...options,
   });
 };

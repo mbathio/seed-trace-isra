@@ -55,7 +55,7 @@ const Genealogy: React.FC = () => {
         success: true,
         message: "Lots récupérés avec succès",
         data: response.data.data,
-        meta: response.data.meta,
+        meta: response.data.meta || undefined, // ✅ CORRIGÉ: null → undefined
       };
     },
   });
