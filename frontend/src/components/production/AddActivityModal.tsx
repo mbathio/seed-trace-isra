@@ -1,6 +1,6 @@
-// frontend/src/components/production/AddActivityModal.tsx
+// frontend/src/components/production/AddActivityModal.tsx - VERSION CORRIGÉE
 import React from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, SubmitHandler } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
@@ -35,6 +35,7 @@ interface ActivityInput {
   cost?: number;
 }
 
+// ✅ CORRIGÉ: Interface mise à jour avec productionId requis
 interface AddActivityForm {
   type: string;
   activityDate: string;
@@ -42,6 +43,7 @@ interface AddActivityForm {
   personnel: string[];
   notes?: string;
   inputs: ActivityInput[];
+  productionId: number; // ✅ AJOUTÉ: Champ requis par le schema de validation
 }
 
 interface AddActivityModalProps {
@@ -70,6 +72,7 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
       activityDate: new Date().toISOString().split("T")[0],
       personnel: [""],
       inputs: [],
+      productionId, // ✅ AJOUTÉ: Valeur par défaut
     },
   });
 
@@ -98,7 +101,8 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     },
   });
 
-  const onSubmit = (data: AddActivityForm) => {
+  // ✅ CORRIGÉ: Type explicite pour SubmitHandler
+  const onSubmit: SubmitHandler<AddActivityForm> = (data: AddActivityForm) => {
     addActivityMutation.mutate(data);
   };
 

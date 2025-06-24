@@ -1,4 +1,4 @@
-// frontend/src/constants/production.ts - NOUVELLES CONSTANTES SPÉCIALISÉES
+// frontend/src/constants/production.ts - VERSION CORRIGÉE
 import {
   Shovel,
   Sprout,
@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
+  TrendingUp, // ✅ CORRIGÉ: Import ajouté
   type LucideIcon,
 } from "lucide-react";
 
@@ -126,7 +127,7 @@ export const PRODUCTION_METRICS = {
   efficiency: {
     name: "Efficacité",
     unit: "%",
-    icon: TrendingUp,
+    icon: TrendingUp, // ✅ CORRIGÉ: Utilisation directe de l'import
     description: "Ratio quantité réelle / quantité planifiée",
   },
   duration: {
@@ -238,12 +239,18 @@ export const getAlertLevel = (
 
 /**
  * Obtient la phase actuelle basée sur les activités
+ * ✅ CORRIGÉ: Gestion correcte du type any pour l'activité
  */
-export const getCurrentPhase = (activities: string[]) => {
+export const getCurrentPhase = (activities: any[]) => {
+  if (!activities || activities.length === 0) return PRODUCTION_PHASES[0];
+
   const recentActivity = activities[activities.length - 1];
+  const activityType =
+    typeof recentActivity === "string" ? recentActivity : recentActivity?.type;
+
   return (
     PRODUCTION_PHASES.find((phase) =>
-      phase.activities.includes(recentActivity)
+      phase.activities.includes(activityType)
     ) || PRODUCTION_PHASES[0]
   );
 };

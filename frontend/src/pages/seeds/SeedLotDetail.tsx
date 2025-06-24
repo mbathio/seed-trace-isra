@@ -46,7 +46,6 @@ import { SeedLot } from "../../types/entities";
 import { formatDate, formatNumber } from "../../utils/formatters";
 import {
   LOT_STATUSES,
-  SEED_LEVELS,
   getStatusConfig,
   getSeedLevelConfig,
 } from "../../constants";

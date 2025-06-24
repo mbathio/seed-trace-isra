@@ -1,4 +1,4 @@
-// frontend/src/components/production/AddWeatherModal.tsx
+// frontend/src/components/production/AddWeatherModal.tsx - VERSION CORRIGÉE
 import React from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
@@ -45,7 +45,7 @@ export const AddWeatherModal: React.FC<AddWeatherModalProps> = ({
     control,
     handleSubmit,
     reset,
-    formState: { errors },
+    // ✅ CORRIGÉ: Suppression de la variable errors non utilisée
   } = useForm<AddWeatherForm>({
     defaultValues: {
       recordDate: new Date().toISOString().split("T")[0],

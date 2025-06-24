@@ -1,7 +1,7 @@
-// frontend/src/pages/productions/Productions.tsx - VERSION COMPLÈTE CORRIGÉE
+// frontend/src/pages/productions/Productions.tsx - VERSION CORRIGÉE
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import {
   Plus,
   Tractor,
@@ -57,9 +57,24 @@ import { useDebounce } from "../../hooks/useDebounce";
 import {
   PRODUCTION_STATUSES,
   getStatusConfig,
-  type ApiResponse,
-  type PaginationMeta,
 } from "../../constants";
+
+// ✅ CORRIGÉ: Ajout des interfaces manquantes pour ApiResponse et PaginationMeta
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+  meta?: PaginationMeta;
+}
+
+interface PaginationMeta {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
 
 interface ProductionsResponse {
   productions: Production[];
@@ -68,7 +83,7 @@ interface ProductionsResponse {
 }
 
 const Productions: React.FC = () => {
-  const navigate = useNavigate();
+  // ✅ CORRIGÉ: Suppression de la variable navigate non utilisée
 
   // États pour les filtres et pagination
   const [search, setSearch] = useState("");
@@ -136,12 +151,12 @@ const Productions: React.FC = () => {
     setPage(1);
   };
 
-  // Calcul des statistiques rapides
+  // ✅ CORRIGÉ: Types explicites pour les paramètres de filter
   const stats = {
     total: meta?.totalCount || 0,
-    planned: productions.filter((p) => p.status === "planned").length,
-    inProgress: productions.filter((p) => p.status === "in-progress").length,
-    completed: productions.filter((p) => p.status === "completed").length,
+    planned: productions.filter((p: Production) => p.status === "planned").length,
+    inProgress: productions.filter((p: Production) => p.status === "in-progress").length,
+    completed: productions.filter((p: Production) => p.status === "completed").length,
   };
 
   if (error) {
@@ -321,7 +336,7 @@ const Productions: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {productions.map((production) => (
+                  {productions.map((production: Production) => (
                     <TableRow key={production.id}>
                       <TableCell className="font-mono">
                         #{production.id}
@@ -383,98 +398,3 @@ const Productions: React.FC = () => {
                               >
                                 <Edit className="h-4 w-4 mr-2" />
                                 Modifier
-                              </Link>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {/* Pagination */}
-              {meta && meta.totalPages > 1 && (
-                <>
-                  <Separator className="my-4" />
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-muted-foreground">
-                      Affichage de {(meta.page - 1) * meta.pageSize + 1} à{" "}
-                      {Math.min(meta.page * meta.pageSize, meta.totalCount)} sur{" "}
-                      {meta.totalCount} productions
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(page - 1)}
-                        disabled={page <= 1}
-                      >
-                        Précédent
-                      </Button>
-                      <div className="flex items-center space-x-1">
-                        {[...Array(Math.min(5, meta.totalPages))].map(
-                          (_, i) => {
-                            const pageNum = i + 1;
-                            return (
-                              <Button
-                                key={pageNum}
-                                variant={
-                                  page === pageNum ? "default" : "outline"
-                                }
-                                size="sm"
-                                onClick={() => setPage(pageNum)}
-                                className="w-8 h-8"
-                              >
-                                {pageNum}
-                              </Button>
-                            );
-                          }
-                        )}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(page + 1)}
-                        disabled={page >= meta.totalPages}
-                      >
-                        Suivant
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )}
-            </>
-          ) : (
-            <div className="text-center py-12">
-              <Tractor className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
-                Aucune production trouvée
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {search || statusFilter
-                  ? "Essayez de modifier vos critères de recherche"
-                  : "Commencez par créer votre première production"}
-              </p>
-              <div className="flex justify-center space-x-2">
-                {(search || statusFilter) && (
-                  <Button variant="outline" onClick={resetFilters}>
-                    Effacer les filtres
-                  </Button>
-                )}
-                <Button asChild>
-                  <Link to="/dashboard/productions/create">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nouvelle production
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
-export default Productions;
