@@ -223,6 +223,8 @@ export class SeedLotService {
       const totalPages = Math.ceil(totalCount / pageSize);
 
       return {
+        success: true,
+        message: "Lots récupérés avec succès",
         data: seedLots,
         meta: {
           totalCount,

@@ -28,12 +28,7 @@ export class SeedLotController {
       const result = await SeedLotService.getSeedLots(req.query);
 
       // Retourner les données dans le format standard
-      return ResponseHandler.success(
-        res,
-        result.data,
-        "Lots récupérés avec succès",
-        result.meta
-      );
+      return res.json(result);
     } catch (error) {
       next(error);
     }

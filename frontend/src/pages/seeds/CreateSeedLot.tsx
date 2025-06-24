@@ -77,7 +77,8 @@ const CreateSeedLot: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateSeedLotForm) => {
-      const response = await api.post("/seed-lots", data);
+      // Les données sont déjà au format UI, le middleware backend les transformera
+      const response = await seedLotService.create(data);
       return response.data;
     },
     onSuccess: (data) => {

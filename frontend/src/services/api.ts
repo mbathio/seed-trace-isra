@@ -28,6 +28,7 @@ api.interceptors.request.use(
       console.log(`🚀 ${config.method?.toUpperCase()} ${config.url}`, {
         params: config.params,
         data: config.data,
+        headers: config.headers,
       });
     }
 
@@ -39,7 +40,7 @@ api.interceptors.request.use(
   }
 );
 
-// Intercepteur de réponse - Gestion des erreurs et refresh token
+// Intercepteur de réponse - Debug en développement
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     // Log des réponses en développement
@@ -49,6 +50,7 @@ api.interceptors.response.use(
         {
           status: response.status,
           data: response.data,
+          headers: response.headers,
         }
       );
     }

@@ -1,4 +1,4 @@
-// backend/src/routes/seed-lots.ts - Routes complètes
+// backend/src/routes/seed-lots.ts - VERSION CORRIGÉE
 import { Router } from "express";
 import { SeedLotController } from "../controllers/SeedLotController";
 import { validateRequest } from "../middleware/validation";
@@ -15,7 +15,7 @@ import {
 
 const router = Router();
 
-// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION À TOUTES LES ROUTES
+// ✅ IMPORTANT: Appliquer le middleware de transformation à TOUTES les routes
 router.use(seedLotTransformation);
 
 // GET /api/seed-lots - Liste des lots de semences

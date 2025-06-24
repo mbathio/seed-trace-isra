@@ -120,13 +120,15 @@ const CreateVariety: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateVarietyForm) => {
-      const transformedData = DataTransformer.transformVarietyForAPI(data);
-      const response = await api.post("/varieties", transformedData);
+      // Pas besoin de transformer, le backend s'en charge
+      const response = await api.post("/varieties", data);
       return response.data;
     },
     onSuccess: (data) => {
       toast.success("Variété créée avec succès !");
-      navigate(`/dashboard/varieties/${data.data.code}`);
+      // Utiliser l'ID numérique ou le code selon ce qui est retourné
+      const identifier = data.data.id || data.data.code;
+      navigate(`/dashboard/varieties/${identifier}`);
     },
     onError: (error: any) => {
       const errorMessage =

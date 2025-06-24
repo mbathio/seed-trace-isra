@@ -3,6 +3,7 @@ import { z } from "zod";
 
 /**
  * Schéma de validation pour la création d'un lot de semences
+ * ✅ IMPORTANT: Accepter les valeurs UI qui seront transformées par le middleware
  */
 export const createSeedLotSchema = z.object({
   varietyId: z.number().positive("L'ID de la variété doit être positif"),
@@ -18,6 +19,7 @@ export const createSeedLotSchema = z.object({
   }),
   status: z
     .enum([
+      // Valeurs DB
       "PENDING",
       "CERTIFIED",
       "REJECTED",
@@ -25,8 +27,23 @@ export const createSeedLotSchema = z.object({
       "SOLD",
       "ACTIVE",
       "DISTRIBUTED",
+      // Valeurs UI (seront transformées par le middleware)
+      "pending",
+      "certified",
+      "rejected",
+      "in-stock",
+      "sold",
+      "active",
+      "distributed",
     ])
-    .optional(),
+    .optional()
+    .transform((val) => {
+      // Transformer en majuscules si nécessaire
+      if (val && val === val.toLowerCase()) {
+        return val.toUpperCase().replace(/-/g, "_");
+      }
+      return val;
+    }),
   multiplierId: z.number().positive().optional(),
   parcelId: z.number().positive().optional(),
   parentLotId: z.string().optional(),
@@ -37,7 +54,7 @@ export const createSeedLotSchema = z.object({
   batchNumber: z.string().optional(),
   expiryDate: z
     .string()
-    .refine((date) => !isNaN(Date.parse(date)), {
+    .refine((date) => !date || !isNaN(Date.parse(date)), {
       message: "Date d'expiration invalide",
     })
     .optional(),

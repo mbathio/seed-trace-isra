@@ -1,28 +1,42 @@
-// ===== 2. backend/src/routes/varieties.ts - AVEC TRANSFORMATION =====
+// backend/src/routes/varieties.ts - VERSION CORRIGÉE
 import { Router } from "express";
 import { VarietyController } from "../controllers/VarietyController";
 import { validateRequest } from "../middleware/validation";
-import { requireRole } from "../middleware/auth";
-import { varietyTransformation } from "../middleware/transformationMiddleware"; // ✅ AJOUTÉ
+import { requireRole, authMiddleware } from "../middleware/auth";
+import { varietyTransformation } from "../middleware/transformationMiddleware";
 import { z } from "zod";
 
 const router = Router();
 
-// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
+// ✅ IMPORTANT: Appliquer le middleware de transformation
 router.use(varietyTransformation);
 
 const createVarietySchema = z.object({
   code: z.string().min(1),
   name: z.string().min(1),
-  cropType: z.enum([
-    "rice",
-    "maize",
-    "peanut",
-    "sorghum",
-    "cowpea",
-    "millet",
-    "wheat",
-  ]), // ✅ VALEURS UI
+  cropType: z
+    .enum([
+      // Accepter les valeurs UI
+      "rice",
+      "maize",
+      "peanut",
+      "sorghum",
+      "cowpea",
+      "millet",
+      "wheat",
+      // Et les valeurs DB (au cas où)
+      "RICE",
+      "MAIZE",
+      "PEANUT",
+      "SORGHUM",
+      "COWPEA",
+      "MILLET",
+      "WHEAT",
+    ])
+    .transform((val) => {
+      // Toujours retourner en majuscules pour la DB
+      return val.toUpperCase();
+    }),
   description: z.string().optional(),
   maturityDays: z.number().positive(),
   yieldPotential: z.number().positive().optional(),
@@ -33,29 +47,31 @@ const createVarietySchema = z.object({
 
 const updateVarietySchema = createVarietySchema.partial().omit({ code: true });
 
-// GET /api/varieties
+// Routes
 router.get("/", VarietyController.getVarieties);
-
-// GET /api/varieties/:id
 router.get("/:id", VarietyController.getVarietyById);
 
-// POST /api/varieties
 router.post(
   "/",
+  authMiddleware,
   requireRole("RESEARCHER", "ADMIN"),
   validateRequest({ body: createVarietySchema }),
   VarietyController.createVariety
 );
 
-// PUT /api/varieties/:id
 router.put(
   "/:id",
+  authMiddleware,
   requireRole("RESEARCHER", "ADMIN"),
   validateRequest({ body: updateVarietySchema }),
   VarietyController.updateVariety
 );
 
-// DELETE /api/varieties/:id
-router.delete("/:id", requireRole("ADMIN"), VarietyController.deleteVariety);
+router.delete(
+  "/:id",
+  authMiddleware,
+  requireRole("ADMIN"),
+  VarietyController.deleteVariety
+);
 
 export default router;

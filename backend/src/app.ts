@@ -53,8 +53,15 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Logging en développement
-if (process.env.NODE_ENV !== "production") {
-  app.use(morgan("dev"));
+if (process.env.NODE_ENV === "development") {
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    console.log(`${req.method} ${req.path}`, {
+      body: req.body,
+      query: req.query,
+      params: req.params,
+    });
+    next();
+  });
 }
 
 // Rate limiting

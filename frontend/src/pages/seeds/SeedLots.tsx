@@ -93,31 +93,13 @@ const SeedLots: React.FC = () => {
       if (levelFilter) params.level = levelFilter;
       if (statusFilter) params.status = statusFilter;
 
-      const response = await api.get("/seed-lots", { params });
-      console.log("API Response:", response.data);
-
-      // Le backend retourne { success: true, data: [...], meta: {...} }
-      // MAIS le service SeedLotService retourne { lots: [...], meta: {...} }
-      // On doit gérer les deux cas
-
-      if (response.data.success && response.data.data) {
-        return {
-          seedLots: response.data.data || [],
-          meta: response.data.meta || null,
-        };
-      } else {
-        // Fallback si la structure est différente
-        return {
-          seedLots: [],
-          meta: null,
-        };
-      }
+      const response = await seedLotService.getAll(params);
+      return response.data;
     },
-    retry: 2,
   });
 
   // Extraction des données
-  const seedLots = response?.seedLots || [];
+  const seedLots = response?.data || [];
   const meta = response?.meta || null;
 
   // Fonction pour obtenir le QR Code
@@ -157,6 +139,7 @@ const SeedLots: React.FC = () => {
 
   // Fonction pour obtenir la config du statut
   const getStatusConfig = (status: string) => {
+    // Le statut vient maintenant en format UI (kebab-case)
     return (
       LOT_STATUSES.find((s) => s.value === status) || {
         value: status,
