@@ -1,4 +1,4 @@
-// backend/src/services/MultiplierService.ts - SERVICE CORRIGÉ
+// backend/src/services/MultiplierService.ts - VERSION COMPLÈTE
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { PaginationQuery } from "../types/api";
@@ -26,6 +26,16 @@ export class MultiplierService {
           phone: data.phone,
           email: data.email,
         },
+        include: {
+          _count: {
+            select: {
+              parcels: true,
+              contracts: true,
+              seedLots: true,
+              productions: true,
+            },
+          },
+        },
       });
 
       return multiplier;
@@ -49,7 +59,6 @@ export class MultiplierService {
         sortOrder = "asc",
       } = query;
 
-      // ✅ CORRECTION: Convertir page et pageSize en nombres
       const pageNum = typeof page === "string" ? parseInt(page, 10) : page;
       const pageSizeNum =
         typeof pageSize === "string" ? parseInt(pageSize, 10) : pageSize;
@@ -91,7 +100,7 @@ export class MultiplierService {
           },
           orderBy: { [sortBy]: sortOrder },
           skip,
-          take: pageSizeNum, // ✅ CORRECTION: Utiliser le nombre converti
+          take: pageSizeNum,
         }),
         prisma.multiplier.count({ where }),
       ]);
@@ -161,6 +170,14 @@ export class MultiplierService {
             orderBy: { year: "desc" },
             take: 5,
           },
+          _count: {
+            select: {
+              parcels: true,
+              contracts: true,
+              seedLots: true,
+              productions: true,
+            },
+          },
         },
       });
 
@@ -195,6 +212,16 @@ export class MultiplierService {
       const multiplier = await prisma.multiplier.update({
         where: { id },
         data: updateData,
+        include: {
+          _count: {
+            select: {
+              parcels: true,
+              contracts: true,
+              seedLots: true,
+              productions: true,
+            },
+          },
+        },
       });
 
       return multiplier;

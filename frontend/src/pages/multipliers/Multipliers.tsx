@@ -36,7 +36,6 @@ import {
   CROP_TYPES,
   getStatusConfig,
 } from "../../constants";
-import { DataTransformer } from "../../utils/transformers";
 import { useDebounce } from "../../hooks/useDebounce";
 import { usePagination } from "../../hooks/usePagination";
 
@@ -64,14 +63,8 @@ const Multipliers: React.FC = () => {
 
       const response = await api.get("/multipliers", { params });
 
-      const transformedData = {
-        ...response.data,
-        data: response.data.data.map((multiplier: any) =>
-          DataTransformer.transformMultiplierFromAPI(multiplier)
-        ),
-      };
-
-      return transformedData;
+      // Les données arrivent déjà transformées depuis le backend
+      return response.data;
     },
   });
 

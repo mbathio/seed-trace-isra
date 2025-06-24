@@ -79,3 +79,28 @@ export interface CreateParcelData {
   address?: string;
   multiplierId?: number;
 }
+
+// backend/src/types/entities.ts - Ajout des types pour QualityControl
+export interface CreateQualityControlData {
+  lotId: string;
+  controlDate: string;
+  germinationRate: number;
+  varietyPurity: number;
+  moistureContent?: number;
+  seedHealth?: number;
+  observations?: string;
+  testMethod?: string;
+  laboratoryRef?: string;
+}
+
+export interface UpdateQualityControlData {
+  controlDate?: string;
+  germinationRate?: number;
+  varietyPurity?: number;
+  moistureContent?: number;
+  seedHealth?: number;
+  observations?: string;
+  testMethod?: string;
+  laboratoryRef?: string;
+  result?: string;
+}

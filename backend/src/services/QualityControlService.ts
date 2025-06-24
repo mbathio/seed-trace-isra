@@ -1,10 +1,9 @@
-// ===== 4. backend/src/services/QualityControlService.ts - MISE À JOUR AVEC TRANSFORMATEURS =====
+// backend/src/services/QualityControlService.ts - VERSION COMPLÈTE
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { CreateQualityControlData } from "../types/entities";
 import { PaginationQuery } from "../types/api";
 import { TestResult, LotStatus } from "@prisma/client";
-import DataTransformer from "../utils/transformers"; // ✅ AJOUTÉ
 
 export class QualityControlService {
   static async createQualityControl(
@@ -46,11 +45,12 @@ export class QualityControlService {
             },
           },
           inspector: {
-            select: { id: true, name: true, email: true },
+            select: { id: true, name: true, email: true, role: true },
           },
         },
       });
 
+      // Mettre à jour le statut du lot
       if (result === TestResult.PASS) {
         await prisma.seedLot.update({
           where: { id: data.lotId },
@@ -63,8 +63,7 @@ export class QualityControlService {
         });
       }
 
-      // ✅ TRANSFORMATION : Transformer le contrôle qualité pour le frontend
-      return DataTransformer.transformQualityControl(qualityControl);
+      return qualityControl;
     } catch (error) {
       logger.error("Erreur lors de la création du contrôle qualité:", error);
       throw error;
@@ -124,9 +123,9 @@ export class QualityControlService {
         ];
       }
 
+      // Le résultat arrive déjà transformé depuis le middleware
       if (result) {
-        // ✅ TRANSFORMATION : Transformer le résultat UI vers DB
-        where.result = DataTransformer.transformTestResultUIToDB(result);
+        where.result = result;
       }
 
       if (lotId) {
@@ -148,7 +147,7 @@ export class QualityControlService {
               },
             },
             inspector: {
-              select: { id: true, name: true, email: true },
+              select: { id: true, name: true, email: true, role: true },
             },
           },
           orderBy: { [sortBy]: sortOrder },
@@ -160,13 +159,8 @@ export class QualityControlService {
 
       const totalPages = Math.ceil(total / pageSizeNum);
 
-      // ✅ TRANSFORMATION : Transformer tous les contrôles pour le frontend
-      const transformedControls = controls.map((control) =>
-        DataTransformer.transformQualityControl(control)
-      );
-
       return {
-        controls: transformedControls,
+        controls,
         total,
         meta: {
           page: pageNum,
@@ -199,17 +193,12 @@ export class QualityControlService {
             },
           },
           inspector: {
-            select: { id: true, name: true, email: true },
+            select: { id: true, name: true, email: true, role: true },
           },
         },
       });
 
-      if (!qualityControl) {
-        return null;
-      }
-
-      // ✅ TRANSFORMATION : Transformer le contrôle qualité pour le frontend
-      return DataTransformer.transformQualityControl(qualityControl);
+      return qualityControl;
     } catch (error) {
       logger.error(
         "Erreur lors de la récupération du contrôle qualité:",
@@ -258,6 +247,9 @@ export class QualityControlService {
         where: { id },
         data: {
           ...data,
+          controlDate: data.controlDate
+            ? new Date(data.controlDate)
+            : undefined,
           updatedAt: new Date(),
         },
         include: {
@@ -268,13 +260,12 @@ export class QualityControlService {
             },
           },
           inspector: {
-            select: { id: true, name: true, email: true },
+            select: { id: true, name: true, email: true, role: true },
           },
         },
       });
 
-      // ✅ TRANSFORMATION : Transformer le contrôle qualité pour le frontend
-      return DataTransformer.transformQualityControl(qualityControl);
+      return qualityControl;
     } catch (error) {
       logger.error("Erreur lors de la mise à jour du contrôle qualité:", error);
       throw error;
@@ -288,6 +279,80 @@ export class QualityControlService {
       });
     } catch (error) {
       logger.error("Erreur lors de la suppression du contrôle qualité:", error);
+      throw error;
+    }
+  }
+
+  // Méthodes supplémentaires utiles
+
+  static async getQualityControlsByLot(lotId: string): Promise<any[]> {
+    try {
+      const controls = await prisma.qualityControl.findMany({
+        where: { lotId },
+        include: {
+          inspector: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+        orderBy: { controlDate: "desc" },
+      });
+
+      return controls;
+    } catch (error) {
+      logger.error(
+        "Erreur lors de la récupération des contrôles du lot:",
+        error
+      );
+      throw error;
+    }
+  }
+
+  static async getQualityControlStatistics(filters?: any): Promise<any> {
+    try {
+      const where: any = {};
+
+      if (filters?.startDate || filters?.endDate) {
+        where.controlDate = {};
+        if (filters.startDate) {
+          where.controlDate.gte = new Date(filters.startDate);
+        }
+        if (filters.endDate) {
+          where.controlDate.lte = new Date(filters.endDate);
+        }
+      }
+
+      const [total, passed, failed, avgGermination, avgPurity] =
+        await Promise.all([
+          prisma.qualityControl.count({ where }),
+          prisma.qualityControl.count({
+            where: { ...where, result: TestResult.PASS },
+          }),
+          prisma.qualityControl.count({
+            where: { ...where, result: TestResult.FAIL },
+          }),
+          prisma.qualityControl.aggregate({
+            where,
+            _avg: { germinationRate: true },
+          }),
+          prisma.qualityControl.aggregate({
+            where,
+            _avg: { varietyPurity: true },
+          }),
+        ]);
+
+      return {
+        total,
+        passed,
+        failed,
+        passRate: total > 0 ? (passed / total) * 100 : 0,
+        averageGerminationRate: avgGermination._avg.germinationRate || 0,
+        averageVarietyPurity: avgPurity._avg.varietyPurity || 0,
+      };
+    } catch (error) {
+      logger.error(
+        "Erreur lors du calcul des statistiques de contrôle qualité:",
+        error
+      );
       throw error;
     }
   }

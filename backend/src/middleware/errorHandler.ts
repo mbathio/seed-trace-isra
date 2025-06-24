@@ -53,7 +53,14 @@ export function errorHandler(
         return ResponseHandler.error(res, error.message, 400);
     }
   }
-
+  if (
+    error.message.includes("transformation") ||
+    error.message.includes("enum")
+  ) {
+    return ResponseHandler.validationError(res, [
+      "Erreur de transformation des données. Vérifiez les valeurs envoyées.",
+    ]);
+  }
   // ✅ CORRECTION: Gestion améliorée des erreurs Prisma
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     switch (error.code) {

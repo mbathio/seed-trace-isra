@@ -79,22 +79,22 @@ export interface SeedLot {
   };
 }
 
+// frontend/src/types/entities.ts - Ajout des types transformés
 export interface Multiplier {
   id: number;
   name: string;
-  status: "ACTIVE" | "INACTIVE";
+  status: "active" | "inactive"; // Valeurs UI
   address: string;
   latitude: number;
   longitude: number;
   yearsExperience: number;
-  certificationLevel: "BEGINNER" | "INTERMEDIATE" | "EXPERT";
-  specialization: string[];
+  certificationLevel: "beginner" | "intermediate" | "expert"; // Valeurs UI
+  specialization: string[]; // Valeurs UI
   phone?: string;
   email?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  // ✅ AJOUTÉ: Champs manquants
   _count?: {
     parcels: number;
     contracts: number;

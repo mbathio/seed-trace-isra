@@ -45,7 +45,8 @@ const QualityControlDetail: React.FC = () => {
   });
 
   const getResultBadge = (result: string) => {
-    const config = getStatusConfig(result, QUALITY_TEST_RESULTS);
+    // Le résultat arrive déjà transformé depuis le backend
+    const config = getStatusConfig(result.toLowerCase(), QUALITY_TEST_RESULTS);
     const colorClasses = {
       green: "bg-green-100 text-green-800 border-green-200",
       red: "bg-red-100 text-red-800 border-red-200",
