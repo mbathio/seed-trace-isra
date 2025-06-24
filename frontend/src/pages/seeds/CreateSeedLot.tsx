@@ -30,6 +30,7 @@ import type { ApiResponse } from "../../types/api";
 import { SEED_LEVELS } from "../../constants";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { seedLotValidationSchema } from "../../utils/validators";
+import { seedLotService } from "../../services/seedLotService";
 
 // Interface avec types explicites
 interface CreateSeedLotForm {
