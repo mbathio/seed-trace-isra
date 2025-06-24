@@ -1,4 +1,4 @@
-// backend/src/controllers/MultiplierController.ts - Corrigé
+// backend/src/controllers/MultiplierController.ts - CONTRÔLEUR CORRIGÉ
 import { Request, Response, NextFunction } from "express";
 import { MultiplierService } from "../services/MultiplierService";
 import { ResponseHandler } from "../utils/response";
@@ -22,6 +22,9 @@ export class MultiplierController {
     }
   }
 
+  /**
+   * ✅ CORRIGÉ: Utilise result.data au lieu de result.multipliers
+   */
   static async getMultipliers(
     req: Request,
     res: Response,
@@ -31,7 +34,7 @@ export class MultiplierController {
       const result = await MultiplierService.getMultipliers(req.query);
       return ResponseHandler.success(
         res,
-        result.multipliers,
+        result.data, // ✅ CHANGÉ de result.multipliers à result.data
         "Multiplicateurs récupérés avec succès",
         result.meta
       );

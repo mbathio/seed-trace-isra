@@ -69,7 +69,13 @@ const Multipliers: React.FC = () => {
   });
 
   const getStatusBadge = (status: string) => {
-    const config = getStatusConfig(status, MULTIPLIER_STATUSES);
+    // Le status arrive maintenant en minuscules grâce au middleware
+    const config = MULTIPLIER_STATUSES.find((s) => s.value === status) || {
+      value: status,
+      label: status.charAt(0).toUpperCase() + status.slice(1),
+      color: "gray",
+    };
+
     const colorClasses = {
       green: "bg-green-100 text-green-800 border-green-200",
       gray: "bg-gray-100 text-gray-800 border-gray-200",

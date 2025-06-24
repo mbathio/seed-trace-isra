@@ -1,4 +1,4 @@
-// backend/src/services/MultiplierService.ts - VERSION COMPLÈTE
+// backend/src/services/MultiplierService.ts - SERVICE CORRIGÉ
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { PaginationQuery } from "../types/api";
@@ -26,16 +26,6 @@ export class MultiplierService {
           phone: data.phone,
           email: data.email,
         },
-        include: {
-          _count: {
-            select: {
-              parcels: true,
-              contracts: true,
-              seedLots: true,
-              productions: true,
-            },
-          },
-        },
       });
 
       return multiplier;
@@ -45,9 +35,12 @@ export class MultiplierService {
     }
   }
 
+  /**
+   * ✅ CORRIGÉ: Retourne une structure uniforme avec 'data' au lieu de 'multipliers'
+   */
   static async getMultipliers(
     query: PaginationQuery & any
-  ): Promise<{ multipliers: any[]; total: number; meta: any }> {
+  ): Promise<{ data: any[]; total: number; meta: any }> {
     try {
       const {
         page = 1,
@@ -59,12 +52,13 @@ export class MultiplierService {
         sortOrder = "asc",
       } = query;
 
+      // ✅ CORRECTION: Convertir page et pageSize en nombres
       const pageNum = typeof page === "string" ? parseInt(page, 10) : page;
       const pageSizeNum =
         typeof pageSize === "string" ? parseInt(pageSize, 10) : pageSize;
-
       const skip = (pageNum - 1) * pageSizeNum;
 
+      // Construire la clause WHERE
       const where: any = {
         isActive: true,
       };
@@ -74,6 +68,7 @@ export class MultiplierService {
           { name: { contains: search, mode: "insensitive" } },
           { address: { contains: search, mode: "insensitive" } },
           { email: { contains: search, mode: "insensitive" } },
+          { phone: { contains: search, mode: "insensitive" } },
         ];
       }
 
@@ -85,16 +80,50 @@ export class MultiplierService {
         where.certificationLevel = certificationLevel;
       }
 
+      // Effectuer les requêtes
       const [multipliers, total] = await Promise.all([
         prisma.multiplier.findMany({
           where,
           include: {
+            parcels: {
+              where: { isActive: true },
+              select: {
+                id: true,
+                name: true,
+                area: true,
+                status: true,
+              },
+            },
+            contracts: {
+              where: { status: ContractStatus.ACTIVE },
+              select: {
+                id: true,
+                status: true,
+                variety: {
+                  select: {
+                    id: true,
+                    code: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+            seedLots: {
+              where: { isActive: true },
+              select: {
+                id: true,
+                level: true,
+                status: true,
+              },
+              take: 5,
+              orderBy: { productionDate: "desc" },
+            },
             _count: {
               select: {
-                parcels: true,
-                contracts: true,
                 seedLots: true,
                 productions: true,
+                contracts: true,
+                parcels: true,
               },
             },
           },
@@ -105,10 +134,12 @@ export class MultiplierService {
         prisma.multiplier.count({ where }),
       ]);
 
+      // Calculer les métadonnées de pagination
       const totalPages = Math.ceil(total / pageSizeNum);
 
+      // ✅ IMPORTANT: Retourner 'data' au lieu de 'multipliers'
       return {
-        multipliers,
+        data: multipliers,
         total,
         meta: {
           page: pageNum,
@@ -170,14 +201,6 @@ export class MultiplierService {
             orderBy: { year: "desc" },
             take: 5,
           },
-          _count: {
-            select: {
-              parcels: true,
-              contracts: true,
-              seedLots: true,
-              productions: true,
-            },
-          },
         },
       });
 
@@ -212,16 +235,6 @@ export class MultiplierService {
       const multiplier = await prisma.multiplier.update({
         where: { id },
         data: updateData,
-        include: {
-          _count: {
-            select: {
-              parcels: true,
-              contracts: true,
-              seedLots: true,
-              productions: true,
-            },
-          },
-        },
       });
 
       return multiplier;
@@ -262,36 +275,13 @@ export class MultiplierService {
 
   static async createContract(data: any): Promise<any> {
     try {
-      // Gestion correcte de varietyId (number ou string)
-      let varietyId: number;
-
-      if (typeof data.varietyId === "string") {
-        const parsedId = parseInt(data.varietyId);
-        if (!isNaN(parsedId)) {
-          varietyId = parsedId;
-        } else {
-          // Si c'est un code, chercher la variété
-          const variety = await prisma.variety.findFirst({
-            where: { code: data.varietyId },
-          });
-          if (!variety) {
-            throw new Error(
-              `Variété non trouvée avec le code: ${data.varietyId}`
-            );
-          }
-          varietyId = variety.id;
-        }
-      } else {
-        varietyId = data.varietyId;
-      }
-
       const contract = await prisma.contract.create({
         data: {
           multiplierId: data.multiplierId,
-          varietyId,
+          varietyId: data.varietyId,
           startDate: new Date(data.startDate),
           endDate: new Date(data.endDate),
-          seedLevel: data.seedLevel as SeedLevel,
+          seedLevel: data.seedLevel,
           expectedQuantity: data.expectedQuantity,
           parcelId: data.parcelId,
           paymentTerms: data.paymentTerms,
@@ -301,6 +291,7 @@ export class MultiplierService {
         include: {
           variety: true,
           multiplier: true,
+          parcel: true,
         },
       });
 

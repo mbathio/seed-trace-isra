@@ -1,4 +1,4 @@
-// backend/src/services/QualityControlService.ts - VERSION COMPLÈTE
+// backend/src/services/QualityControlService.ts - SERVICE CORRIGÉ
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { CreateQualityControlData } from "../types/entities";
@@ -45,12 +45,11 @@ export class QualityControlService {
             },
           },
           inspector: {
-            select: { id: true, name: true, email: true, role: true },
+            select: { id: true, name: true, email: true },
           },
         },
       });
 
-      // Mettre à jour le statut du lot
       if (result === TestResult.PASS) {
         await prisma.seedLot.update({
           where: { id: data.lotId },
@@ -95,9 +94,12 @@ export class QualityControlService {
       : TestResult.FAIL;
   }
 
+  /**
+   * ✅ CORRIGÉ: Retourne une structure uniforme avec 'data' au lieu de 'controls'
+   */
   static async getQualityControls(
     query: PaginationQuery & any
-  ): Promise<{ controls: any[]; total: number; meta: any }> {
+  ): Promise<{ data: any[]; total: number; meta: any }> {
     try {
       const {
         page = 1,
@@ -123,9 +125,14 @@ export class QualityControlService {
         ];
       }
 
-      // Le résultat arrive déjà transformé depuis le middleware
       if (result) {
-        where.result = result;
+        // Transformer le résultat UI vers DB si nécessaire
+        const resultMap: Record<string, string> = {
+          passed: "PASS",
+          failed: "FAIL",
+          pending: "PENDING",
+        };
+        where.result = resultMap[result] || result;
       }
 
       if (lotId) {
@@ -147,7 +154,7 @@ export class QualityControlService {
               },
             },
             inspector: {
-              select: { id: true, name: true, email: true, role: true },
+              select: { id: true, name: true, email: true },
             },
           },
           orderBy: { [sortBy]: sortOrder },
@@ -159,8 +166,9 @@ export class QualityControlService {
 
       const totalPages = Math.ceil(total / pageSizeNum);
 
+      // ✅ IMPORTANT: Retourner 'data' au lieu de 'controls'
       return {
-        controls,
+        data: controls,
         total,
         meta: {
           page: pageNum,
@@ -193,10 +201,14 @@ export class QualityControlService {
             },
           },
           inspector: {
-            select: { id: true, name: true, email: true, role: true },
+            select: { id: true, name: true, email: true },
           },
         },
       });
+
+      if (!qualityControl) {
+        return null;
+      }
 
       return qualityControl;
     } catch (error) {
@@ -247,9 +259,6 @@ export class QualityControlService {
         where: { id },
         data: {
           ...data,
-          controlDate: data.controlDate
-            ? new Date(data.controlDate)
-            : undefined,
           updatedAt: new Date(),
         },
         include: {
@@ -260,7 +269,7 @@ export class QualityControlService {
             },
           },
           inspector: {
-            select: { id: true, name: true, email: true, role: true },
+            select: { id: true, name: true, email: true },
           },
         },
       });
@@ -279,80 +288,6 @@ export class QualityControlService {
       });
     } catch (error) {
       logger.error("Erreur lors de la suppression du contrôle qualité:", error);
-      throw error;
-    }
-  }
-
-  // Méthodes supplémentaires utiles
-
-  static async getQualityControlsByLot(lotId: string): Promise<any[]> {
-    try {
-      const controls = await prisma.qualityControl.findMany({
-        where: { lotId },
-        include: {
-          inspector: {
-            select: { id: true, name: true, email: true },
-          },
-        },
-        orderBy: { controlDate: "desc" },
-      });
-
-      return controls;
-    } catch (error) {
-      logger.error(
-        "Erreur lors de la récupération des contrôles du lot:",
-        error
-      );
-      throw error;
-    }
-  }
-
-  static async getQualityControlStatistics(filters?: any): Promise<any> {
-    try {
-      const where: any = {};
-
-      if (filters?.startDate || filters?.endDate) {
-        where.controlDate = {};
-        if (filters.startDate) {
-          where.controlDate.gte = new Date(filters.startDate);
-        }
-        if (filters.endDate) {
-          where.controlDate.lte = new Date(filters.endDate);
-        }
-      }
-
-      const [total, passed, failed, avgGermination, avgPurity] =
-        await Promise.all([
-          prisma.qualityControl.count({ where }),
-          prisma.qualityControl.count({
-            where: { ...where, result: TestResult.PASS },
-          }),
-          prisma.qualityControl.count({
-            where: { ...where, result: TestResult.FAIL },
-          }),
-          prisma.qualityControl.aggregate({
-            where,
-            _avg: { germinationRate: true },
-          }),
-          prisma.qualityControl.aggregate({
-            where,
-            _avg: { varietyPurity: true },
-          }),
-        ]);
-
-      return {
-        total,
-        passed,
-        failed,
-        passRate: total > 0 ? (passed / total) * 100 : 0,
-        averageGerminationRate: avgGermination._avg.germinationRate || 0,
-        averageVarietyPurity: avgPurity._avg.varietyPurity || 0,
-      };
-    } catch (error) {
-      logger.error(
-        "Erreur lors du calcul des statistiques de contrôle qualité:",
-        error
-      );
       throw error;
     }
   }

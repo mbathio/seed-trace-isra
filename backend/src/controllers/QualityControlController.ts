@@ -1,4 +1,4 @@
-// backend/src/controllers/QualityControlController.ts - Corrigé
+// backend/src/controllers/QualityControlController.ts - CONTRÔLEUR CORRIGÉ
 import { Request, Response, NextFunction } from "express";
 import { QualityControlService } from "../services/QualityControlService";
 import { ResponseHandler } from "../utils/response";
@@ -30,6 +30,9 @@ export class QualityControlController {
     }
   }
 
+  /**
+   * ✅ CORRIGÉ: Utilise result.data au lieu de result.controls
+   */
   static async getQualityControls(
     req: Request,
     res: Response,
@@ -39,7 +42,7 @@ export class QualityControlController {
       const result = await QualityControlService.getQualityControls(req.query);
       return ResponseHandler.success(
         res,
-        result.controls,
+        result.data, // ✅ CHANGÉ de result.controls à result.data
         "Contrôles qualité récupérés avec succès",
         result.meta
       );

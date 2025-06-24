@@ -1,213 +1,125 @@
-// backend/src/middleware/transformationMiddleware.ts - VERSION CORRIGÉE
+// backend/src/middleware/transformationMiddleware.ts
+
 import { Request, Response, NextFunction } from "express";
-import {
-  LOT_STATUS_MAPPINGS,
-  SEED_LEVEL_MAPPINGS,
-  CROP_TYPE_MAPPINGS,
-  ROLE_MAPPINGS,
-  PARCEL_STATUS_MAPPINGS,
-  PRODUCTION_STATUS_MAPPINGS,
-  ACTIVITY_TYPE_MAPPINGS,
-  ISSUE_TYPE_MAPPINGS,
-  ISSUE_SEVERITY_MAPPINGS,
-  TEST_RESULT_MAPPINGS,
-  CERTIFICATION_LEVEL_MAPPINGS,
-  MULTIPLIER_STATUS_MAPPINGS,
-  CONTRACT_STATUS_MAPPINGS,
-  REPORT_TYPE_MAPPINGS,
-} from "../config/enums";
 
 /**
- * Helper function to safely transform enum values
+ * Nettoie les paramètres de requête en convertissant
+ * les strings en types appropriés
  */
-function transformEnum<T extends Record<string, any>>(
-  value: string | undefined,
-  mapping: T
-): string | undefined {
-  if (!value || typeof value !== "string") return value;
-  return mapping[value as keyof T] || value;
-}
+const cleanQueryParams = (query: any): any => {
+  const cleaned = { ...query };
 
-/**
- * Middleware de transformation pour les lots de semences
- */
-export const seedLotTransformation = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  // Transformation UI → DB pour les requêtes entrantes
-  if (req.body) {
-    // Transformer le statut
-    if (req.body.status) {
-      req.body.status = transformEnum(
-        req.body.status,
-        LOT_STATUS_MAPPINGS.UI_TO_DB
-      );
+  // Convertir les paramètres booléens
+  ["includeRelations", "includeSources", "includeProductions"].forEach(
+    (param) => {
+      if (cleaned[param] === "true") cleaned[param] = true;
+      else if (cleaned[param] === "false") cleaned[param] = false;
     }
+  );
 
-    // Transformer le niveau (si nécessaire)
-    if (req.body.level) {
-      req.body.level = transformEnum(
-        req.body.level,
-        SEED_LEVEL_MAPPINGS.UI_TO_DB
-      );
+  // Convertir les paramètres numériques
+  [
+    "page",
+    "limit",
+    "pageSize",
+    "multiplierId",
+    "parcelId",
+    "inspectorId",
+    "year",
+  ].forEach((param) => {
+    if (cleaned[param]) {
+      const num = parseInt(cleaned[param], 10);
+      if (!isNaN(num)) cleaned[param] = num;
     }
-  }
+  });
 
-  // Transformer les query params
-  if (req.query) {
-    if (req.query.status && typeof req.query.status === "string") {
-      const mappedStatus = transformEnum(
-        req.query.status,
-        LOT_STATUS_MAPPINGS.UI_TO_DB
-      );
-      if (mappedStatus) {
-        req.query.status = mappedStatus;
-      }
-    }
-
-    if (req.query.level && typeof req.query.level === "string") {
-      const mappedLevel = transformEnum(
-        req.query.level,
-        SEED_LEVEL_MAPPINGS.UI_TO_DB
-      );
-      if (mappedLevel) {
-        req.query.level = mappedLevel;
-      }
-    }
-  }
-
-  // Intercepter la réponse pour transformation DB → UI
-  const originalJson = res.json.bind(res);
-  res.json = function (data: any) {
-    if (!data || typeof data !== "object") {
-      return originalJson(data);
-    }
-
-    // Fonction helper pour transformer un lot
-    const transformSeedLot = (lot: any): any => {
-      if (!lot || typeof lot !== "object") return lot;
-
-      const transformed = { ...lot };
-
-      // Transformer le statut
-      if (transformed.status) {
-        transformed.status =
-          transformEnum(transformed.status, LOT_STATUS_MAPPINGS.DB_TO_UI) ||
-          transformed.status;
-      }
-
-      // Transformer le niveau
-      if (transformed.level) {
-        transformed.level =
-          transformEnum(transformed.level, SEED_LEVEL_MAPPINGS.DB_TO_UI) ||
-          transformed.level;
-      }
-
-      // Transformer les relations
-      if (transformed.variety && transformed.variety.cropType) {
-        transformed.variety.cropType =
-          transformEnum(
-            transformed.variety.cropType,
-            CROP_TYPE_MAPPINGS.DB_TO_UI
-          ) || transformed.variety.cropType;
-      }
-
-      // Transformer les lots enfants
-      if (transformed.childLots && Array.isArray(transformed.childLots)) {
-        transformed.childLots = transformed.childLots.map(transformSeedLot);
-      }
-
-      // Transformer le lot parent
-      if (transformed.parentLot) {
-        transformed.parentLot = transformSeedLot(transformed.parentLot);
-      }
-
-      return transformed;
-    };
-
-    // Cloner les données pour éviter les mutations
-    const transformedData = JSON.parse(JSON.stringify(data));
-
-    // Transformer selon la structure de la réponse
-    if (transformedData.success && transformedData.data) {
-      // Structure standard de l'API
-      if (Array.isArray(transformedData.data)) {
-        transformedData.data = transformedData.data.map(transformSeedLot);
-      } else if (typeof transformedData.data === "object") {
-        transformedData.data = transformSeedLot(transformedData.data);
-      }
-    } else if (transformedData.data) {
-      // Autre structure possible
-      if (Array.isArray(transformedData.data)) {
-        transformedData.data = transformedData.data.map(transformSeedLot);
-      } else if (typeof transformedData.data === "object") {
-        transformedData.data = transformSeedLot(transformedData.data);
-      }
-    } else if (Array.isArray(transformedData)) {
-      // Si c'est directement un tableau
-      return originalJson(transformedData.map(transformSeedLot));
-    } else if (transformedData.id && transformedData.varietyId) {
-      // Si c'est directement un objet lot
-      return originalJson(transformSeedLot(transformedData));
-    }
-
-    return originalJson(transformedData);
-  };
-
-  next();
+  return cleaned;
 };
 
 /**
- * Middleware de transformation pour les variétés
+ * Transforme les énumérations entre UI et DB pour les variétés
  */
 export const varietyTransformation = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  // Transformation UI → DB pour les requêtes entrantes
-  if (req.body && req.body.cropType) {
-    req.body.cropType = transformEnum(
-      req.body.cropType,
-      CROP_TYPE_MAPPINGS.UI_TO_DB
-    );
+  // Nettoyer les paramètres de requête
+  if (req.query) {
+    req.query = cleanQueryParams(req.query);
   }
 
-  // Transformer les query params
-  if (
-    req.query &&
-    req.query.cropType &&
-    typeof req.query.cropType === "string"
-  ) {
-    const mappedCropType = transformEnum(
-      req.query.cropType,
-      CROP_TYPE_MAPPINGS.UI_TO_DB
-    );
-    if (mappedCropType) {
-      req.query.cropType = mappedCropType;
+  // Transformation UI → DB pour les catégories et types
+  if (req.body?.category) {
+    const uiToDbMap: Record<string, string> = {
+      cereal: "CEREAL",
+      vegetable: "VEGETABLE",
+      leguminous: "LEGUMINOUS",
+      tuber: "TUBER",
+      industrial: "INDUSTRIAL",
+      forage: "FORAGE",
+    };
+
+    if (uiToDbMap[req.body.category]) {
+      req.body.category = uiToDbMap[req.body.category];
+    }
+  }
+
+  if (req.body?.cropType) {
+    const uiToDbMap: Record<string, string> = {
+      rice: "RICE",
+      maize: "MAIZE",
+      peanut: "PEANUT",
+      sorghum: "SORGHUM",
+      cowpea: "COWPEA",
+      millet: "MILLET",
+      wheat: "WHEAT",
+    };
+
+    if (uiToDbMap[req.body.cropType]) {
+      req.body.cropType = uiToDbMap[req.body.cropType];
     }
   }
 
   // Intercepter la réponse pour transformation DB → UI
   const originalJson = res.json.bind(res);
   res.json = function (data: any) {
+    // Ne pas transformer si pas de données
     if (!data || typeof data !== "object") {
       return originalJson(data);
     }
 
+    const categoryDbToUiMap: Record<string, string> = {
+      CEREAL: "cereal",
+      VEGETABLE: "vegetable",
+      LEGUMINOUS: "leguminous",
+      TUBER: "tuber",
+      INDUSTRIAL: "industrial",
+      FORAGE: "forage",
+    };
+
+    const cropTypeDbToUiMap: Record<string, string> = {
+      RICE: "rice",
+      MAIZE: "maize",
+      PEANUT: "peanut",
+      SORGHUM: "sorghum",
+      COWPEA: "cowpea",
+      MILLET: "millet",
+      WHEAT: "wheat",
+    };
+
     // Fonction helper pour transformer une variété
-    const transformVariety = (variety: any): any => {
+    const transformVariety = (variety: any) => {
       if (!variety || typeof variety !== "object") return variety;
 
       const transformed = { ...variety };
 
-      // Transformer le type de culture
-      if (transformed.cropType) {
-        transformed.cropType =
-          transformEnum(transformed.cropType, CROP_TYPE_MAPPINGS.DB_TO_UI) ||
-          transformed.cropType;
+      if (variety.category && categoryDbToUiMap[variety.category]) {
+        transformed.category = categoryDbToUiMap[variety.category];
+      }
+
+      if (variety.cropType && cropTypeDbToUiMap[variety.cropType]) {
+        transformed.cropType = cropTypeDbToUiMap[variety.cropType];
       }
 
       return transformed;
@@ -216,17 +128,14 @@ export const varietyTransformation = (
     // Cloner les données pour éviter les mutations
     const transformedData = JSON.parse(JSON.stringify(data));
 
-    // Transformer selon la structure de la réponse
-    if (transformedData.success && transformedData.data) {
+    // Transformer les données
+    if (transformedData?.data) {
+      // Transformer un tableau de variétés
       if (Array.isArray(transformedData.data)) {
         transformedData.data = transformedData.data.map(transformVariety);
-      } else if (typeof transformedData.data === "object") {
-        transformedData.data = transformVariety(transformedData.data);
       }
-    } else if (transformedData.data) {
-      if (Array.isArray(transformedData.data)) {
-        transformedData.data = transformedData.data.map(transformVariety);
-      } else if (typeof transformedData.data === "object") {
+      // Transformer une seule variété
+      else if (typeof transformedData.data === "object") {
         transformedData.data = transformVariety(transformedData.data);
       }
     }
@@ -238,44 +147,80 @@ export const varietyTransformation = (
 };
 
 /**
- * Middleware de transformation pour les utilisateurs
+ * Transforme les énumérations entre UI et DB pour les lots de semences
  */
-export const userTransformation = (
+export const seedLotTransformation = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  // Transformation UI → DB pour les requêtes entrantes
-  if (req.body && req.body.role) {
-    req.body.role = transformEnum(req.body.role, ROLE_MAPPINGS.UI_TO_DB);
+  // Nettoyer les paramètres de requête
+  if (req.query) {
+    req.query = cleanQueryParams(req.query);
   }
 
-  // Transformer les query params
-  if (req.query && req.query.role && typeof req.query.role === "string") {
-    const mappedRole = transformEnum(req.query.role, ROLE_MAPPINGS.UI_TO_DB);
-    if (mappedRole) {
-      req.query.role = mappedRole;
+  // Transformation UI → DB pour les niveaux et statuts
+  if (req.body?.level) {
+    req.body.level = req.body.level.toUpperCase();
+  }
+
+  if (req.body?.status) {
+    const uiToDbMap: Record<string, string> = {
+      pending: "PENDING",
+      certified: "CERTIFIED",
+      rejected: "REJECTED",
+      "in-stock": "IN_STOCK",
+      sold: "SOLD",
+      active: "ACTIVE",
+      distributed: "DISTRIBUTED",
+    };
+
+    if (uiToDbMap[req.body.status]) {
+      req.body.status = uiToDbMap[req.body.status];
     }
   }
 
   // Intercepter la réponse pour transformation DB → UI
   const originalJson = res.json.bind(res);
   res.json = function (data: any) {
+    // Ne pas transformer si pas de données
     if (!data || typeof data !== "object") {
       return originalJson(data);
     }
 
-    // Fonction helper pour transformer un utilisateur
-    const transformUser = (user: any): any => {
-      if (!user || typeof user !== "object") return user;
+    const statusDbToUiMap: Record<string, string> = {
+      PENDING: "pending",
+      CERTIFIED: "certified",
+      REJECTED: "rejected",
+      IN_STOCK: "in-stock",
+      SOLD: "sold",
+      ACTIVE: "active",
+      DISTRIBUTED: "distributed",
+    };
 
-      const transformed = { ...user };
+    const levelDbToUiMap: Record<string, string> = {
+      GO: "go",
+      G1: "g1",
+      G2: "g2",
+      G3: "g3",
+      G4: "g4",
+      R1: "r1",
+      R2: "r2",
+      N: "n",
+    };
 
-      // Transformer le rôle
-      if (transformed.role) {
-        transformed.role =
-          transformEnum(transformed.role, ROLE_MAPPINGS.DB_TO_UI) ||
-          transformed.role;
+    // Fonction helper pour transformer un lot
+    const transformLot = (lot: any): any => {
+      if (!lot || typeof lot !== "object") return lot;
+
+      const transformed = { ...lot };
+
+      if (lot.status && statusDbToUiMap[lot.status]) {
+        transformed.status = statusDbToUiMap[lot.status];
+      }
+
+      if (lot.level && levelDbToUiMap[lot.level.toUpperCase()]) {
+        transformed.level = levelDbToUiMap[lot.level.toUpperCase()];
       }
 
       return transformed;
@@ -284,21 +229,101 @@ export const userTransformation = (
     // Cloner les données pour éviter les mutations
     const transformedData = JSON.parse(JSON.stringify(data));
 
-    // Transformer selon la structure de la réponse
-    if (transformedData.success && transformedData.data) {
+    // Transformer les données
+    if (transformedData?.data) {
+      // Transformer un tableau de lots
+      if (Array.isArray(transformedData.data)) {
+        transformedData.data = transformedData.data.map(transformLot);
+      }
+      // Transformer un seul lot
+      else if (typeof transformedData.data === "object") {
+        transformedData.data = transformLot(transformedData.data);
+      }
+    }
+
+    return originalJson(transformedData);
+  };
+
+  next();
+};
+
+/**
+ * Transforme les rôles entre UI et DB pour les utilisateurs
+ */
+export const userTransformation = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // Nettoyer les paramètres de requête
+  if (req.query) {
+    req.query = cleanQueryParams(req.query);
+  }
+
+  // Transformation UI → DB pour les rôles
+  if (req.body?.role) {
+    const uiToDbMap: Record<string, string> = {
+      admin: "ADMIN",
+      manager: "MANAGER",
+      technician: "TECHNICIAN",
+      inspector: "INSPECTOR",
+      researcher: "RESEARCHER",
+      multiplier: "MULTIPLIER",
+    };
+
+    if (uiToDbMap[req.body.role]) {
+      req.body.role = uiToDbMap[req.body.role];
+    }
+  }
+
+  // Intercepter la réponse pour transformation DB → UI
+  const originalJson = res.json.bind(res);
+  res.json = function (data: any) {
+    // Ne pas transformer si pas de données
+    if (!data || typeof data !== "object") {
+      return originalJson(data);
+    }
+
+    const dbToUiMap: Record<string, string> = {
+      ADMIN: "admin",
+      MANAGER: "manager",
+      TECHNICIAN: "technician",
+      INSPECTOR: "inspector",
+      RESEARCHER: "researcher",
+      MULTIPLIER: "multiplier",
+    };
+
+    // Fonction helper pour transformer un utilisateur
+    const transformUser = (user: any) => {
+      if (!user || !user.role || typeof user !== "object") return user;
+
+      if (dbToUiMap[user.role]) {
+        return {
+          ...user,
+          role: dbToUiMap[user.role],
+        };
+      }
+
+      return user;
+    };
+
+    // Cloner les données pour éviter les mutations
+    const transformedData = JSON.parse(JSON.stringify(data));
+
+    // Transformer les données
+    if (transformedData?.data) {
+      // Transformer un tableau d'utilisateurs
       if (Array.isArray(transformedData.data)) {
         transformedData.data = transformedData.data.map(transformUser);
-      } else if (typeof transformedData.data === "object") {
+      }
+      // Transformer un seul utilisateur
+      else if (typeof transformedData.data === "object") {
         transformedData.data = transformUser(transformedData.data);
       }
-    } else if (transformedData.data) {
-      if (Array.isArray(transformedData.data)) {
-        transformedData.data = transformedData.data.map(transformUser);
-      } else if (typeof transformedData.data === "object") {
-        transformedData.data = transformUser(transformedData.data);
-      }
-    } else if (transformedData.user) {
-      // Pour les réponses d'auth
+    }
+
+    // Gérer aussi le cas où l'utilisateur est dans un objet auth (login)
+    if (transformedData?.user) {
       transformedData.user = transformUser(transformedData.user);
     }
 
@@ -309,54 +334,58 @@ export const userTransformation = (
 };
 
 /**
- * Middleware de transformation pour les multiplicateurs
+ * ✅ CORRIGÉ: Transforme les énumérations entre UI et DB pour les multiplicateurs
  */
 export const multiplierTransformation = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  // Transformation UI → DB pour les requêtes entrantes
-  if (req.body) {
-    if (req.body.status) {
-      req.body.status = transformEnum(
-        req.body.status,
-        MULTIPLIER_STATUS_MAPPINGS.UI_TO_DB
-      );
-    }
-    if (req.body.certificationLevel) {
-      req.body.certificationLevel = transformEnum(
-        req.body.certificationLevel,
-        CERTIFICATION_LEVEL_MAPPINGS.UI_TO_DB
-      );
-    }
-    if (req.body.specialization && Array.isArray(req.body.specialization)) {
-      req.body.specialization = req.body.specialization.map(
-        (spec: string) =>
-          transformEnum(spec, CROP_TYPE_MAPPINGS.UI_TO_DB) || spec
-      );
+  // Nettoyer les paramètres de requête
+  if (req.query) {
+    req.query = cleanQueryParams(req.query);
+  }
+
+  // Transformation UI → DB pour le statut
+  if (req.body?.status) {
+    const uiToDbMap: Record<string, string> = {
+      active: "ACTIVE",
+      inactive: "INACTIVE",
+    };
+
+    if (uiToDbMap[req.body.status]) {
+      req.body.status = uiToDbMap[req.body.status];
     }
   }
 
-  // Transformer les query params
-  if (req.query) {
-    if (req.query.status && typeof req.query.status === "string") {
-      const mapped = transformEnum(
-        req.query.status,
-        MULTIPLIER_STATUS_MAPPINGS.UI_TO_DB
-      );
-      if (mapped) req.query.status = mapped;
+  // Transformation UI → DB pour le niveau de certification
+  if (req.body?.certificationLevel) {
+    const uiToDbMap: Record<string, string> = {
+      beginner: "BEGINNER",
+      intermediate: "INTERMEDIATE",
+      expert: "EXPERT",
+    };
+
+    if (uiToDbMap[req.body.certificationLevel]) {
+      req.body.certificationLevel = uiToDbMap[req.body.certificationLevel];
     }
-    if (
-      req.query.certificationLevel &&
-      typeof req.query.certificationLevel === "string"
-    ) {
-      const mapped = transformEnum(
-        req.query.certificationLevel,
-        CERTIFICATION_LEVEL_MAPPINGS.UI_TO_DB
-      );
-      if (mapped) req.query.certificationLevel = mapped;
-    }
+  }
+
+  // Transformation UI → DB pour la spécialisation
+  if (req.body?.specialization && Array.isArray(req.body.specialization)) {
+    const uiToDbMap: Record<string, string> = {
+      rice: "RICE",
+      maize: "MAIZE",
+      peanut: "PEANUT",
+      sorghum: "SORGHUM",
+      cowpea: "COWPEA",
+      millet: "MILLET",
+      wheat: "WHEAT",
+    };
+
+    req.body.specialization = req.body.specialization.map(
+      (spec: string) => uiToDbMap[spec] || spec
+    );
   }
 
   // Intercepter la réponse pour transformation DB → UI
@@ -366,72 +395,59 @@ export const multiplierTransformation = (
       return originalJson(data);
     }
 
-    // Fonction helper pour transformer un multiplicateur
-    const transformMultiplier = (multiplier: any): any => {
+    const statusDbToUiMap: Record<string, string> = {
+      ACTIVE: "active",
+      INACTIVE: "inactive",
+    };
+
+    const certLevelDbToUiMap: Record<string, string> = {
+      BEGINNER: "beginner",
+      INTERMEDIATE: "intermediate",
+      EXPERT: "expert",
+    };
+
+    const cropDbToUiMap: Record<string, string> = {
+      RICE: "rice",
+      MAIZE: "maize",
+      PEANUT: "peanut",
+      SORGHUM: "sorghum",
+      COWPEA: "cowpea",
+      MILLET: "millet",
+      WHEAT: "wheat",
+    };
+
+    const transformMultiplier = (multiplier: any) => {
       if (!multiplier || typeof multiplier !== "object") return multiplier;
 
       const transformed = { ...multiplier };
 
-      if (transformed.status) {
-        transformed.status =
-          transformEnum(
-            transformed.status,
-            MULTIPLIER_STATUS_MAPPINGS.DB_TO_UI
-          ) || transformed.status;
+      if (multiplier.status && statusDbToUiMap[multiplier.status]) {
+        transformed.status = statusDbToUiMap[multiplier.status];
       }
-      if (transformed.certificationLevel) {
-        transformed.certificationLevel =
-          transformEnum(
-            transformed.certificationLevel,
-            CERTIFICATION_LEVEL_MAPPINGS.DB_TO_UI
-          ) || transformed.certificationLevel;
-      }
+
       if (
-        transformed.specialization &&
-        Array.isArray(transformed.specialization)
+        multiplier.certificationLevel &&
+        certLevelDbToUiMap[multiplier.certificationLevel]
       ) {
-        transformed.specialization = transformed.specialization.map(
-          (spec: string) =>
-            transformEnum(spec, CROP_TYPE_MAPPINGS.DB_TO_UI) || spec
+        transformed.certificationLevel =
+          certLevelDbToUiMap[multiplier.certificationLevel];
+      }
+
+      if (
+        multiplier.specialization &&
+        Array.isArray(multiplier.specialization)
+      ) {
+        transformed.specialization = multiplier.specialization.map(
+          (spec: string) => cropDbToUiMap[spec] || spec
         );
       }
 
-      // Transformer les contrats
-      if (transformed.contracts && Array.isArray(transformed.contracts)) {
-        transformed.contracts = transformed.contracts.map(transformContract);
-      }
-
       return transformed;
     };
 
-    // Fonction helper pour transformer un contrat
-    const transformContract = (contract: any): any => {
-      if (!contract || typeof contract !== "object") return contract;
-
-      const transformed = { ...contract };
-
-      if (transformed.status) {
-        transformed.status =
-          transformEnum(
-            transformed.status,
-            CONTRACT_STATUS_MAPPINGS.DB_TO_UI
-          ) || transformed.status;
-      }
-
-      return transformed;
-    };
-
-    // Cloner les données pour éviter les mutations
     const transformedData = JSON.parse(JSON.stringify(data));
 
-    // Transformer selon la structure de la réponse
-    if (transformedData.success && transformedData.data) {
-      if (Array.isArray(transformedData.data)) {
-        transformedData.data = transformedData.data.map(transformMultiplier);
-      } else if (typeof transformedData.data === "object") {
-        transformedData.data = transformMultiplier(transformedData.data);
-      }
-    } else if (transformedData.data) {
+    if (transformedData?.data) {
       if (Array.isArray(transformedData.data)) {
         transformedData.data = transformedData.data.map(transformMultiplier);
       } else if (typeof transformedData.data === "object") {
@@ -446,97 +462,57 @@ export const multiplierTransformation = (
 };
 
 /**
- * Middleware de transformation pour les contrôles qualité
+ * ✅ CORRIGÉ: Transforme les énumérations entre UI et DB pour les contrôles qualité
  */
 export const qualityControlTransformation = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  // Transformation UI → DB pour les requêtes entrantes
-  if (req.body && req.body.result) {
-    req.body.result = transformEnum(
-      req.body.result,
-      TEST_RESULT_MAPPINGS.UI_TO_DB
-    );
+  if (req.query) {
+    req.query = cleanQueryParams(req.query);
   }
 
-  // Transformer les query params
-  if (req.query && req.query.result && typeof req.query.result === "string") {
-    const mapped = transformEnum(
-      req.query.result,
-      TEST_RESULT_MAPPINGS.UI_TO_DB
-    );
-    if (mapped) req.query.result = mapped;
+  // Transformation UI → DB pour le résultat
+  if (req.body?.result) {
+    const uiToDbMap: Record<string, string> = {
+      passed: "PASS",
+      failed: "FAIL",
+      pending: "PENDING",
+    };
+
+    if (uiToDbMap[req.body.result]) {
+      req.body.result = uiToDbMap[req.body.result];
+    }
   }
 
-  // Intercepter la réponse pour transformation DB → UI
   const originalJson = res.json.bind(res);
   res.json = function (data: any) {
     if (!data || typeof data !== "object") {
       return originalJson(data);
     }
 
-    // Fonction helper pour transformer un contrôle qualité
-    const transformQualityControl = (qc: any): any => {
+    const dbToUiMap: Record<string, string> = {
+      PASS: "passed",
+      FAIL: "failed",
+      PENDING: "pending",
+    };
+
+    const transformQualityControl = (qc: any) => {
       if (!qc || typeof qc !== "object") return qc;
 
       const transformed = { ...qc };
 
-      if (transformed.result) {
-        transformed.result =
-          transformEnum(transformed.result, TEST_RESULT_MAPPINGS.DB_TO_UI) ||
-          transformed.result;
-      }
-
-      // Transformer les relations
-      if (transformed.seedLot) {
-        transformed.seedLot = transformSeedLot(transformed.seedLot);
+      if (qc.result && dbToUiMap[qc.result]) {
+        transformed.result = dbToUiMap[qc.result];
       }
 
       return transformed;
     };
 
-    // Fonction helper pour transformer un lot (réutilisée)
-    const transformSeedLot = (lot: any): any => {
-      if (!lot || typeof lot !== "object") return lot;
-
-      const transformed = { ...lot };
-
-      if (transformed.status) {
-        transformed.status =
-          transformEnum(transformed.status, LOT_STATUS_MAPPINGS.DB_TO_UI) ||
-          transformed.status;
-      }
-      if (transformed.level) {
-        transformed.level =
-          transformEnum(transformed.level, SEED_LEVEL_MAPPINGS.DB_TO_UI) ||
-          transformed.level;
-      }
-      if (transformed.variety && transformed.variety.cropType) {
-        transformed.variety.cropType =
-          transformEnum(
-            transformed.variety.cropType,
-            CROP_TYPE_MAPPINGS.DB_TO_UI
-          ) || transformed.variety.cropType;
-      }
-
-      return transformed;
-    };
-
-    // Cloner les données pour éviter les mutations
     const transformedData = JSON.parse(JSON.stringify(data));
 
-    // Transformer selon la structure de la réponse
-    if (transformedData.success && transformedData.data) {
-      if (Array.isArray(transformedData.data)) {
-        transformedData.data = transformedData.data.map(
-          transformQualityControl
-        );
-      } else if (typeof transformedData.data === "object") {
-        transformedData.data = transformQualityControl(transformedData.data);
-      }
-    } else if (transformedData.data) {
+    if (transformedData?.data) {
       if (Array.isArray(transformedData.data)) {
         transformedData.data = transformedData.data.map(
           transformQualityControl
@@ -553,188 +529,71 @@ export const qualityControlTransformation = (
 };
 
 /**
- * Middleware de transformation pour les productions
- */
-export const productionTransformation = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  // Transformation UI → DB pour les requêtes entrantes
-  if (req.body) {
-    if (req.body.status) {
-      req.body.status = transformEnum(
-        req.body.status,
-        PRODUCTION_STATUS_MAPPINGS.UI_TO_DB
-      );
-    }
-
-    // Pour les activités
-    if (req.body.type && req.path.includes("activities")) {
-      req.body.type = transformEnum(
-        req.body.type,
-        ACTIVITY_TYPE_MAPPINGS.UI_TO_DB
-      );
-    }
-
-    // Pour les issues
-    if (req.body.type && req.path.includes("issues")) {
-      req.body.type = transformEnum(
-        req.body.type,
-        ISSUE_TYPE_MAPPINGS.UI_TO_DB
-      );
-    }
-    if (req.body.severity) {
-      req.body.severity = transformEnum(
-        req.body.severity,
-        ISSUE_SEVERITY_MAPPINGS.UI_TO_DB
-      );
-    }
-  }
-
-  // Transformer les query params
-  if (req.query && req.query.status && typeof req.query.status === "string") {
-    const mapped = transformEnum(
-      req.query.status,
-      PRODUCTION_STATUS_MAPPINGS.UI_TO_DB
-    );
-    if (mapped) req.query.status = mapped;
-  }
-
-  // Intercepter la réponse pour transformation DB → UI
-  const originalJson = res.json.bind(res);
-  res.json = function (data: any) {
-    if (!data || typeof data !== "object") {
-      return originalJson(data);
-    }
-
-    // Fonction helper pour transformer une production
-    const transformProduction = (production: any): any => {
-      if (!production || typeof production !== "object") return production;
-
-      const transformed = { ...production };
-
-      if (transformed.status) {
-        transformed.status =
-          transformEnum(
-            transformed.status,
-            PRODUCTION_STATUS_MAPPINGS.DB_TO_UI
-          ) || transformed.status;
-      }
-
-      // Transformer les activités
-      if (transformed.activities && Array.isArray(transformed.activities)) {
-        transformed.activities = transformed.activities.map(
-          (activity: any) => ({
-            ...activity,
-            type:
-              transformEnum(activity.type, ACTIVITY_TYPE_MAPPINGS.DB_TO_UI) ||
-              activity.type,
-          })
-        );
-      }
-
-      // Transformer les issues
-      if (transformed.issues && Array.isArray(transformed.issues)) {
-        transformed.issues = transformed.issues.map((issue: any) => ({
-          ...issue,
-          type:
-            transformEnum(issue.type, ISSUE_TYPE_MAPPINGS.DB_TO_UI) ||
-            issue.type,
-          severity:
-            transformEnum(issue.severity, ISSUE_SEVERITY_MAPPINGS.DB_TO_UI) ||
-            issue.severity,
-        }));
-      }
-
-      return transformed;
-    };
-
-    // Cloner les données pour éviter les mutations
-    const transformedData = JSON.parse(JSON.stringify(data));
-
-    // Transformer selon la structure de la réponse
-    if (transformedData.success && transformedData.data) {
-      if (Array.isArray(transformedData.data)) {
-        transformedData.data = transformedData.data.map(transformProduction);
-      } else if (typeof transformedData.data === "object") {
-        transformedData.data = transformProduction(transformedData.data);
-      }
-    } else if (transformedData.data) {
-      if (Array.isArray(transformedData.data)) {
-        transformedData.data = transformedData.data.map(transformProduction);
-      } else if (typeof transformedData.data === "object") {
-        transformedData.data = transformProduction(transformedData.data);
-      }
-    }
-
-    return originalJson(transformedData);
-  };
-
-  next();
-};
-
-/**
- * Middleware de transformation pour les parcelles
+ * Transforme les énumérations entre UI et DB pour les parcelles
  */
 export const parcelTransformation = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  // Transformation UI → DB pour les requêtes entrantes
-  if (req.body && req.body.status) {
-    req.body.status = transformEnum(
-      req.body.status,
-      PARCEL_STATUS_MAPPINGS.UI_TO_DB
-    );
+  // Nettoyer les paramètres de requête
+  if (req.query) {
+    req.query = cleanQueryParams(req.query);
   }
 
-  // Transformer les query params
-  if (req.query && req.query.status && typeof req.query.status === "string") {
-    const mapped = transformEnum(
-      req.query.status,
-      PARCEL_STATUS_MAPPINGS.UI_TO_DB
-    );
-    if (mapped) req.query.status = mapped;
+  // Transformation UI → DB pour les statuts
+  if (req.body?.status) {
+    const uiToDbMap: Record<string, string> = {
+      available: "AVAILABLE",
+      "in-use": "IN_USE",
+      resting: "RESTING",
+    };
+
+    if (uiToDbMap[req.body.status]) {
+      req.body.status = uiToDbMap[req.body.status];
+    }
   }
 
   // Intercepter la réponse pour transformation DB → UI
   const originalJson = res.json.bind(res);
   res.json = function (data: any) {
+    // Ne pas transformer si pas de données
     if (!data || typeof data !== "object") {
       return originalJson(data);
     }
 
+    const dbToUiMap: Record<string, string> = {
+      AVAILABLE: "available",
+      IN_USE: "in-use",
+      RESTING: "resting",
+    };
+
     // Fonction helper pour transformer une parcelle
-    const transformParcel = (parcel: any): any => {
-      if (!parcel || typeof parcel !== "object") return parcel;
+    const transformParcel = (parcel: any) => {
+      if (!parcel || !parcel.status || typeof parcel !== "object")
+        return parcel;
 
-      const transformed = { ...parcel };
-
-      if (transformed.status) {
-        transformed.status =
-          transformEnum(transformed.status, PARCEL_STATUS_MAPPINGS.DB_TO_UI) ||
-          transformed.status;
+      if (dbToUiMap[parcel.status]) {
+        return {
+          ...parcel,
+          status: dbToUiMap[parcel.status],
+        };
       }
 
-      return transformed;
+      return parcel;
     };
 
     // Cloner les données pour éviter les mutations
     const transformedData = JSON.parse(JSON.stringify(data));
 
-    // Transformer selon la structure de la réponse
-    if (transformedData.success && transformedData.data) {
+    // Transformer les données
+    if (transformedData?.data) {
+      // Transformer un tableau de parcelles
       if (Array.isArray(transformedData.data)) {
         transformedData.data = transformedData.data.map(transformParcel);
-      } else if (typeof transformedData.data === "object") {
-        transformedData.data = transformParcel(transformedData.data);
       }
-    } else if (transformedData.data) {
-      if (Array.isArray(transformedData.data)) {
-        transformedData.data = transformedData.data.map(transformParcel);
-      } else if (typeof transformedData.data === "object") {
+      // Transformer une seule parcelle
+      else if (typeof transformedData.data === "object") {
         transformedData.data = transformParcel(transformedData.data);
       }
     }
@@ -746,153 +605,153 @@ export const parcelTransformation = (
 };
 
 /**
- * Middleware de transformation complète (pour les rapports, stats, etc.)
+ * Transforme les énumérations entre UI et DB pour les productions
  */
-export const fullTransformation = (
+export const productionTransformation = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  // Transformation UI → DB pour les requêtes entrantes
-  if (req.body) {
-    // Transformer le type de rapport
-    if (req.body.type) {
-      req.body.type = transformEnum(
-        req.body.type,
-        REPORT_TYPE_MAPPINGS.UI_TO_DB
-      );
+  // Nettoyer les paramètres de requête
+  if (req.query) {
+    req.query = cleanQueryParams(req.query);
+  }
+
+  // Transformation UI → DB pour les statuts et types
+  if (req.body?.status) {
+    const statusUiToDbMap: Record<string, string> = {
+      planned: "PLANNED",
+      "in-progress": "IN_PROGRESS",
+      completed: "COMPLETED",
+      cancelled: "CANCELLED",
+    };
+
+    if (statusUiToDbMap[req.body.status]) {
+      req.body.status = statusUiToDbMap[req.body.status];
     }
   }
 
-  // Transformer les query params
-  if (req.query) {
-    if (req.query.type && typeof req.query.type === "string") {
-      const mapped = transformEnum(
-        req.query.type,
-        REPORT_TYPE_MAPPINGS.UI_TO_DB
-      );
-      if (mapped) req.query.type = mapped;
+  if (req.body?.type) {
+    const typeUiToDbMap: Record<string, string> = {
+      "soil-preparation": "SOIL_PREPARATION",
+      sowing: "SOWING",
+      fertilization: "FERTILIZATION",
+      irrigation: "IRRIGATION",
+      weeding: "WEEDING",
+      "pest-control": "PEST_CONTROL",
+      harvest: "HARVEST",
+      other: "OTHER",
+    };
+
+    if (typeUiToDbMap[req.body.type]) {
+      req.body.type = typeUiToDbMap[req.body.type];
     }
   }
 
   // Intercepter la réponse pour transformation DB → UI
   const originalJson = res.json.bind(res);
   res.json = function (data: any) {
+    // Ne pas transformer si pas de données
     if (!data || typeof data !== "object") {
       return originalJson(data);
     }
 
-    // Fonction de transformation récursive
-    const transformObject = (obj: any): any => {
-      if (!obj || typeof obj !== "object") return obj;
-      if (Array.isArray(obj)) return obj.map(transformObject);
+    const statusDbToUiMap: Record<string, string> = {
+      PLANNED: "planned",
+      IN_PROGRESS: "in-progress",
+      COMPLETED: "completed",
+      CANCELLED: "cancelled",
+    };
 
-      const transformed = { ...obj };
+    const typeDbToUiMap: Record<string, string> = {
+      SOIL_PREPARATION: "soil-preparation",
+      SOWING: "sowing",
+      FERTILIZATION: "fertilization",
+      IRRIGATION: "irrigation",
+      WEEDING: "weeding",
+      PEST_CONTROL: "pest-control",
+      HARVEST: "harvest",
+      OTHER: "other",
+    };
 
-      // Transformer tous les enums possibles
-      if (transformed.status) {
-        if (transformed.seedLot || transformed.level) {
-          transformed.status =
-            transformEnum(transformed.status, LOT_STATUS_MAPPINGS.DB_TO_UI) ||
-            transformed.status;
-        } else if (transformed.activities || transformed.yield !== undefined) {
-          transformed.status =
-            transformEnum(
-              transformed.status,
-              PRODUCTION_STATUS_MAPPINGS.DB_TO_UI
-            ) || transformed.status;
-        } else if (transformed.area !== undefined) {
-          transformed.status =
-            transformEnum(
-              transformed.status,
-              PARCEL_STATUS_MAPPINGS.DB_TO_UI
-            ) || transformed.status;
-        } else if (transformed.certificationLevel !== undefined) {
-          transformed.status =
-            transformEnum(
-              transformed.status,
-              MULTIPLIER_STATUS_MAPPINGS.DB_TO_UI
-            ) || transformed.status;
-        } else if (transformed.expectedQuantity !== undefined) {
-          transformed.status =
-            transformEnum(
-              transformed.status,
-              CONTRACT_STATUS_MAPPINGS.DB_TO_UI
-            ) || transformed.status;
-        }
+    // Fonction helper pour transformer une production
+    const transformProduction = (production: any) => {
+      if (!production || typeof production !== "object") return production;
+
+      const transformed = { ...production };
+
+      if (production.status && statusDbToUiMap[production.status]) {
+        transformed.status = statusDbToUiMap[production.status];
       }
 
-      if (transformed.level) {
-        transformed.level =
-          transformEnum(transformed.level, SEED_LEVEL_MAPPINGS.DB_TO_UI) ||
-          transformed.level;
-      }
-
-      if (transformed.cropType) {
-        transformed.cropType =
-          transformEnum(transformed.cropType, CROP_TYPE_MAPPINGS.DB_TO_UI) ||
-          transformed.cropType;
-      }
-
-      if (transformed.role) {
-        transformed.role =
-          transformEnum(transformed.role, ROLE_MAPPINGS.DB_TO_UI) ||
-          transformed.role;
-      }
-
-      if (transformed.result) {
-        transformed.result =
-          transformEnum(transformed.result, TEST_RESULT_MAPPINGS.DB_TO_UI) ||
-          transformed.result;
-      }
-
-      if (transformed.certificationLevel) {
-        transformed.certificationLevel =
-          transformEnum(
-            transformed.certificationLevel,
-            CERTIFICATION_LEVEL_MAPPINGS.DB_TO_UI
-          ) || transformed.certificationLevel;
-      }
-
-      if (transformed.type) {
-        if (transformed.title !== undefined) {
-          transformed.type =
-            transformEnum(transformed.type, REPORT_TYPE_MAPPINGS.DB_TO_UI) ||
-            transformed.type;
-        } else if (transformed.activityDate !== undefined) {
-          transformed.type =
-            transformEnum(transformed.type, ACTIVITY_TYPE_MAPPINGS.DB_TO_UI) ||
-            transformed.type;
-        } else if (transformed.severity !== undefined) {
-          transformed.type =
-            transformEnum(transformed.type, ISSUE_TYPE_MAPPINGS.DB_TO_UI) ||
-            transformed.type;
-        }
-      }
-
-      if (transformed.severity) {
-        transformed.severity =
-          transformEnum(
-            transformed.severity,
-            ISSUE_SEVERITY_MAPPINGS.DB_TO_UI
-          ) || transformed.severity;
-      }
-
-      // Transformer récursivement les propriétés objets
-      for (const key in transformed) {
-        if (transformed[key] && typeof transformed[key] === "object") {
-          transformed[key] = transformObject(transformed[key]);
-        }
+      // Transformer les activités si présentes
+      if (production.activities && Array.isArray(production.activities)) {
+        transformed.activities = production.activities.map((activity: any) => {
+          if (activity.type && typeDbToUiMap[activity.type]) {
+            return {
+              ...activity,
+              type: typeDbToUiMap[activity.type],
+            };
+          }
+          return activity;
+        });
       }
 
       return transformed;
     };
 
-    // Cloner et transformer
-    const transformedData = transformObject(JSON.parse(JSON.stringify(data)));
+    // Cloner les données pour éviter les mutations
+    const transformedData = JSON.parse(JSON.stringify(data));
+
+    // Transformer les données
+    if (transformedData?.data) {
+      // Transformer un tableau de productions
+      if (Array.isArray(transformedData.data)) {
+        transformedData.data = transformedData.data.map(transformProduction);
+      }
+      // Transformer une seule production
+      else if (typeof transformedData.data === "object") {
+        transformedData.data = transformProduction(transformedData.data);
+      }
+    }
 
     return originalJson(transformedData);
   };
 
   next();
+};
+
+/**
+ * Middleware de transformation complet pour toutes les entités
+ * Utile pour les routes qui manipulent plusieurs types d'entités
+ */
+export const fullTransformation = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // Appliquer toutes les transformations séquentiellement
+  const middlewares = [
+    varietyTransformation,
+    seedLotTransformation,
+    userTransformation,
+    multiplierTransformation,
+    qualityControlTransformation,
+    parcelTransformation,
+    productionTransformation,
+  ];
+
+  // Fonction récursive pour appliquer les middlewares
+  const applyMiddleware = (index: number) => {
+    if (index >= middlewares.length) {
+      next();
+      return;
+    }
+
+    middlewares[index](req, res, () => {
+      applyMiddleware(index + 1);
+    });
+  };
+
+  applyMiddleware(0);
 };

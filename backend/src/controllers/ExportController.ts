@@ -1,4 +1,4 @@
-// backend/src/controllers/ExportController.ts - Contrôleur d'export corrigé
+// backend/src/controllers/ExportController.ts - CONTRÔLEUR D'EXPORT CORRIGÉ
 import { Request, Response, NextFunction } from "express";
 import { ExportService } from "../services/ExportService";
 import { SeedLotService } from "../services/SeedLotService";
@@ -8,6 +8,33 @@ import { AuthenticatedRequest } from "../middleware/auth";
 import { logger } from "../utils/logger";
 
 export class ExportController {
+  /**
+   * Obtenir les formats d'export disponibles
+   * GET /api/export/formats
+   */
+  static async getAvailableFormats(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const formats = {
+        seedLots: ["csv", "xlsx", "json"],
+        qualityReport: ["html", "pdf", "json", "xlsx"],
+        productionStats: ["xlsx", "csv", "json"],
+        inventory: ["csv", "xlsx", "pdf"],
+      };
+
+      return ResponseHandler.success(
+        res,
+        formats,
+        "Formats d'export disponibles"
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
   /**
    * Export des lots de semences
    * GET /api/export/seed-lots?format=csv&level=G1&status=certified
@@ -36,87 +63,59 @@ export class ExportController {
         userId: req.user?.userId,
       });
 
-      // Récupérer les lots avec les filtres (limité à 5000 pour éviter la surcharge)
-      const result = await SeedLotService.getSeedLots({
+      // Récupérer les données des lots
+      const seedLotsData = await SeedLotService.getSeedLots({
         ...filters,
-        pageSize: 5000,
+        pageSize: 1000, // Limiter pour éviter la surcharge
       });
 
-      const lots = result.data;
-
-      if (lots.length === 0) {
-        return ResponseHandler.error(
-          res,
-          "Aucun lot trouvé avec ces critères",
-          404
-        );
+      if (!seedLotsData.data || seedLotsData.data.length === 0) {
+        return ResponseHandler.error(res, "Aucun lot de semences trouvé", 404);
       }
 
-      // Générer le fichier selon le format
+      // Utiliser le service d'export approprié selon le format
+      let exportResult;
       switch (format) {
-        case "csv": {
-          const csvData = await ExportService.exportSeedLotsToCSV(lots);
-          const filename = ExportService.generateFilename(
-            "lots_semences",
-            "csv"
+        case "csv":
+          exportResult = await ExportService.exportSeedLotsToCSV(
+            seedLotsData.data
           );
-
-          res.setHeader("Content-Type", "text/csv; charset=utf-8");
+          res.setHeader("Content-Type", "text/csv");
           res.setHeader(
             "Content-Disposition",
-            `attachment; filename="${filename}"`
+            'attachment; filename="lots_semences.csv"'
           );
-          res.setHeader("Content-Length", Buffer.byteLength(csvData, "utf8"));
+          break;
 
-          return res.status(200).send("\uFEFF" + csvData); // BOM pour Excel
-        }
-
-        case "xlsx": {
-          const excelBuffer = await ExportService.exportSeedLotsToExcel(lots);
-          const filename = ExportService.generateFilename(
-            "lots_semences",
-            "xlsx"
+        case "xlsx":
+          exportResult = await ExportService.exportSeedLotsToExcel(
+            seedLotsData.data
           );
-
-          res.setHeader("Content-Type", ExportService.getMimeType("xlsx"));
+          res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          );
           res.setHeader(
             "Content-Disposition",
-            `attachment; filename="${filename}"`
+            'attachment; filename="lots_semences.xlsx"'
           );
-          res.setHeader("Content-Length", excelBuffer.length);
+          break;
 
-          return res.status(200).send(excelBuffer);
-        }
-
-        case "json": {
-          const jsonData = {
-            metadata: {
-              exportDate: new Date().toISOString(),
-              totalCount: lots.length,
-              filters: filters,
-              exportedBy: req.user?.email,
-            },
-            lots: lots,
-          };
-
-          const filename = ExportService.generateFilename(
-            "lots_semences",
-            "json"
+        case "json":
+          return ResponseHandler.success(
+            res,
+            seedLotsData.data,
+            "Export JSON des lots de semences"
           );
-          res.setHeader("Content-Type", "application/json");
-          res.setHeader(
-            "Content-Disposition",
-            `attachment; filename="${filename}"`
-          );
-
-          return ResponseHandler.success(res, jsonData, "Export JSON réussi");
-        }
 
         default:
           return ResponseHandler.error(res, "Format non supporté", 400);
       }
+
+      // Envoyer le fichier
+      return res.send(exportResult);
     } catch (error) {
-      logger.error("Erreur lors de l'export des lots", {
+      logger.error("Erreur lors de l'export des lots de semences:", {
         error: error instanceof Error ? error.message : error,
         userId: req.user?.userId,
       });
@@ -158,7 +157,8 @@ export class ExportController {
         pageSize: 1000, // Limiter pour éviter la surcharge
       });
 
-      if (!reportData.controls || reportData.controls.length === 0) {
+      // ✅ CORRIGÉ: Utiliser reportData.data au lieu de reportData.controls
+      if (!reportData.data || reportData.data.length === 0) {
         return ResponseHandler.error(res, "Aucun contrôle qualité trouvé", 404);
       }
 
@@ -166,136 +166,127 @@ export class ExportController {
       const exportData = {
         statistics: {
           totalControls: reportData.total,
-          passedControls: reportData.controls.filter(
-            (qc) => qc.result === "PASS"
+          passedControls: reportData.data.filter(
+            (qc: any) => qc.result === "PASS"
           ).length,
-          failedControls: reportData.controls.filter(
-            (qc) => qc.result === "FAIL"
+          failedControls: reportData.data.filter(
+            (qc: any) => qc.result === "FAIL"
           ).length,
         },
         summary: {
           passRate:
             reportData.total > 0
-              ? (reportData.controls.filter((qc) => qc.result === "PASS")
+              ? (reportData.data.filter((qc: any) => qc.result === "PASS")
                   .length /
                   reportData.total) *
                 100
               : 0,
           averageGerminationRate:
-            reportData.controls.length > 0
-              ? reportData.controls.reduce(
-                  (sum, qc) => sum + qc.germinationRate,
+            reportData.data.length > 0
+              ? reportData.data.reduce(
+                  (sum: number, qc: any) => sum + qc.germinationRate,
                   0
-                ) / reportData.controls.length
+                ) / reportData.data.length
               : 0,
           averageVarietyPurity:
-            reportData.controls.length > 0
-              ? reportData.controls.reduce(
-                  (sum, qc) => sum + qc.varietyPurity,
+            reportData.data.length > 0
+              ? reportData.data.reduce(
+                  (sum: number, qc: any) => sum + qc.varietyPurity,
                   0
-                ) / reportData.controls.length
+                ) / reportData.data.length
               : 0,
         },
-        qualityControls: reportData.controls,
+        qualityControls: reportData.data,
       };
 
-      // Générer le fichier selon le format
+      // Générer l'export selon le format
       switch (format) {
-        case "html": {
+        case "html":
           const htmlReport = ExportService.generateReportHTML(exportData);
-          const filename = ExportService.generateFilename(
-            "rapport_qualite",
-            "html"
-          );
-
           res.setHeader("Content-Type", "text/html; charset=utf-8");
           res.setHeader(
             "Content-Disposition",
-            `attachment; filename="${filename}"`
+            `attachment; filename="${ExportService.generateFilename(
+              "rapport_qualite",
+              "html"
+            )}"`
           );
+          return res.send(htmlReport);
 
-          return res.status(200).send(htmlReport);
-        }
-
-        case "pdf": {
-          const pdfBuffer = await ExportService.exportQualityReportToPDF(
+        case "pdf":
+          const pdfReport = await ExportService.exportQualityReportToPDF(
             exportData
           );
-          const filename = ExportService.generateFilename(
-            "rapport_qualite",
-            "pdf"
-          );
-
           res.setHeader("Content-Type", "application/pdf");
           res.setHeader(
             "Content-Disposition",
-            `attachment; filename="${filename}"`
+            `attachment; filename="${ExportService.generateFilename(
+              "rapport_qualite",
+              "pdf"
+            )}"`
           );
-          res.setHeader("Content-Length", pdfBuffer.length);
+          return res.send(pdfReport);
 
-          return res.status(200).send(pdfBuffer);
-        }
-
-        case "json": {
+        case "json":
           const jsonReport = await ExportService.exportQualityReportToJSON(
             exportData
           );
-          const filename = ExportService.generateFilename(
-            "rapport_qualite",
-            "json"
+          return ResponseHandler.success(
+            res,
+            JSON.parse(jsonReport),
+            "Export JSON du rapport de qualité"
           );
 
-          res.setHeader("Content-Type", "application/json");
-          res.setHeader(
-            "Content-Disposition",
-            `attachment; filename="${filename}"`
-          );
+        case "xlsx":
+          // Transformer les données pour Excel
+          const excelData = reportData.data.map((qc: any) => [
+            qc.lotId,
+            qc.seedLot?.variety?.name || "N/A",
+            new Date(qc.controlDate).toLocaleDateString("fr-FR"),
+            qc.result === "PASS" ? "RÉUSSI" : "ÉCHEC",
+            qc.germinationRate,
+            qc.varietyPurity,
+            qc.moistureContent || "N/A",
+            qc.seedHealth || "N/A",
+            qc.inspector?.name || "N/A",
+            qc.observations || "",
+          ]);
 
-          return res.status(200).send(jsonReport);
-        }
+          // Ajouter les headers
+          excelData.unshift([
+            "ID Lot",
+            "Variété",
+            "Date de contrôle",
+            "Résultat",
+            "Taux de germination (%)",
+            "Pureté variétale (%)",
+            "Teneur en humidité (%)",
+            "Santé des semences (%)",
+            "Inspecteur",
+            "Observations",
+          ]);
 
-        case "xlsx": {
-          // Préparer les données pour Excel
-          const excelData = reportData.controls.map((qc) => ({
-            "ID Contrôle": qc.id,
-            "Lot ID": qc.lotId,
-            Variété: qc.seedLot?.variety?.name || "N/A",
-            Multiplicateur: qc.seedLot?.multiplier?.name || "N/A",
-            "Date Contrôle": new Date(qc.controlDate).toLocaleDateString(
-              "fr-FR"
-            ),
-            Résultat: qc.result === "PASS" ? "RÉUSSI" : "ÉCHEC",
-            "Taux Germination (%)": qc.germinationRate,
-            "Pureté Variétale (%)": qc.varietyPurity,
-            "Humidité (%)": qc.moistureContent || "N/A",
-            "Santé Graines (%)": qc.seedHealth || "N/A",
-            Inspecteur: qc.inspector?.name || "N/A",
-            Méthode: qc.testMethod || "Standard",
-            Observations: qc.observations || "",
-          }));
-
-          const excelBuffer = await ExportService.exportSeedLotsToExcel(
+          const excelReport = await ExportService.exportSeedLotsToExcel(
             excelData
           );
-          const filename = ExportService.generateFilename(
-            "rapport_qualite",
-            "xlsx"
+          res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           );
-
-          res.setHeader("Content-Type", ExportService.getMimeType("xlsx"));
           res.setHeader(
             "Content-Disposition",
-            `attachment; filename="${filename}"`
+            `attachment; filename="${ExportService.generateFilename(
+              "rapport_qualite",
+              "xlsx"
+            )}"`
           );
-
-          return res.status(200).send(excelBuffer);
-        }
+          return res.send(excelReport);
 
         default:
           return ResponseHandler.error(res, "Format non supporté", 400);
       }
     } catch (error) {
-      logger.error("Erreur lors de l'export du rapport de qualité", {
+      logger.error("Erreur lors de l'export du rapport de qualité:", {
         error: error instanceof Error ? error.message : error,
         userId: req.user?.userId,
       });
@@ -313,7 +304,7 @@ export class ExportController {
     next: NextFunction
   ): Promise<Response | void> {
     try {
-      const { format = "xlsx", year, multiplierId } = req.query;
+      const { format = "xlsx", ...filters } = req.query;
 
       // Validation du format
       const validFormats = ["xlsx", "csv", "json"];
@@ -325,54 +316,24 @@ export class ExportController {
         );
       }
 
-      // TODO: Implémenter l'export des statistiques de production
-      // Ceci nécessitera un service ProductionStatsService
+      logger.info(`Export des statistiques de production demandé`, {
+        format,
+        filters,
+        userId: req.user?.userId,
+      });
 
+      // TODO: Implémenter la récupération des statistiques de production
+      // Pour l'instant, retourner une erreur 501 (Non implémenté)
       return ResponseHandler.error(
         res,
-        "Fonctionnalité en cours de développement",
+        "Fonctionnalité d'export des statistiques de production en cours de développement",
         501
       );
     } catch (error) {
-      logger.error("Erreur lors de l'export des statistiques", {
+      logger.error("Erreur lors de l'export des statistiques de production:", {
         error: error instanceof Error ? error.message : error,
         userId: req.user?.userId,
       });
-      next(error);
-    }
-  }
-
-  /**
-   * Obtenir la liste des formats d'export disponibles
-   * GET /api/export/formats
-   */
-  static async getAvailableFormats(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<Response | void> {
-    try {
-      const formats = {
-        seedLots: {
-          formats: ["csv", "xlsx", "json"],
-          description: "Export des lots de semences",
-        },
-        qualityReport: {
-          formats: ["html", "pdf", "json", "xlsx"],
-          description: "Rapport de contrôle qualité",
-        },
-        productionStats: {
-          formats: ["xlsx", "csv", "json"],
-          description: "Statistiques de production (en développement)",
-        },
-      };
-
-      return ResponseHandler.success(
-        res,
-        formats,
-        "Formats disponibles récupérés"
-      );
-    } catch (error) {
       next(error);
     }
   }
