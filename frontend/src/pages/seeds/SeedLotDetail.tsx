@@ -40,7 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import { seedLotService } from "../../services/seedLotService";
+import { apiService } from "../../services/api";
 import type { SeedLot } from "../../types/entities";
 import { formatDate, formatNumber } from "../../utils/formatters";
 
@@ -64,8 +64,9 @@ const SeedLotDetail: React.FC = () => {
   } = useQuery<SeedLot>({
     queryKey: ["seed-lot", id],
     queryFn: async () => {
-      const response = await seedLotService.getById(id!);
-      return response.data.data;
+      const response = await apiService.seedLots.getAll({ varietyId: id });
+      // Assert the type of response to access data property safely
+      return (response as { data: { data: SeedLot } }).data.data;
     },
     enabled: !!id,
   });
