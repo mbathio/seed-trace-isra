@@ -1,4 +1,4 @@
-// frontend/src/pages/multipliers/MultiplierDetail.tsx - PAGE DE DÉTAILS MULTIPLICATEUR
+// frontend/src/pages/multipliers/MultiplierDetail.tsx - CORRIGÉ
 import React from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -48,7 +48,9 @@ import {
   CERTIFICATION_LEVELS,
   CROP_TYPES,
   getStatusConfig,
+  type StatusConfigExtended, // ✅ CORRIGÉ: Import du type étendu
 } from "../../constants";
+import { CROP_TYPE_ICONS } from "../../constants/icons";
 import { DataTransformer } from "../../utils/transformers";
 
 const MultiplierDetail: React.FC = () => {
@@ -115,7 +117,10 @@ const MultiplierDetail: React.FC = () => {
   };
 
   const getCertificationBadge = (level: string) => {
-    const config = getStatusConfig(level, CERTIFICATION_LEVELS);
+    const config = getStatusConfig(
+      level,
+      CERTIFICATION_LEVELS
+    ) as StatusConfigExtended; // ✅ CORRIGÉ: Cast vers le type étendu
     const colorClasses = {
       yellow: "bg-yellow-100 text-yellow-800 border-yellow-200",
       blue: "bg-blue-100 text-blue-800 border-blue-200",
@@ -125,6 +130,8 @@ const MultiplierDetail: React.FC = () => {
     const colorClass =
       colorClasses[config.color as keyof typeof colorClasses] ||
       colorClasses.blue;
+
+    // ✅ CORRIGÉ: Utilisation de l'expérience depuis le type étendu
     const stars =
       config.experience === "0-2 ans"
         ? 1
@@ -150,10 +157,15 @@ const MultiplierDetail: React.FC = () => {
   };
 
   const getSpecializationBadge = (specialization: string) => {
-    const config = getStatusConfig(specialization, CROP_TYPES);
+    const config = getStatusConfig(
+      specialization,
+      CROP_TYPES
+    ) as StatusConfigExtended; // ✅ CORRIGÉ: Cast vers le type étendu
     return (
       <Badge variant="outline" className="text-xs">
-        <span className="mr-1">{config.icon}</span>
+        <span className="mr-1">
+          {config.icon || CROP_TYPE_ICONS[specialization]}
+        </span>
         {config.label}
       </Badge>
     );

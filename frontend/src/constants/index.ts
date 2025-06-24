@@ -1,4 +1,4 @@
-// frontend/src/constants/index.ts - VERSION CORRIGÉE COMPLÈTE
+// frontend/src/constants/index.ts - VERSION CORRIGÉE AVEC TYPES ÉTENDUS
 
 // ===== TYPES DE CONFIGURATION =====
 interface StatusConfig {
@@ -6,6 +6,12 @@ interface StatusConfig {
   value: string;
   color: string;
   variant?: "default" | "destructive" | "secondary" | "outline";
+}
+
+// ✅ AJOUTÉ: Interface étendue avec propriétés optionnelles
+interface StatusConfigExtended extends StatusConfig {
+  icon?: string;
+  experience?: string; // Pour les niveaux de certification
 }
 
 interface LevelConfig {
@@ -40,18 +46,49 @@ export const SEED_LEVELS: LevelConfig[] = [
 ];
 
 // ===== TYPES DE CULTURES =====
-export const CROP_TYPES: StatusConfig[] = [
-  { label: "Riz", value: "rice", color: "bg-green-100 text-green-800" },
-  { label: "Maïs", value: "maize", color: "bg-yellow-100 text-yellow-800" },
+export const CROP_TYPES: StatusConfigExtended[] = [
+  {
+    label: "Riz",
+    value: "rice",
+    color: "bg-green-100 text-green-800",
+    icon: "🌾",
+  },
+  {
+    label: "Maïs",
+    value: "maize",
+    color: "bg-yellow-100 text-yellow-800",
+    icon: "🌽",
+  },
   {
     label: "Arachide",
     value: "peanut",
     color: "bg-orange-100 text-orange-800",
+    icon: "🥜",
   },
-  { label: "Sorgho", value: "sorghum", color: "bg-red-100 text-red-800" },
-  { label: "Niébé", value: "cowpea", color: "bg-purple-100 text-purple-800" },
-  { label: "Mil", value: "millet", color: "bg-blue-100 text-blue-800" },
-  { label: "Blé", value: "wheat", color: "bg-amber-100 text-amber-800" },
+  {
+    label: "Sorgho",
+    value: "sorghum",
+    color: "bg-red-100 text-red-800",
+    icon: "🌾",
+  },
+  {
+    label: "Niébé",
+    value: "cowpea",
+    color: "bg-purple-100 text-purple-800",
+    icon: "🫘",
+  },
+  {
+    label: "Mil",
+    value: "millet",
+    color: "bg-blue-100 text-blue-800",
+    icon: "🌾",
+  },
+  {
+    label: "Blé",
+    value: "wheat",
+    color: "bg-amber-100 text-amber-800",
+    icon: "🌾",
+  },
 ];
 
 // ===== CATÉGORIES DE VARIÉTÉS =====
@@ -177,14 +214,25 @@ export const MULTIPLIER_STATUSES: StatusConfig[] = [
 ];
 
 // ===== NIVEAUX DE CERTIFICATION =====
-export const CERTIFICATION_LEVELS: StatusConfig[] = [
-  { label: "Débutant", value: "beginner", color: "bg-gray-100 text-gray-800" },
+export const CERTIFICATION_LEVELS: StatusConfigExtended[] = [
+  {
+    label: "Débutant",
+    value: "beginner",
+    color: "bg-gray-100 text-gray-800",
+    experience: "0-2 ans",
+  },
   {
     label: "Intermédiaire",
     value: "intermediate",
     color: "bg-blue-100 text-blue-800",
+    experience: "2-5 ans",
   },
-  { label: "Expert", value: "expert", color: "bg-green-100 text-green-800" },
+  {
+    label: "Expert",
+    value: "expert",
+    color: "bg-green-100 text-green-800",
+    experience: "5+ ans",
+  },
 ];
 
 // ===== STATUTS PARCELLE =====
@@ -278,73 +326,113 @@ export const CONTRACT_STATUSES: StatusConfig[] = [
 ];
 
 // ===== TYPES D'ACTIVITÉS =====
-export const ACTIVITY_TYPES: StatusConfig[] = [
+export const ACTIVITY_TYPES: StatusConfigExtended[] = [
   {
     label: "Préparation du sol",
     value: "soil-preparation",
     color: "bg-brown-100 text-brown-800",
+    icon: "🚜",
   },
-  { label: "Semis", value: "sowing", color: "bg-green-100 text-green-800" },
+  {
+    label: "Semis",
+    value: "sowing",
+    color: "bg-green-100 text-green-800",
+    icon: "🌱",
+  },
   {
     label: "Fertilisation",
     value: "fertilization",
     color: "bg-lime-100 text-lime-800",
+    icon: "🧪",
   },
   {
     label: "Irrigation",
     value: "irrigation",
     color: "bg-blue-100 text-blue-800",
+    icon: "💧",
   },
   {
     label: "Désherbage",
     value: "weeding",
     color: "bg-yellow-100 text-yellow-800",
+    icon: "✂️",
   },
   {
     label: "Contrôle phytosanitaire",
     value: "pest-control",
     color: "bg-red-100 text-red-800",
+    icon: "🐛",
   },
   {
     label: "Récolte",
     value: "harvest",
     color: "bg-orange-100 text-orange-800",
+    icon: "🌾",
   },
-  { label: "Autre", value: "other", color: "bg-gray-100 text-gray-800" },
+  {
+    label: "Autre",
+    value: "other",
+    color: "bg-gray-100 text-gray-800",
+    icon: "⚙️",
+  },
 ];
 
 // ===== TYPES DE PROBLÈMES =====
-export const ISSUE_TYPES: StatusConfig[] = [
-  { label: "Maladie", value: "disease", color: "bg-red-100 text-red-800" },
-  { label: "Ravageur", value: "pest", color: "bg-orange-100 text-orange-800" },
-  { label: "Météo", value: "weather", color: "bg-blue-100 text-blue-800" },
+export const ISSUE_TYPES: StatusConfigExtended[] = [
+  {
+    label: "Maladie",
+    value: "disease",
+    color: "bg-red-100 text-red-800",
+    icon: "🦠",
+  },
+  {
+    label: "Ravageur",
+    value: "pest",
+    color: "bg-orange-100 text-orange-800",
+    icon: "🐛",
+  },
+  {
+    label: "Météo",
+    value: "weather",
+    color: "bg-blue-100 text-blue-800",
+    icon: "🌦️",
+  },
   {
     label: "Gestion",
     value: "management",
     color: "bg-yellow-100 text-yellow-800",
+    icon: "⚠️",
   },
-  { label: "Autre", value: "other", color: "bg-gray-100 text-gray-800" },
+  {
+    label: "Autre",
+    value: "other",
+    color: "bg-gray-100 text-gray-800",
+    icon: "❓",
+  },
 ];
 
 // ===== SÉVÉRITÉS DES PROBLÈMES =====
-export const ISSUE_SEVERITIES: StatusConfig[] = [
+export const ISSUE_SEVERITIES: StatusConfigExtended[] = [
   {
     label: "Faible",
     value: "low",
     color: "bg-green-100 text-green-800",
     variant: "default",
+    icon: "ℹ️",
   },
   {
     label: "Moyenne",
     value: "medium",
     color: "bg-yellow-100 text-yellow-800",
     variant: "secondary",
+    icon: "⚠️",
   },
   {
     label: "Élevée",
     value: "high",
     color: "bg-red-100 text-red-800",
     variant: "destructive",
+    icon: "🚨",
   },
 ];
 
@@ -415,8 +503,8 @@ export const SENEGAL_BOUNDS = {
 // ===== FONCTION UTILITAIRE POUR OBTENIR LA CONFIG D'UN STATUT =====
 export const getStatusConfig = (
   value: string | undefined,
-  statusList: StatusConfig[]
-): StatusConfig => {
+  statusList: (StatusConfig | StatusConfigExtended)[]
+): StatusConfig | StatusConfigExtended => {
   if (!value) {
     return {
       label: "Inconnu",
@@ -650,4 +738,4 @@ export const ERROR_MESSAGES = {
 export const QUALITY_TEST_RESULTS: StatusConfig[] = TEST_RESULTS;
 
 // Export du type StatusConfig pour utilisation dans d'autres fichiers
-export type { StatusConfig };
+export type { StatusConfig, StatusConfigExtended };

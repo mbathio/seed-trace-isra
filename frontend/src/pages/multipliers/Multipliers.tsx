@@ -1,4 +1,4 @@
-// frontend/src/pages/multipliers/Multipliers.tsx - CONTENU CORRIGÉ
+// frontend/src/pages/multipliers/Multipliers.tsx - CORRIGÉ
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -35,7 +35,9 @@ import {
   CERTIFICATION_LEVELS,
   CROP_TYPES,
   getStatusConfig,
+  type StatusConfigExtended, // ✅ CORRIGÉ: Import du type étendu
 } from "../../constants";
+import { CROP_TYPE_ICONS } from "../../constants/icons";
 import { useDebounce } from "../../hooks/useDebounce";
 import { usePagination } from "../../hooks/usePagination";
 
@@ -91,7 +93,10 @@ const Multipliers: React.FC = () => {
   };
 
   const getCertificationBadge = (level: string) => {
-    const config = getStatusConfig(level, CERTIFICATION_LEVELS);
+    const config = getStatusConfig(
+      level,
+      CERTIFICATION_LEVELS
+    ) as StatusConfigExtended; // ✅ CORRIGÉ: Cast vers le type étendu
     const colorClasses = {
       yellow: "bg-yellow-100 text-yellow-800 border-yellow-200",
       blue: "bg-blue-100 text-blue-800 border-blue-200",
@@ -101,6 +106,8 @@ const Multipliers: React.FC = () => {
     const colorClass =
       colorClasses[config.color as keyof typeof colorClasses] ||
       colorClasses.blue;
+
+    // ✅ CORRIGÉ: Utilisation de l'expérience depuis le type étendu
     const stars =
       config.experience === "0-2 ans"
         ? 1
@@ -126,10 +133,15 @@ const Multipliers: React.FC = () => {
   };
 
   const getSpecializationBadge = (specialization: string) => {
-    const config = getStatusConfig(specialization, CROP_TYPES);
+    const config = getStatusConfig(
+      specialization,
+      CROP_TYPES
+    ) as StatusConfigExtended; // ✅ CORRIGÉ: Cast vers le type étendu
     return (
       <Badge variant="outline" className="text-xs">
-        <span className="mr-1">{config.icon}</span>
+        <span className="mr-1">
+          {config.icon || CROP_TYPE_ICONS[specialization]}
+        </span>
         {config.label}
       </Badge>
     );

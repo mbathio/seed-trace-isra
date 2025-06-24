@@ -31,7 +31,6 @@ import {
   CROP_TYPES,
   SENEGAL_BOUNDS,
 } from "../../constants";
-// Import supprimé: DataTransformer
 import {
   CROP_TYPE_ICONS,
   CERTIFICATION_EXPERIENCE,
@@ -53,7 +52,7 @@ interface CreateMultiplierForm {
 const CreateMultiplier: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newResistance, setNewResistance] = useState("");
+  // ✅ CORRIGÉ: Variables supprimées car non utilisées
 
   const {
     control,
