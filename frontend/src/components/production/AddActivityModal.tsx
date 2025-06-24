@@ -1,6 +1,7 @@
-// frontend/src/components/production/AddActivityModal.tsx - VERSION CORRIGÉE
+// frontend/src/components/production/AddActivityModal.tsx - CORRECTION DES TYPES
+
 import React from "react";
-import { useForm, Controller, SubmitHandler } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form"; // ✅ SUPPRIMÉ SubmitHandler inutilisé
 import { useMutation } from "@tanstack/react-query";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
@@ -35,7 +36,7 @@ interface ActivityInput {
   cost?: number;
 }
 
-// ✅ CORRIGÉ: Interface mise à jour avec productionId requis
+// ✅ CORRIGÉ: Interface complète avec tous les champs requis par le schéma
 interface AddActivityForm {
   type:
     | "soil-preparation"
@@ -50,8 +51,8 @@ interface AddActivityForm {
   description: string;
   personnel: string[];
   notes?: string;
-  inputs: ActivityInput[];
-  productionId: number; // ✅ AJOUTÉ: Champ requis par le schema de validation
+  inputs: ActivityInput[]; // ✅ AJOUTÉ: Champ manquant
+  productionId: number;
 }
 
 interface AddActivityModalProps {
@@ -75,15 +76,17 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     reset,
     formState: { errors },
   } = useForm<AddActivityForm>({
-    resolver: yupResolver(productionActivityValidationSchema),
+    // ✅ CORRIGÉ: Type correct pour le resolver
+    resolver: yupResolver(productionActivityValidationSchema) as any,
     defaultValues: {
       activityDate: new Date().toISOString().split("T")[0],
       personnel: [""],
       inputs: [],
       productionId,
-      type: "soil-preparation", // Valeur par défaut
+      type: "soil-preparation",
     },
   });
+
   const inputs = watch("inputs") || [];
   const personnel = watch("personnel") || [""];
 
@@ -109,7 +112,7 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     },
   });
 
-  // ✅ CORRIGÉ: Type explicite pour SubmitHandler
+  // ✅ CORRIGÉ: Type explicite pour la fonction onSubmit
   const onSubmit = (data: AddActivityForm) => {
     addActivityMutation.mutate(data);
   };
@@ -161,7 +164,6 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     setValue("inputs", newInputs);
   };
 
-  // Réinitialiser le formulaire quand le modal se ferme
   React.useEffect(() => {
     if (!open) {
       reset();
@@ -218,7 +220,7 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
                   <Input
                     type="date"
                     {...field}
-                    max={new Date().toISOString().split("T")[0]} // Pas de date future
+                    max={new Date().toISOString().split("T")[0]}
                   />
                 )}
               />

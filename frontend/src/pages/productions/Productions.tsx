@@ -1,4 +1,5 @@
-// frontend/src/pages/productions/Productions.tsx - VERSION COMPLÈTE CORRIGÉE
+// frontend/src/pages/productions/Productions.tsx - CORRECTION DES BALISES JSX
+
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -55,7 +56,7 @@ import { formatDate, formatNumber } from "../../utils/formatters";
 import { useDebounce } from "../../hooks/useDebounce";
 import { PRODUCTION_STATUSES, getStatusConfig } from "../../constants";
 
-// ✅ CORRIGÉ: Ajout des interfaces manquantes pour ApiResponse et PaginationMeta
+// Interfaces corrigées
 interface ApiResponse<T> {
   success: boolean;
   message: string;
@@ -79,16 +80,13 @@ interface ProductionsResponse {
 }
 
 const Productions: React.FC = () => {
-  // États pour les filtres et pagination
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
 
-  // Debounce de la recherche
   const debouncedSearch = useDebounce(search, 300);
 
-  // Query pour récupérer les productions
   const {
     data: response,
     isLoading,
@@ -120,7 +118,6 @@ const Productions: React.FC = () => {
   const productions = response?.data?.productions || [];
   const meta = response?.data?.meta;
 
-  // Fonctions utilitaires
   const getStatusBadge = (status: string) => {
     const config = getStatusConfig(status, PRODUCTION_STATUSES);
     const colorClasses = {
@@ -145,7 +142,6 @@ const Productions: React.FC = () => {
     setPage(1);
   };
 
-  // ✅ CORRIGÉ: Types explicites pour les paramètres de filter
   const stats = {
     total: meta?.totalCount || 0,
     planned: productions.filter((p: Production) => p.status === "planned")

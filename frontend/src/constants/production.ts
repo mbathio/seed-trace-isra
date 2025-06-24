@@ -1,4 +1,5 @@
-// frontend/src/constants/production.ts - VERSION CORRIGÉE
+// frontend/src/constants/production.ts - VERSION CORRIGÉE DÉFINITIVE
+
 import {
   Shovel,
   Sprout,
@@ -17,36 +18,47 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  TrendingUp, // ✅ CORRIGÉ: Import ajouté
+  TrendingUp,
   type LucideIcon,
 } from "lucide-react";
 
+// ===== TYPES D'ACTIVITÉS =====
+export type ActivityType =
+  | "soil-preparation"
+  | "sowing"
+  | "fertilization"
+  | "irrigation"
+  | "weeding"
+  | "pest-control"
+  | "harvest"
+  | "other";
+
 // ===== ICÔNES SPÉCIALISÉES POUR LES ACTIVITÉS AGRICOLES =====
-export const PRODUCTION_ACTIVITY_ICONS: Record<string, LucideIcon> = {
-  "soil-preparation": Shovel, // Préparation du sol
-  sowing: Sprout, // Semis
-  fertilization: Beaker, // Fertilisation
-  irrigation: Droplets, // Irrigation
-  weeding: Scissors, // Désherbage
-  "pest-control": Bug, // Contrôle phytosanitaire
-  harvest: Package, // Récolte
-  other: Settings, // Autre
+export const PRODUCTION_ACTIVITY_ICONS: Record<ActivityType, LucideIcon> = {
+  "soil-preparation": Shovel,
+  sowing: Sprout,
+  fertilization: Beaker,
+  irrigation: Droplets,
+  weeding: Scissors,
+  "pest-control": Bug,
+  harvest: Package,
+  other: Settings,
 };
 
 // ===== ICÔNES POUR LES TYPES DE PROBLÈMES =====
 export const PRODUCTION_ISSUE_ICONS: Record<string, LucideIcon> = {
-  disease: Zap, // Maladie
-  pest: Bug, // Ravageur
-  weather: Cloud, // Météo
-  management: Settings, // Gestion
-  other: AlertTriangle, // Autre
+  disease: Zap,
+  pest: Bug,
+  weather: Cloud,
+  management: Settings,
+  other: AlertTriangle,
 };
 
 // ===== ICÔNES POUR LA SÉVÉRITÉ DES PROBLÈMES =====
 export const ISSUE_SEVERITY_ICONS: Record<string, LucideIcon> = {
-  low: CheckCircle, // Faible
-  medium: AlertTriangle, // Moyenne
-  high: AlertTriangle, // Élevée
+  low: CheckCircle,
+  medium: AlertTriangle,
+  high: AlertTriangle,
 };
 
 // ===== ICÔNES MÉTÉOROLOGIQUES =====
@@ -87,12 +99,24 @@ export const PRODUCTION_STATUS_COLORS = {
 } as const;
 
 // ===== PHASES DE PRODUCTION =====
-export const PRODUCTION_PHASES = [
+// ✅ CORRIGÉ: Définir explicitement les types pour éviter les conflits
+type PhaseActivity = Exclude<ActivityType, "other">; // Exclure "other" des phases
+
+interface ProductionPhase {
+  id: string;
+  name: string;
+  description: string;
+  activities: readonly PhaseActivity[];
+  icon: LucideIcon;
+  color: string;
+}
+
+export const PRODUCTION_PHASES: readonly ProductionPhase[] = [
   {
     id: "preparation",
     name: "Préparation",
     description: "Préparation du sol et des semences",
-    activities: ["soil-preparation"],
+    activities: ["soil-preparation"] as const,
     icon: Shovel,
     color: "blue",
   },
@@ -100,7 +124,7 @@ export const PRODUCTION_PHASES = [
     id: "sowing",
     name: "Semis",
     description: "Plantation des semences",
-    activities: ["sowing"],
+    activities: ["sowing"] as const,
     icon: Sprout,
     color: "green",
   },
@@ -108,7 +132,12 @@ export const PRODUCTION_PHASES = [
     id: "growing",
     name: "Croissance",
     description: "Entretien et croissance des plants",
-    activities: ["fertilization", "irrigation", "weeding", "pest-control"],
+    activities: [
+      "fertilization",
+      "irrigation",
+      "weeding",
+      "pest-control",
+    ] as const,
     icon: Droplets,
     color: "cyan",
   },
@@ -116,7 +145,7 @@ export const PRODUCTION_PHASES = [
     id: "harvest",
     name: "Récolte",
     description: "Collecte et traitement des semences",
-    activities: ["harvest"],
+    activities: ["harvest"] as const,
     icon: Package,
     color: "orange",
   },
@@ -127,7 +156,7 @@ export const PRODUCTION_METRICS = {
   efficiency: {
     name: "Efficacité",
     unit: "%",
-    icon: TrendingUp, // ✅ CORRIGÉ: Utilisation directe de l'import
+    icon: TrendingUp,
     description: "Ratio quantité réelle / quantité planifiée",
   },
   duration: {
@@ -153,15 +182,15 @@ export const PRODUCTION_METRICS = {
 // ===== SEUILS D'ALERTE =====
 export const PRODUCTION_THRESHOLDS = {
   duration: {
-    warning: 90, // Jours
+    warning: 90,
     critical: 120,
   },
   efficiency: {
-    warning: 80, // %
+    warning: 80,
     critical: 60,
   },
   yield: {
-    warning: 2.0, // t/ha
+    warning: 2.0,
     critical: 1.5,
   },
 } as const;
@@ -172,7 +201,7 @@ export const PRODUCTION_THRESHOLDS = {
  * Obtient l'icône appropriée pour une activité
  */
 export const getActivityIcon = (activityType: string): LucideIcon => {
-  return PRODUCTION_ACTIVITY_ICONS[activityType] || Settings;
+  return PRODUCTION_ACTIVITY_ICONS[activityType as ActivityType] || Settings;
 };
 
 /**
@@ -239,9 +268,11 @@ export const getAlertLevel = (
 
 /**
  * Obtient la phase actuelle basée sur les activités
- * ✅ CORRIGÉ: Gestion correcte du type any pour l'activité
+ * ✅ CORRIGÉ: Logique simplifiée avec gestion du type "other"
  */
-export const getCurrentPhase = (activities: any[]) => {
+export const getCurrentPhase = (
+  activities: Array<{ type: string }> | string[]
+): ProductionPhase => {
   if (!activities || activities.length === 0) return PRODUCTION_PHASES[0];
 
   const recentActivity = activities[activities.length - 1];
@@ -252,18 +283,25 @@ export const getCurrentPhase = (activities: any[]) => {
   } else if (
     recentActivity &&
     typeof recentActivity === "object" &&
-    recentActivity.type
+    "type" in recentActivity &&
+    typeof recentActivity.type === "string"
   ) {
     activityType = recentActivity.type;
   } else {
     return PRODUCTION_PHASES[0];
   }
 
-  return (
-    PRODUCTION_PHASES.find((phase) =>
-      phase.activities.includes(activityType as any)
-    ) || PRODUCTION_PHASES[0]
-  );
+  // ✅ CORRIGÉ: Gestion spéciale pour "other"
+  if (activityType === "other") {
+    return PRODUCTION_PHASES[PRODUCTION_PHASES.length - 1]; // Retourner la dernière phase
+  }
+
+  // ✅ CORRIGÉ: Recherche avec type sûr
+  const foundPhase = PRODUCTION_PHASES.find((phase) => {
+    return phase.activities.some((activity) => activity === activityType);
+  });
+
+  return foundPhase || PRODUCTION_PHASES[0];
 };
 
 /**
@@ -273,7 +311,7 @@ export const calculateProgress = (
   status: string,
   startDate: string,
   endDate?: string,
-  activities: any[] = []
+  activities: Array<{ type: string }> = []
 ): number => {
   switch (status) {
     case "planned":
@@ -285,21 +323,27 @@ export const calculateProgress = (
     case "in-progress":
       // Calcul basé sur les activités et la durée
       const totalActivities = Object.keys(PRODUCTION_ACTIVITY_ICONS).length;
-      const completedActivities = new Set(activities.map((a) => a.type)).size;
-      const activityProgress = (completedActivities / totalActivities) * 70; // 70% pour les activités
+      const validActivityTypes = activities
+        .map((a) => a.type)
+        .filter(
+          (type): type is ActivityType => type in PRODUCTION_ACTIVITY_ICONS
+        );
+
+      const completedActivities = new Set(validActivityTypes).size;
+      const activityProgress = (completedActivities / totalActivities) * 70;
 
       // 30% basé sur le temps écoulé
       const duration = calculateDuration(startDate, endDate);
-      const expectedDuration = 120; // Durée moyenne en jours
+      const expectedDuration = 120;
       const timeProgress = Math.min((duration / expectedDuration) * 30, 30);
 
-      return Math.min(Math.round(activityProgress + timeProgress), 95); // Max 95% pour "en cours"
+      return Math.min(Math.round(activityProgress + timeProgress), 95);
     default:
       return 0;
   }
 };
 
 // Export des types pour TypeScript
-export type ProductionPhase = (typeof PRODUCTION_PHASES)[number];
+export type { ProductionPhase, ActivityType };
 export type ProductionMetric = keyof typeof PRODUCTION_METRICS;
 export type AlertLevel = "normal" | "warning" | "critical";

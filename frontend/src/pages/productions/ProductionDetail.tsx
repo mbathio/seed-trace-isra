@@ -184,8 +184,6 @@ const ProductionDetail: React.FC = () => {
       ? calculateEfficiency(production.actualYield, production.plannedQuantity)
       : null;
 
-  const statusColors = getStatusColors(production.status);
-
   const getStatusBadge = (status: string) => {
     const colors = getStatusColors(status);
     const IconComponent = colors.icon;
