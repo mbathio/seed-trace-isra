@@ -40,7 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import { seedLotService } from "../../services/seedLotService"; // ✅ CORRIGÉ: Service spécialisé
+import { seedLotService } from "../../services/seedLotService";
 import type { SeedLot } from "../../types/entities";
 import { formatDate, formatNumber } from "../../utils/formatters";
 
@@ -57,15 +57,14 @@ const SeedLotDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // ✅ CORRIGÉ : Utiliser le service seedLotService
   const {
     data: seedLot,
     isLoading,
     error,
   } = useQuery<SeedLot>({
-    queryKey: ["seed-lot", id], // ✅ CORRIGÉ: Clé de cache cohérente
+    queryKey: ["seed-lot", id],
     queryFn: async () => {
-      const response = await seedLotService.getById(id!); // ✅ CORRIGÉ: Service unifié
+      const response = await seedLotService.getById(id!);
       return response.data.data;
     },
     enabled: !!id,
@@ -79,13 +78,13 @@ const SeedLotDetail: React.FC = () => {
         label: string;
       }
     > = {
-      PENDING: { variant: "secondary", label: "En attente" },
-      CERTIFIED: { variant: "default", label: "Certifié" },
-      REJECTED: { variant: "destructive", label: "Rejeté" },
-      IN_STOCK: { variant: "outline", label: "En stock" },
-      ACTIVE: { variant: "default", label: "Actif" },
-      DISTRIBUTED: { variant: "secondary", label: "Distribué" },
-      SOLD: { variant: "outline", label: "Vendu" },
+      pending: { variant: "secondary", label: "En attente" },
+      certified: { variant: "default", label: "Certifié" },
+      rejected: { variant: "destructive", label: "Rejeté" },
+      "in-stock": { variant: "outline", label: "En stock" },
+      active: { variant: "default", label: "Actif" },
+      distributed: { variant: "secondary", label: "Distribué" },
+      sold: { variant: "outline", label: "Vendu" },
     };
 
     const config = statusMap[status] || { variant: "secondary", label: status };
@@ -125,7 +124,10 @@ const SeedLotDetail: React.FC = () => {
     return (
       <div className="text-center py-12">
         <p className="text-red-600">Erreur lors du chargement du lot</p>
-        <Button onClick={() => navigate("/dashboard/seeds")} className="mt-4">
+        <Button
+          onClick={() => navigate("/dashboard/seed-lots")}
+          className="mt-4"
+        >
           Retour à la liste
         </Button>
       </div>
@@ -139,7 +141,7 @@ const SeedLotDetail: React.FC = () => {
         <div className="flex items-center space-x-4">
           <Button
             variant="ghost"
-            onClick={() => navigate("/dashboard/seeds")}
+            onClick={() => navigate("/dashboard/seed-lots")}
             className="flex items-center"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -356,7 +358,9 @@ const SeedLotDetail: React.FC = () => {
                           </p>
                         </div>
                         <Button asChild variant="outline" size="sm">
-                          <Link to={`/dashboard/seeds/${seedLot.parentLot.id}`}>
+                          <Link
+                            to={`/dashboard/seed-lots/${seedLot.parentLot.id}`}
+                          >
                             <Eye className="h-4 w-4 mr-1" />
                             Voir
                           </Link>
@@ -385,7 +389,7 @@ const SeedLotDetail: React.FC = () => {
                             </p>
                           </div>
                           <Button asChild variant="outline" size="sm">
-                            <Link to={`/dashboard/seeds/${childLot.id}`}>
+                            <Link to={`/dashboard/seed-lots/${childLot.id}`}>
                               <Eye className="h-4 w-4 mr-1" />
                               Voir
                             </Link>
@@ -429,14 +433,14 @@ const SeedLotDetail: React.FC = () => {
                         <TableCell>
                           <Badge
                             variant={
-                              control.result === "passed"
+                              control.result === "pass"
                                 ? "default"
                                 : "destructive"
                             }
                           >
-                            {control.result === "passed" ? "✓" : "✗"}
+                            {control.result === "pass" ? "✓" : "✗"}
+                            {control.result === "pass" ? "Réussi" : "Échec"}
                           </Badge>
-                          {control.result === "passed" ? "Réussi" : "Échec"}
                         </TableCell>
                         <TableCell>{control.inspector.name}</TableCell>
                       </TableRow>

@@ -1,4 +1,4 @@
-// frontend/src/constants/index.ts - VERSION CORRIGÉE ET COMPLÈTE
+// frontend/src/constants/index.ts - VERSION CORRIGÉE COMPLÈTE
 
 // ===== TYPES DE CONFIGURATION =====
 interface StatusConfig {
@@ -352,13 +352,13 @@ export const ISSUE_SEVERITIES: StatusConfig[] = [
 export const TEST_RESULTS: StatusConfig[] = [
   {
     label: "Réussi",
-    value: "passed",
+    value: "pass", // CORRIGÉ de "passed" à "pass"
     color: "bg-green-100 text-green-800",
     variant: "default",
   },
   {
     label: "Échoué",
-    value: "failed",
+    value: "fail", // CORRIGÉ de "failed" à "fail"
     color: "bg-red-100 text-red-800",
     variant: "destructive",
   },
@@ -548,8 +548,8 @@ export const UI_TO_DB_MAPPINGS = {
     high: "HIGH",
   },
   testResult: {
-    passed: "PASS",
-    failed: "FAIL",
+    pass: "PASS", // CORRIGÉ de "passed" à "pass"
+    fail: "FAIL", // CORRIGÉ de "failed" à "fail"
     pending: "PENDING",
   },
   reportType: {
@@ -626,6 +626,10 @@ export const DEFAULT_QUERY_CONFIG = {
   retry: 3,
   retryDelay: (attemptIndex: number) =>
     Math.min(1000 * 2 ** attemptIndex, 30000),
+  // AJOUT des propriétés manquantes pour la compatibilité
+  RETRY_ATTEMPTS: 3,
+  STALE_TIME: 5 * 60 * 1000,
+  CACHE_TIME: 10 * 60 * 1000,
 };
 
 // ===== MESSAGES D'ERREUR =====
@@ -637,7 +641,13 @@ export const ERROR_MESSAGES = {
   NOT_FOUND: "Ressource introuvable.",
   VALIDATION_ERROR: "Veuillez vérifier les informations saisies.",
   GENERIC_ERROR: "Une erreur est survenue. Veuillez réessayer.",
+  // AJOUT des messages manquants
+  FORBIDDEN: "Accès interdit.",
+  UNKNOWN_ERROR: "Erreur inconnue.",
 };
 
 // ===== RÉSULTATS DES TESTS QUALITÉ =====
 export const QUALITY_TEST_RESULTS: StatusConfig[] = TEST_RESULTS;
+
+// Export du type StatusConfig pour utilisation dans d'autres fichiers
+export type { StatusConfig };

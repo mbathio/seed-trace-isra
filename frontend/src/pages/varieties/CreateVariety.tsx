@@ -1,4 +1,4 @@
-// frontend/src/pages/varieties/CreateVariety.tsx - CORRIGÉ
+// frontend/src/pages/varieties/CreateVariety.tsx - VERSION CORRIGÉE
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
@@ -26,12 +26,12 @@ import { Badge } from "../../components/ui/badge";
 import { toast } from "react-toastify";
 import { api } from "../../services/api";
 import { CROP_TYPES } from "../../constants";
+import { CROP_TYPE_ICONS } from "../../constants/icons";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { DataTransformer } from "../../utils/transformers";
 import type { SubmitHandler } from "react-hook-form";
 
-// ✅ Interface pour le formulaire
+// Interface pour le formulaire
 interface CreateVarietyForm {
   code: string;
   name: string;
@@ -51,7 +51,7 @@ interface CreateVarietyForm {
   releaseYear?: number;
 }
 
-// ✅ Schéma de validation local adapté à l'interface
+// Schéma de validation local adapté à l'interface
 const createVarietySchema = yup.object({
   code: yup
     .string()
@@ -120,13 +120,11 @@ const CreateVariety: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateVarietyForm) => {
-      // Pas besoin de transformer, le backend s'en charge
       const response = await api.post("/varieties", data);
       return response.data;
     },
     onSuccess: (data) => {
       toast.success("Variété créée avec succès !");
-      // Utiliser l'ID numérique ou le code selon ce qui est retourné
       const identifier = data.data.id || data.data.code;
       navigate(`/dashboard/varieties/${identifier}`);
     },
@@ -244,7 +242,7 @@ const CreateVariety: React.FC = () => {
                         {CROP_TYPES.map((type) => (
                           <SelectItem key={type.value} value={type.value}>
                             <span className="flex items-center space-x-2">
-                              <span>{type.icon}</span>
+                              <span>{CROP_TYPE_ICONS[type.value]}</span>
                               <span>{type.label}</span>
                             </span>
                           </SelectItem>

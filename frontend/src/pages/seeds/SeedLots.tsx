@@ -66,7 +66,6 @@ const SeedLots: React.FC = () => {
     },
   });
 
-  // CORRIGÉ: Fonction pour obtenir le badge de statut
   const getStatusBadge = (status: string) => {
     // Le status arrive maintenant en minuscules grâce au middleware
     const config = getStatusConfig(status, LOT_STATUSES);
@@ -77,7 +76,6 @@ const SeedLots: React.FC = () => {
     );
   };
 
-  // CORRIGÉ: Fonction pour obtenir le badge de niveau
   const getLevelBadge = (level: string) => {
     // Le niveau arrive maintenant en minuscules grâce au middleware
     const config = getSeedLevelConfig(level);
@@ -88,7 +86,6 @@ const SeedLots: React.FC = () => {
     );
   };
 
-  // CORRIGÉ: Gestion des erreurs
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -224,7 +221,7 @@ const SeedLots: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           <QrCode className="h-4 w-4 text-muted-foreground" />
                           <div>
-                            <p>{lot.code}</p>
+                            <p>{lot.id}</p>
                             {lot.batchNumber && (
                               <p className="text-sm text-muted-foreground">
                                 Lot: {lot.batchNumber}

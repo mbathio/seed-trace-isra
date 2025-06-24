@@ -1,3 +1,6 @@
+// frontend/src/types/entities.ts - VERSION CORRIGÉE
+import type { StatusConfig } from "../constants";
+
 export interface User {
   id: number;
   name: string;
@@ -9,7 +12,7 @@ export interface User {
     | "technician"
     | "inspector"
     | "multiplier"
-    | "guest"; //
+    | "guest";
   avatar?: string;
   isActive: boolean;
   createdAt: string;
@@ -37,7 +40,6 @@ export interface Variety {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  // ✅ AJOUTÉ: Champs manquants
   _count?: {
     seedLots: number;
   };
@@ -50,8 +52,7 @@ export interface SeedLot {
   level: "GO" | "G1" | "G2" | "G3" | "G4" | "R1" | "R2";
   quantity: number;
   productionDate: string;
-  availableQuantity: number; // Ajout de la propriété manquante
-
+  availableQuantity: number;
   expiryDate?: string;
   status:
     | "pending"
@@ -60,7 +61,7 @@ export interface SeedLot {
     | "in-stock"
     | "active"
     | "distributed"
-    | "sold"; // ✅ CORRIGÉ: Valeurs UI
+    | "sold";
   batchNumber?: string;
   parentLotId?: string;
   parentLot?: SeedLot;
@@ -73,7 +74,6 @@ export interface SeedLot {
   multiplier?: Multiplier;
   parcel?: Parcel;
   qualityControls?: QualityControl[];
-  // ✅ AJOUTÉ: Champs manquants
   _count?: {
     childLots: number;
     qualityControls: number;
@@ -81,17 +81,16 @@ export interface SeedLot {
   };
 }
 
-// frontend/src/types/entities.ts - Ajout des types transformés
 export interface Multiplier {
   id: number;
   name: string;
-  status: "active" | "inactive"; // Valeurs UI
+  status: "active" | "inactive";
   address: string;
   latitude: number;
   longitude: number;
   yearsExperience: number;
-  certificationLevel: "beginner" | "intermediate" | "expert"; // Valeurs UI
-  specialization: string[]; // Valeurs UI
+  certificationLevel: "beginner" | "intermediate" | "expert";
+  specialization: string[];
   phone?: string;
   email?: string;
   isActive: boolean;
@@ -107,13 +106,12 @@ export interface Multiplier {
 
 export interface Parcel {
   id: number;
-  code: string; // Ajout de la propriété manquante
-
+  code: string;
   name?: string;
   area: number;
   latitude: number;
   longitude: number;
-  status: "available" | "in-use" | "resting"; // ✅ CORRIGÉ: Valeurs UI
+  status: "available" | "in-use" | "resting";
   soilType?: string;
   irrigationSystem?: string;
   address?: string;
@@ -122,18 +120,19 @@ export interface Parcel {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  // ✅ AJOUTÉ: Champs manquants
   soilAnalyses?: SoilAnalysis[];
   _count?: {
     seedLots: number;
     productions: number;
   };
 }
+
 // Extension pour StatusConfig si nécessaire
 export interface StatusConfigExtended extends StatusConfig {
   icon?: string;
   experience?: string;
 }
+
 export interface QualityControl {
   id: number;
   lotId: string;
@@ -143,7 +142,7 @@ export interface QualityControl {
   varietyPurity: number;
   moistureContent?: number;
   seedHealth?: number;
-  result: "pass" | "fail"; // ✅ CORRIGÉ: Utiliser les valeurs UI en minuscules
+  result: "pass" | "fail";
   observations?: string;
   testMethod?: string;
   laboratoryRef?: string;
@@ -168,14 +167,13 @@ export interface Production {
   multiplier: Multiplier;
   parcelId: number;
   parcel: Parcel;
-  status: "planned" | "in-progress" | "completed" | "cancelled"; // ✅ CORRIGÉ: Valeurs UI
+  status: "planned" | "in-progress" | "completed" | "cancelled";
   plannedQuantity?: number;
   actualYield?: number;
   notes?: string;
   weatherConditions?: string;
   createdAt: string;
   updatedAt: string;
-  // ✅ AJOUTÉ: Champs manquants
   activities?: ProductionActivity[];
   issues?: ProductionIssue[];
   _count?: {
@@ -185,7 +183,6 @@ export interface Production {
   };
 }
 
-// ✅ AJOUTÉ: Types manquants
 export interface SoilAnalysis {
   id: number;
   parcelId: number;
@@ -236,7 +233,7 @@ export interface ProductionIssue {
   id: number;
   productionId: number;
   issueDate: string;
-  type: "disease" | "pest" | "weather" | "management" | "other"; // ✅ CORRIGÉ: Valeurs UI
+  type: "disease" | "pest" | "weather" | "management" | "other";
   description: string;
   severity: "low" | "medium" | "high";
   actions: string;

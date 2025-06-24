@@ -1,4 +1,4 @@
-// frontend/src/pages/multipliers/CreateMultiplier.tsx - PAGE DE CRÉATION MULTIPLICATEUR
+// frontend/src/pages/multipliers/CreateMultiplier.tsx - VERSION CORRIGÉE
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller, SubmitHandler } from "react-hook-form";
@@ -31,7 +31,7 @@ import {
   CROP_TYPES,
   SENEGAL_BOUNDS,
 } from "../../constants";
-import { DataTransformer } from "../../utils/transformers";
+// Import supprimé: DataTransformer
 import {
   CROP_TYPE_ICONS,
   CERTIFICATION_EXPERIENCE,
@@ -53,8 +53,8 @@ interface CreateMultiplierForm {
 const CreateMultiplier: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newResistance, setNewResistance] = useState("");
 
-  // ✅ CORRIGÉ: Utilisation du useForm sans resolver Yup pour éviter les conflits de types
   const {
     control,
     handleSubmit,
@@ -80,9 +80,8 @@ const CreateMultiplier: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateMultiplierForm) => {
-      // Transformer les données pour l'API
-      const transformedData = DataTransformer.transformMultiplierForAPI(data);
-      const response = await api.post("/multipliers", transformedData);
+      // Le backend s'occupe de la transformation
+      const response = await api.post("/multipliers", data);
       return response.data;
     },
     onSuccess: (data) => {
@@ -97,7 +96,7 @@ const CreateMultiplier: React.FC = () => {
     },
   });
 
-  // ✅ CORRIGÉ: Validation manuelle pour éviter les conflits Yup/TypeScript
+  // Validation manuelle pour éviter les conflits Yup/TypeScript
   const validateForm = (data: CreateMultiplierForm): boolean => {
     let isValid = true;
 
@@ -405,14 +404,14 @@ const CreateMultiplier: React.FC = () => {
                             <div className="flex items-center space-x-2">
                               <span>{level.label}</span>
                               <span className="text-xs text-muted-foreground">
-                                ({level.experience})
+                                ({CERTIFICATION_EXPERIENCE[level.value]})
                               </span>
                               <div className="flex">
                                 {Array.from({
                                   length:
-                                    level.experience === "0-2 ans"
+                                    level.value === "beginner"
                                       ? 1
-                                      : level.experience === "2-5 ans"
+                                      : level.value === "intermediate"
                                       ? 2
                                       : 3,
                                 }).map((_, i) => (
@@ -558,7 +557,9 @@ const CreateMultiplier: React.FC = () => {
                       htmlFor={crop.value}
                       className="flex items-center space-x-2 cursor-pointer"
                     >
-                      <span className="text-lg">{crop.icon}</span>
+                      <span className="text-lg">
+                        {CROP_TYPE_ICONS[crop.value]}
+                      </span>
                       <span>{crop.label}</span>
                     </Label>
                   </div>
@@ -581,7 +582,7 @@ const CreateMultiplier: React.FC = () => {
                       const crop = CROP_TYPES.find((c) => c.value === spec);
                       return (
                         <Badge key={spec} variant="outline">
-                          <span className="mr-1">{crop?.icon}</span>
+                          <span className="mr-1">{CROP_TYPE_ICONS[spec]}</span>
                           {crop?.label}
                         </Badge>
                       );
