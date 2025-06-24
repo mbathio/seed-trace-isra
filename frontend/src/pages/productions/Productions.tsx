@@ -1,4 +1,4 @@
-// frontend/src/pages/productions/Productions.tsx - VERSION CORRIGÉE
+// frontend/src/pages/productions/Productions.tsx - VERSION COMPLÈTE CORRIGÉE
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -49,15 +49,11 @@ import {
   DropdownMenuTrigger,
 } from "../../components/ui/dropdown-menu";
 import { Badge } from "../../components/ui/badge";
-import { Separator } from "../../components/ui/separator";
 import { api } from "../../services/api";
 import { Production } from "../../types/entities";
 import { formatDate, formatNumber } from "../../utils/formatters";
 import { useDebounce } from "../../hooks/useDebounce";
-import {
-  PRODUCTION_STATUSES,
-  getStatusConfig,
-} from "../../constants";
+import { PRODUCTION_STATUSES, getStatusConfig } from "../../constants";
 
 // ✅ CORRIGÉ: Ajout des interfaces manquantes pour ApiResponse et PaginationMeta
 interface ApiResponse<T> {
@@ -83,8 +79,6 @@ interface ProductionsResponse {
 }
 
 const Productions: React.FC = () => {
-  // ✅ CORRIGÉ: Suppression de la variable navigate non utilisée
-
   // États pour les filtres et pagination
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -154,9 +148,13 @@ const Productions: React.FC = () => {
   // ✅ CORRIGÉ: Types explicites pour les paramètres de filter
   const stats = {
     total: meta?.totalCount || 0,
-    planned: productions.filter((p: Production) => p.status === "planned").length,
-    inProgress: productions.filter((p: Production) => p.status === "in-progress").length,
-    completed: productions.filter((p: Production) => p.status === "completed").length,
+    planned: productions.filter((p: Production) => p.status === "planned")
+      .length,
+    inProgress: productions.filter(
+      (p: Production) => p.status === "in-progress"
+    ).length,
+    completed: productions.filter((p: Production) => p.status === "completed")
+      .length,
   };
 
   if (error) {
@@ -398,3 +396,66 @@ const Productions: React.FC = () => {
                               >
                                 <Edit className="h-4 w-4 mr-2" />
                                 Modifier
+                              </Link>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Pagination */}
+              {meta && meta.totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Page {meta.page} sur {meta.totalPages}
+                  </p>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(Math.max(1, page - 1))}
+                      disabled={!meta.hasPreviousPage}
+                    >
+                      Précédent
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage(page + 1)}
+                      disabled={!meta.hasNextPage}
+                    >
+                      Suivant
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <Tractor className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">
+                Aucune production trouvée
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {search || statusFilter
+                  ? "Aucune production ne correspond à vos critères de recherche."
+                  : "Commencez par créer votre première production."}
+              </p>
+              <Button asChild>
+                <Link to="/dashboard/productions/create">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouvelle production
+                </Link>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default Productions;

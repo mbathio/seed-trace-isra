@@ -245,12 +245,23 @@ export const getCurrentPhase = (activities: any[]) => {
   if (!activities || activities.length === 0) return PRODUCTION_PHASES[0];
 
   const recentActivity = activities[activities.length - 1];
-  const activityType =
-    typeof recentActivity === "string" ? recentActivity : recentActivity?.type;
+  let activityType: string;
+
+  if (typeof recentActivity === "string") {
+    activityType = recentActivity;
+  } else if (
+    recentActivity &&
+    typeof recentActivity === "object" &&
+    recentActivity.type
+  ) {
+    activityType = recentActivity.type;
+  } else {
+    return PRODUCTION_PHASES[0];
+  }
 
   return (
     PRODUCTION_PHASES.find((phase) =>
-      phase.activities.includes(activityType)
+      phase.activities.includes(activityType as any)
     ) || PRODUCTION_PHASES[0]
   );
 };

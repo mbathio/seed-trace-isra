@@ -37,7 +37,15 @@ interface ActivityInput {
 
 // ✅ CORRIGÉ: Interface mise à jour avec productionId requis
 interface AddActivityForm {
-  type: string;
+  type:
+    | "soil-preparation"
+    | "sowing"
+    | "fertilization"
+    | "irrigation"
+    | "weeding"
+    | "pest-control"
+    | "harvest"
+    | "other";
   activityDate: string;
   description: string;
   personnel: string[];
@@ -72,10 +80,10 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
       activityDate: new Date().toISOString().split("T")[0],
       personnel: [""],
       inputs: [],
-      productionId, // ✅ AJOUTÉ: Valeur par défaut
+      productionId,
+      type: "soil-preparation", // Valeur par défaut
     },
   });
-
   const inputs = watch("inputs") || [];
   const personnel = watch("personnel") || [""];
 
@@ -102,7 +110,7 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
   });
 
   // ✅ CORRIGÉ: Type explicite pour SubmitHandler
-  const onSubmit: SubmitHandler<AddActivityForm> = (data: AddActivityForm) => {
+  const onSubmit = (data: AddActivityForm) => {
     addActivityMutation.mutate(data);
   };
 

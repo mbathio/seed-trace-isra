@@ -1,6 +1,6 @@
 // frontend/src/components/production/AddIssueModal.tsx - VERSION CORRIGÉE
 import React from "react";
-import { useForm, Controller, SubmitHandler } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
@@ -32,8 +32,8 @@ import { productionIssueValidationSchema } from "../../utils/validators";
 // ✅ CORRIGÉ: Interface mise à jour avec productionId requis
 interface AddIssueForm {
   issueDate: string;
-  type: string;
-  severity: string;
+  type: "disease" | "pest" | "weather" | "management" | "other";
+  severity: "low" | "medium" | "high";
   description: string;
   actions: string;
   resolved: boolean;
@@ -66,7 +66,9 @@ export const AddIssueModal: React.FC<AddIssueModalProps> = ({
     defaultValues: {
       issueDate: new Date().toISOString().split("T")[0],
       resolved: false,
-      productionId, // ✅ AJOUTÉ: Valeur par défaut
+      productionId,
+      type: "other", // Valeur par défaut
+      severity: "low", // Valeur par défaut
     },
   });
 
@@ -91,7 +93,7 @@ export const AddIssueModal: React.FC<AddIssueModalProps> = ({
   });
 
   // ✅ CORRIGÉ: Type explicite pour SubmitHandler
-  const onSubmit: SubmitHandler<AddIssueForm> = (data: AddIssueForm) => {
+  const onSubmit = (data: AddIssueForm) => {
     addIssueMutation.mutate(data);
   };
 
