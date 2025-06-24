@@ -1,7 +1,7 @@
-// frontend/src/pages/productions/ProductionDetail.tsx - PAGE DE DÉTAILS PRODUCTION
-import React from "react";
+// frontend/src/pages/productions/ProductionDetail.tsx - VERSION AMÉLIORÉE
+import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Edit,
@@ -17,8 +17,11 @@ import {
   Eye,
   Activity,
   Cloud,
-  Bug,
-  Settings,
+  MoreHorizontal,
+  Trash2,
+  PlayCircle,
+  PauseCircle,
+  StopCircle,
 } from "lucide-react";
 import {
   Card,
@@ -30,6 +33,7 @@ import {
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Separator } from "../../components/ui/separator";
+import { Progress } from "../../components/ui/progress";
 import {
   Tabs,
   TabsContent,
@@ -44,9 +48,28 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../../components/ui/alert-dialog";
 import { api } from "../../services/api";
 import { Production } from "../../types/entities";
 import { formatDate, formatNumber } from "../../utils/formatters";
+import { toast } from "react-toastify";
 import {
   PRODUCTION_STATUSES,
   ACTIVITY_TYPES,
@@ -54,10 +77,30 @@ import {
   ISSUE_SEVERITIES,
   getStatusConfig,
 } from "../../constants";
+import {
+  getActivityIcon,
+  getIssueIcon,
+  getSeverityIcon,
+  getStatusColors,
+  calculateProgress,
+  calculateDuration,
+  calculateEfficiency,
+} from "../../constants/production";
+
+// Composants modaux pour les actions
+import { AddActivityModal } from "../../components/production/AddActivityModal";
+import { AddIssueModal } from "../../components/production/AddIssueModal";
+import { AddWeatherModal } from "../../components/production/AddWeatherModal";
 
 const ProductionDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // États pour les modals
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [showIssueModal, setShowIssueModal] = useState(false);
+  const [showWeatherModal, setShowWeatherModal] = useState(false);
 
   const {
     data: production,
@@ -72,53 +115,32 @@ const ProductionDetail: React.FC = () => {
     enabled: !!id,
   });
 
-  const getStatusBadge = (status: string) => {
-    const config = getStatusConfig(status, PRODUCTION_STATUSES);
-    const colorClasses = {
-      blue: "bg-blue-100 text-blue-800 border-blue-200",
-      orange: "bg-orange-100 text-orange-800 border-orange-200",
-      green: "bg-green-100 text-green-800 border-green-200",
-      red: "bg-red-100 text-red-800 border-red-200",
-    };
+  // Mutations pour les actions
+  const updateStatusMutation = useMutation({
+    mutationFn: async (newStatus: string) => {
+      return api.put(`/productions/${id}`, { status: newStatus });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["production", id] });
+      toast.success("Statut mis à jour avec succès");
+    },
+    onError: () => {
+      toast.error("Erreur lors de la mise à jour du statut");
+    },
+  });
 
-    const colorClass =
-      colorClasses[config.color as keyof typeof colorClasses] ||
-      colorClasses.blue;
-
-    return (
-      <Badge className={`${colorClass} font-medium`}>{config.label}</Badge>
-    );
-  };
-
-  const getActivityIcon = (type: string) => {
-    const config = getStatusConfig(type, ACTIVITY_TYPES);
-    const icons = {
-      Shovel: Settings,
-      Sprout: Package,
-      Droplets: Cloud,
-      CloudRain: Cloud,
-      Scissors: Settings,
-      Bug: Bug,
-      Package: Package,
-      MoreHorizontal: Settings,
-    };
-
-    const IconComponent = icons[config.icon as keyof typeof icons] || Activity;
-    return <IconComponent className="h-4 w-4" />;
-  };
-
-  const getIssueIcon = (severity: string) => {
-    const config = getStatusConfig(severity, ISSUE_SEVERITIES);
-    const icons = {
-      Info: CheckCircle,
-      AlertTriangle: AlertTriangle,
-      AlertOctagon: AlertTriangle,
-    };
-
-    const IconComponent =
-      icons[config.icon as keyof typeof icons] || AlertTriangle;
-    return <IconComponent className="h-4 w-4" />;
-  };
+  const deleteProductionMutation = useMutation({
+    mutationFn: async () => {
+      return api.delete(`/productions/${id}`);
+    },
+    onSuccess: () => {
+      toast.success("Production supprimée avec succès");
+      navigate("/dashboard/productions");
+    },
+    onError: () => {
+      toast.error("Erreur lors de la suppression");
+    },
+  });
 
   if (isLoading) {
     return (
@@ -147,9 +169,88 @@ const ProductionDetail: React.FC = () => {
     );
   }
 
+  // Calculs des métriques
+  const progress = calculateProgress(
+    production.status,
+    production.startDate,
+    production.endDate,
+    production.activities
+  );
+
+  const duration = calculateDuration(production.startDate, production.endDate);
+
+  const efficiency =
+    production.plannedQuantity && production.actualYield
+      ? calculateEfficiency(production.actualYield, production.plannedQuantity)
+      : null;
+
+  const statusColors = getStatusColors(production.status);
+
+  const getStatusBadge = (status: string) => {
+    const colors = getStatusColors(status);
+    const IconComponent = colors.icon;
+
+    return (
+      <Badge
+        className={`${colors.background} ${colors.text} ${colors.border} font-medium`}
+      >
+        <IconComponent className="h-3 w-3 mr-1" />
+        {getStatusConfig(status, PRODUCTION_STATUSES).label}
+      </Badge>
+    );
+  };
+
+  const getStatusActions = () => {
+    const actions = [];
+
+    switch (production.status) {
+      case "planned":
+        actions.push({
+          label: "Démarrer",
+          action: () => updateStatusMutation.mutate("in-progress"),
+          icon: PlayCircle,
+          variant: "default" as const,
+        });
+        break;
+      case "in-progress":
+        actions.push({
+          label: "Terminer",
+          action: () => updateStatusMutation.mutate("completed"),
+          icon: CheckCircle,
+          variant: "default" as const,
+        });
+        actions.push({
+          label: "Suspendre",
+          action: () => updateStatusMutation.mutate("planned"),
+          icon: PauseCircle,
+          variant: "outline" as const,
+        });
+        break;
+      case "completed":
+        actions.push({
+          label: "Rouvrir",
+          action: () => updateStatusMutation.mutate("in-progress"),
+          icon: PlayCircle,
+          variant: "outline" as const,
+        });
+        break;
+    }
+
+    if (production.status !== "cancelled") {
+      actions.push({
+        label: "Annuler",
+        action: () => updateStatusMutation.mutate("cancelled"),
+        icon: StopCircle,
+        variant: "destructive" as const,
+      });
+    }
+
+    return actions;
+  };
+
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header avec actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button
@@ -165,46 +266,123 @@ const ProductionDetail: React.FC = () => {
               <Tractor className="h-8 w-8 mr-3 text-green-600" />
               Production #{production.id}
             </h1>
-            <p className="text-muted-foreground">
-              {getStatusBadge(production.status)} • Lot {production.lotId}
-            </p>
+            <div className="flex items-center space-x-2 mt-1">
+              {getStatusBadge(production.status)}
+              <Badge variant="outline">Lot {production.lotId}</Badge>
+            </div>
           </div>
         </div>
-        <div className="flex space-x-2">
-          <Button variant="outline">
+
+        <div className="flex items-center space-x-2">
+          {/* Actions rapides */}
+          <Button
+            variant="outline"
+            onClick={() => setShowActivityModal(true)}
+            disabled={
+              production.status === "completed" ||
+              production.status === "cancelled"
+            }
+          >
             <Plus className="h-4 w-4 mr-2" />
-            Nouvelle activité
+            Activité
           </Button>
-          <Button>
-            <Edit className="h-4 w-4 mr-2" />
-            Modifier
+
+          <Button
+            variant="outline"
+            onClick={() => setShowIssueModal(true)}
+            disabled={
+              production.status === "completed" ||
+              production.status === "cancelled"
+            }
+          >
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            Problème
           </Button>
+
+          {/* Menu d'actions */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link to={`/dashboard/productions/${production.id}/edit`}>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Modifier
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              {getStatusActions().map((action, index) => (
+                <DropdownMenuItem
+                  key={index}
+                  onClick={action.action}
+                  className={
+                    action.variant === "destructive" ? "text-red-600" : ""
+                  }
+                >
+                  <action.icon className="h-4 w-4 mr-2" />
+                  {action.label}
+                </DropdownMenuItem>
+              ))}
+
+              <DropdownMenuSeparator />
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    className="text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Supprimer la production</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Cette action est irréversible. Toutes les données de cette
+                      production seront définitivement supprimées.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteProductionMutation.mutate()}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Supprimer
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {/* Overview Cards */}
+      {/* Métriques de performance */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-2xl font-bold">
-                  {production.endDate
-                    ? Math.ceil(
-                        (new Date(production.endDate).getTime() -
-                          new Date(production.startDate).getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      )
-                    : Math.ceil(
-                        (new Date().getTime() -
-                          new Date(production.startDate).getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      )}
-                </p>
-                <p className="text-xs text-muted-foreground">Jours</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-2xl font-bold">{duration}</p>
+                  <p className="text-xs text-muted-foreground">Jours</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Progrès</p>
+                <p className="text-sm font-medium">{progress}%</p>
               </div>
             </div>
+            <Progress value={progress} className="mt-2" />
           </CardContent>
         </Card>
 
@@ -216,9 +394,7 @@ const ProductionDetail: React.FC = () => {
                 <p className="text-2xl font-bold">
                   {formatNumber(production.plannedQuantity || 0)}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  Quantité planifiée (kg)
-                </p>
+                <p className="text-xs text-muted-foreground">Kg planifiés</p>
               </div>
             </div>
           </CardContent>
@@ -239,6 +415,13 @@ const ProductionDetail: React.FC = () => {
                 </p>
               </div>
             </div>
+            {efficiency && (
+              <div className="mt-1">
+                <p className="text-xs text-muted-foreground">
+                  Efficacité: {efficiency}%
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -253,16 +436,27 @@ const ProductionDetail: React.FC = () => {
                 <p className="text-xs text-muted-foreground">Activités</p>
               </div>
             </div>
+            {production._count?.issues && production._count.issues > 0 && (
+              <div className="mt-1">
+                <p className="text-xs text-red-600">
+                  {production._count.issues} problème(s)
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Detailed Information */}
+      {/* Contenu principal avec onglets */}
       <Tabs defaultValue="details" className="space-y-4">
         <TabsList>
           <TabsTrigger value="details">Informations</TabsTrigger>
-          <TabsTrigger value="activities">Activités</TabsTrigger>
-          <TabsTrigger value="issues">Problèmes</TabsTrigger>
+          <TabsTrigger value="activities">
+            Activités ({production._count?.activities || 0})
+          </TabsTrigger>
+          <TabsTrigger value="issues">
+            Problèmes ({production._count?.issues || 0})
+          </TabsTrigger>
           <TabsTrigger value="weather">Météo</TabsTrigger>
         </TabsList>
 
@@ -451,7 +645,13 @@ const ProductionDetail: React.FC = () => {
                   <Activity className="h-5 w-5 mr-2" />
                   Activités de production
                 </div>
-                <Button>
+                <Button
+                  onClick={() => setShowActivityModal(true)}
+                  disabled={
+                    production.status === "completed" ||
+                    production.status === "cancelled"
+                  }
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Nouvelle activité
                 </Button>
@@ -473,39 +673,42 @@ const ProductionDetail: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {production.activities.map((activity) => (
-                      <TableRow key={activity.id}>
-                        <TableCell>
-                          {formatDate(activity.activityDate)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            {getActivityIcon(activity.type)}
-                            <span>
-                              {
-                                getStatusConfig(activity.type, ACTIVITY_TYPES)
-                                  .label
-                              }
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {activity.description}
-                        </TableCell>
-                        <TableCell>
-                          {activity.personnel?.join(", ") || "Non spécifié"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {production.activities.map((activity) => {
+                      const IconComponent = getActivityIcon(activity.type);
+                      return (
+                        <TableRow key={activity.id}>
+                          <TableCell>
+                            {formatDate(activity.activityDate)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <IconComponent className="h-4 w-4" />
+                              <span>
+                                {
+                                  getStatusConfig(activity.type, ACTIVITY_TYPES)
+                                    .label
+                                }
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">
+                            {activity.description}
+                          </TableCell>
+                          <TableCell>
+                            {activity.personnel?.join(", ") || "Non spécifié"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               ) : (
@@ -517,7 +720,7 @@ const ProductionDetail: React.FC = () => {
                   <p className="text-muted-foreground mb-4">
                     Commencez par enregistrer les activités de cette production.
                   </p>
-                  <Button>
+                  <Button onClick={() => setShowActivityModal(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Première activité
                   </Button>
@@ -535,7 +738,7 @@ const ProductionDetail: React.FC = () => {
                   <AlertTriangle className="h-5 w-5 mr-2" />
                   Problèmes rencontrés
                 </div>
-                <Button>
+                <Button onClick={() => setShowIssueModal(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Signaler un problème
                 </Button>
@@ -558,51 +761,57 @@ const ProductionDetail: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {production.issues.map((issue) => (
-                      <TableRow key={issue.id}>
-                        <TableCell>{formatDate(issue.issueDate)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Bug className="h-4 w-4" />
-                            <span>
-                              {getStatusConfig(issue.type, ISSUE_TYPES).label}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            {getIssueIcon(issue.severity)}
-                            <span>
-                              {
-                                getStatusConfig(
-                                  issue.severity,
-                                  ISSUE_SEVERITIES
-                                ).label
+                    {production.issues.map((issue) => {
+                      const IssueIcon = getIssueIcon(issue.type);
+                      const SeverityIcon = getSeverityIcon(issue.severity);
+                      return (
+                        <TableRow key={issue.id}>
+                          <TableCell>{formatDate(issue.issueDate)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <IssueIcon className="h-4 w-4" />
+                              <span>
+                                {getStatusConfig(issue.type, ISSUE_TYPES).label}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <SeverityIcon className="h-4 w-4" />
+                              <span>
+                                {
+                                  getStatusConfig(
+                                    issue.severity,
+                                    ISSUE_SEVERITIES
+                                  ).label
+                                }
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">
+                            {issue.description}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                issue.resolved ? "default" : "destructive"
                               }
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {issue.description}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={issue.resolved ? "default" : "destructive"}
-                          >
-                            {issue.resolved ? "Résolu" : "En cours"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                            >
+                              {issue.resolved ? "Résolu" : "En cours"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               ) : (
@@ -621,9 +830,15 @@ const ProductionDetail: React.FC = () => {
         <TabsContent value="weather">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Cloud className="h-5 w-5 mr-2" />
-                Données météorologiques
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Cloud className="h-5 w-5 mr-2" />
+                  Données météorologiques
+                </div>
+                <Button onClick={() => setShowWeatherModal(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter données
+                </Button>
               </CardTitle>
               <CardDescription>
                 Conditions météorologiques pendant la production
@@ -645,16 +860,51 @@ const ProductionDetail: React.FC = () => {
                   <h3 className="text-lg font-semibold mb-2">
                     Aucune donnée météo
                   </h3>
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground mb-4">
                     Les données météorologiques n'ont pas encore été
                     enregistrées.
                   </p>
+                  <Button onClick={() => setShowWeatherModal(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter données météo
+                  </Button>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modals */}
+      <AddActivityModal
+        open={showActivityModal}
+        onOpenChange={setShowActivityModal}
+        productionId={production.id}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["production", id] });
+          setShowActivityModal(false);
+        }}
+      />
+
+      <AddIssueModal
+        open={showIssueModal}
+        onOpenChange={setShowIssueModal}
+        productionId={production.id}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["production", id] });
+          setShowIssueModal(false);
+        }}
+      />
+
+      <AddWeatherModal
+        open={showWeatherModal}
+        onOpenChange={setShowWeatherModal}
+        productionId={production.id}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["production", id] });
+          setShowWeatherModal(false);
+        }}
+      />
     </div>
   );
 };

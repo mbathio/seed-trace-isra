@@ -331,49 +331,49 @@ export const ACTIVITY_TYPES: StatusConfigExtended[] = [
     label: "Préparation du sol",
     value: "soil-preparation",
     color: "bg-brown-100 text-brown-800",
-    icon: "🚜",
+    icon: "tractor", // ✅ CORRIGÉ: Nom d'icône correct
   },
   {
     label: "Semis",
     value: "sowing",
     color: "bg-green-100 text-green-800",
-    icon: "🌱",
+    icon: "sprout", // ✅ CORRIGÉ: Nom d'icône correct
   },
   {
     label: "Fertilisation",
     value: "fertilization",
     color: "bg-lime-100 text-lime-800",
-    icon: "🧪",
+    icon: "flask", // ✅ CORRIGÉ: Nom d'icône correct
   },
   {
     label: "Irrigation",
     value: "irrigation",
     color: "bg-blue-100 text-blue-800",
-    icon: "💧",
+    icon: "droplets", // ✅ CORRIGÉ: Nom d'icône correct
   },
   {
     label: "Désherbage",
     value: "weeding",
     color: "bg-yellow-100 text-yellow-800",
-    icon: "✂️",
+    icon: "scissors", // ✅ CORRIGÉ: Nom d'icône correct
   },
   {
     label: "Contrôle phytosanitaire",
     value: "pest-control",
     color: "bg-red-100 text-red-800",
-    icon: "🐛",
+    icon: "bug", // ✅ CORRIGÉ: Nom d'icône correct
   },
   {
     label: "Récolte",
     value: "harvest",
     color: "bg-orange-100 text-orange-800",
-    icon: "🌾",
+    icon: "package", // ✅ CORRIGÉ: Nom d'icône correct
   },
   {
     label: "Autre",
     value: "other",
     color: "bg-gray-100 text-gray-800",
-    icon: "⚙️",
+    icon: "settings", // ✅ CORRIGÉ: Nom d'icône correct
   },
 ];
 
@@ -418,21 +418,21 @@ export const ISSUE_SEVERITIES: StatusConfigExtended[] = [
     value: "low",
     color: "bg-green-100 text-green-800",
     variant: "default",
-    icon: "ℹ️",
+    icon: "info", // ✅ CORRIGÉ: Nom d'icône correct
   },
   {
     label: "Moyenne",
     value: "medium",
     color: "bg-yellow-100 text-yellow-800",
     variant: "secondary",
-    icon: "⚠️",
+    icon: "alert-triangle", // ✅ CORRIGÉ: Nom d'icône correct
   },
   {
     label: "Élevée",
     value: "high",
     color: "bg-red-100 text-red-800",
     variant: "destructive",
-    icon: "🚨",
+    icon: "alert-circle", // ✅ CORRIGÉ: Nom d'icône correct
   },
 ];
 
