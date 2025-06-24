@@ -1,4 +1,4 @@
-// frontend/src/constants/production.ts - VERSION CORRIGÉE DÉFINITIVE
+// frontend/src/constants/production.ts - VERSION CORRIGÉE SANS CONFLIT
 
 import {
   Shovel,
@@ -23,7 +23,8 @@ import {
 } from "lucide-react";
 
 // ===== TYPES D'ACTIVITÉS =====
-export type ActivityType =
+// ✅ CORRIGÉ: Utiliser un nom différent pour éviter le conflit
+export type ProductionActivityType =
   | "soil-preparation"
   | "sowing"
   | "fertilization"
@@ -34,7 +35,10 @@ export type ActivityType =
   | "other";
 
 // ===== ICÔNES SPÉCIALISÉES POUR LES ACTIVITÉS AGRICOLES =====
-export const PRODUCTION_ACTIVITY_ICONS: Record<ActivityType, LucideIcon> = {
+export const PRODUCTION_ACTIVITY_ICONS: Record<
+  ProductionActivityType,
+  LucideIcon
+> = {
   "soil-preparation": Shovel,
   sowing: Sprout,
   fertilization: Beaker,
@@ -99,8 +103,8 @@ export const PRODUCTION_STATUS_COLORS = {
 } as const;
 
 // ===== PHASES DE PRODUCTION =====
-// ✅ CORRIGÉ: Définir explicitement les types pour éviter les conflits
-type PhaseActivity = Exclude<ActivityType, "other">; // Exclure "other" des phases
+// ✅ CORRIGÉ: Utiliser le nouveau type
+type PhaseActivity = Exclude<ProductionActivityType, "other">; // Exclure "other" des phases
 
 interface ProductionPhase {
   id: string;
@@ -201,7 +205,10 @@ export const PRODUCTION_THRESHOLDS = {
  * Obtient l'icône appropriée pour une activité
  */
 export const getActivityIcon = (activityType: string): LucideIcon => {
-  return PRODUCTION_ACTIVITY_ICONS[activityType as ActivityType] || Settings;
+  return (
+    PRODUCTION_ACTIVITY_ICONS[activityType as ProductionActivityType] ||
+    Settings
+  );
 };
 
 /**
@@ -268,7 +275,6 @@ export const getAlertLevel = (
 
 /**
  * Obtient la phase actuelle basée sur les activités
- * ✅ CORRIGÉ: Logique simplifiée avec gestion du type "other"
  */
 export const getCurrentPhase = (
   activities: Array<{ type: string }> | string[]
@@ -291,12 +297,12 @@ export const getCurrentPhase = (
     return PRODUCTION_PHASES[0];
   }
 
-  // ✅ CORRIGÉ: Gestion spéciale pour "other"
+  // Gestion spéciale pour "other"
   if (activityType === "other") {
     return PRODUCTION_PHASES[PRODUCTION_PHASES.length - 1]; // Retourner la dernière phase
   }
 
-  // ✅ CORRIGÉ: Recherche avec type sûr
+  // Recherche avec type sûr
   const foundPhase = PRODUCTION_PHASES.find((phase) => {
     return phase.activities.some((activity) => activity === activityType);
   });
@@ -326,7 +332,8 @@ export const calculateProgress = (
       const validActivityTypes = activities
         .map((a) => a.type)
         .filter(
-          (type): type is ActivityType => type in PRODUCTION_ACTIVITY_ICONS
+          (type): type is ProductionActivityType =>
+            type in PRODUCTION_ACTIVITY_ICONS
         );
 
       const completedActivities = new Set(validActivityTypes).size;
@@ -343,7 +350,9 @@ export const calculateProgress = (
   }
 };
 
-// Export des types pour TypeScript
-export type { ProductionPhase, ActivityType };
+// ===== EXPORTS DES TYPES =====
+// ✅ CORRIGÉ: Export avec alias pour maintenir la compatibilité
+export type { ProductionPhase };
+export type { ProductionActivityType as ActivityType }; // Alias pour compatibilité
 export type ProductionMetric = keyof typeof PRODUCTION_METRICS;
 export type AlertLevel = "normal" | "warning" | "critical";
