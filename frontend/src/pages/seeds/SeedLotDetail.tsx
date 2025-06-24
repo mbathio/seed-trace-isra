@@ -429,13 +429,14 @@ const SeedLotDetail: React.FC = () => {
                         <TableCell>
                           <Badge
                             variant={
-                              control.result === "PASS"
+                              control.result === "passed"
                                 ? "default"
                                 : "destructive"
                             }
                           >
-                            {control.result === "PASS" ? "Réussi" : "Échec"}
+                            {control.result === "passed" ? "✓" : "✗"}
                           </Badge>
+                          {control.result === "passed" ? "Réussi" : "Échec"}
                         </TableCell>
                         <TableCell>{control.inspector.name}</TableCell>
                       </TableRow>

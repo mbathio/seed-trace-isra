@@ -32,6 +32,10 @@ import {
   SENEGAL_BOUNDS,
 } from "../../constants";
 import { DataTransformer } from "../../utils/transformers";
+import {
+  CROP_TYPE_ICONS,
+  CERTIFICATION_EXPERIENCE,
+} from "../../constants/icons";
 
 interface CreateMultiplierForm {
   name: string;

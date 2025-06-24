@@ -1,4 +1,5 @@
-// frontend/src/components/layout/AppSidebar.tsx - ✅ NAVIGATION ENTIÈREMENT CORRIGÉE
+// frontend/src/components/layout/AppSidebar.tsx - CORRECTION LIGNE 161
+
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -157,8 +158,9 @@ const AppSidebar: React.FC = () => {
     return items.some((item) => isActiveLink(item.url));
   };
 
-  // ✅ Vérifier si l'utilisateur est admin
-  const isAdmin = user?.role === "ADMIN";
+  // ✅ CORRIGÉ: Vérifier si l'utilisateur est admin
+  // Le rôle arrive en minuscules depuis le backend transformé
+  const isAdmin = user?.role === "admin";
 
   // ✅ Fonction de déconnexion
   const handleLogout = () => {
@@ -202,37 +204,40 @@ const AppSidebar: React.FC = () => {
                         <span>{item.title}</span>
                       </SidebarMenuButton>
                       <SidebarMenuSub>
-                        {item.items.map((subItem) => (
-                          <SidebarMenuSubItem key={subItem.title}>
-                            <SidebarMenuSubButton
-                              asChild
-                              className={cn(
-                                isActiveLink(subItem.url) &&
-                                  "bg-accent text-accent-foreground font-medium"
-                              )}
-                            >
-                              <Link to={subItem.url}>
-                                <subItem.icon className="h-4 w-4" />
-                                <span>{subItem.title}</span>
-                              </Link>
-                            </SidebarMenuSubButton>
-                          </SidebarMenuSubItem>
-                        ))}
+                        {item.items.map((subItem) => {
+                          const isActive = isActiveLink(subItem.url);
+                          return (
+                            <SidebarMenuSubItem key={subItem.url}>
+                              <SidebarMenuSubButton
+                                asChild
+                                className={cn(
+                                  isActive && "bg-accent text-accent-foreground"
+                                )}
+                              >
+                                <Link to={subItem.url}>
+                                  <subItem.icon className="h-4 w-4" />
+                                  <span>{subItem.title}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          );
+                        })}
                       </SidebarMenuSub>
                     </SidebarMenuItem>
                   );
-                } else if (item.url) {
-                  // ✅ Menu simple avec URL
+                } else {
+                  // ✅ Menu simple
+                  const isActive = isActiveLink(item.url!, item.exact);
                   return (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
                         className={cn(
-                          isActiveLink(item.url, item.exact) &&
-                            "bg-accent text-accent-foreground font-medium"
+                          "font-medium",
+                          isActive && "bg-accent text-accent-foreground"
                         )}
                       >
-                        <Link to={item.url}>
+                        <Link to={item.url!}>
                           <item.icon className="h-4 w-4" />
                           <span>{item.title}</span>
                         </Link>
@@ -240,13 +245,12 @@ const AppSidebar: React.FC = () => {
                     </SidebarMenuItem>
                   );
                 }
-                return null;
               })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* ✅ Navigation admin (si utilisateur admin) */}
+        {/* ✅ Navigation admin (visible uniquement pour les admins) */}
         {isAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel>Administration</SidebarGroupLabel>
@@ -267,36 +271,40 @@ const AppSidebar: React.FC = () => {
                           <span>{item.title}</span>
                         </SidebarMenuButton>
                         <SidebarMenuSub>
-                          {item.items.map((subItem) => (
-                            <SidebarMenuSubItem key={subItem.title}>
-                              <SidebarMenuSubButton
-                                asChild
-                                className={cn(
-                                  isActiveLink(subItem.url) &&
-                                    "bg-accent text-accent-foreground font-medium"
-                                )}
-                              >
-                                <Link to={subItem.url}>
-                                  <subItem.icon className="h-4 w-4" />
-                                  <span>{subItem.title}</span>
-                                </Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
+                          {item.items.map((subItem) => {
+                            const isActive = isActiveLink(subItem.url);
+                            return (
+                              <SidebarMenuSubItem key={subItem.url}>
+                                <SidebarMenuSubButton
+                                  asChild
+                                  className={cn(
+                                    isActive &&
+                                      "bg-accent text-accent-foreground"
+                                  )}
+                                >
+                                  <Link to={subItem.url}>
+                                    <subItem.icon className="h-4 w-4" />
+                                    <span>{subItem.title}</span>
+                                  </Link>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            );
+                          })}
                         </SidebarMenuSub>
                       </SidebarMenuItem>
                     );
-                  } else if (item.url) {
+                  } else {
+                    const isActive = isActiveLink(item.url!, item.exact);
                     return (
                       <SidebarMenuItem key={item.title}>
                         <SidebarMenuButton
                           asChild
                           className={cn(
-                            isActiveLink(item.url, item.exact) &&
-                              "bg-accent text-accent-foreground font-medium"
+                            "font-medium",
+                            isActive && "bg-accent text-accent-foreground"
                           )}
                         >
-                          <Link to={item.url}>
+                          <Link to={item.url!}>
                             <item.icon className="h-4 w-4" />
                             <span>{item.title}</span>
                           </Link>
@@ -304,7 +312,6 @@ const AppSidebar: React.FC = () => {
                       </SidebarMenuItem>
                     );
                   }
-                  return null;
                 })}
               </SidebarMenu>
             </SidebarGroupContent>
@@ -312,35 +319,23 @@ const AppSidebar: React.FC = () => {
         )}
       </SidebarContent>
 
-      {/* ✅ Footer avec informations utilisateur et déconnexion */}
+      {/* ✅ Footer avec déconnexion */}
       <SidebarFooter>
-        <SidebarMenu>
-          {/* Informations utilisateur */}
-          <SidebarMenuItem>
-            <div className="px-4 py-2 border-t">
-              <div className="group-data-[collapsible=icon]:hidden">
-                <p className="text-sm font-medium truncate">{user?.name}</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {user?.email}
-                </p>
-                <p className="text-xs text-muted-foreground capitalize">
-                  {user?.role?.toLowerCase()}
-                </p>
-              </div>
-            </div>
-          </SidebarMenuItem>
-
-          {/* Bouton de déconnexion */}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={handleLogout}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Déconnexion</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={handleLogout}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Déconnexion</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarFooter>
 
       <SidebarRail />

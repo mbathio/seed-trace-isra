@@ -50,6 +50,8 @@ export interface SeedLot {
   level: "GO" | "G1" | "G2" | "G3" | "G4" | "R1" | "R2";
   quantity: number;
   productionDate: string;
+  availableQuantity: number; // Ajout de la propriété manquante
+
   expiryDate?: string;
   status:
     | "pending"
@@ -105,6 +107,8 @@ export interface Multiplier {
 
 export interface Parcel {
   id: number;
+  code: string; // Ajout de la propriété manquante
+
   name?: string;
   area: number;
   latitude: number;
@@ -125,7 +129,11 @@ export interface Parcel {
     productions: number;
   };
 }
-
+// Extension pour StatusConfig si nécessaire
+export interface StatusConfigExtended extends StatusConfig {
+  icon?: string;
+  experience?: string;
+}
 export interface QualityControl {
   id: number;
   lotId: string;
