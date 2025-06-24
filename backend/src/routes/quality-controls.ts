@@ -1,9 +1,8 @@
-// ===== 4. backend/src/routes/quality-controls.ts - AVEC TRANSFORMATION =====
 import { Router } from "express";
 import { QualityControlController } from "../controllers/QualityControlController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole } from "../middleware/auth";
-import { qualityControlTransformation } from "../middleware/transformationMiddleware"; // ✅ AJOUTÉ
+import { qualityControlTransformation } from "../middleware/transformationMiddleware";
 import {
   createQualityControlSchema,
   updateQualityControlSchema,
@@ -11,10 +10,10 @@ import {
 
 const router = Router();
 
-// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
+// ✅ Appliquer le middleware de transformation
 router.use(qualityControlTransformation);
 
-// Routes...
+// Routes
 router.get("/", QualityControlController.getQualityControls);
 router.get("/:id", QualityControlController.getQualityControlById);
 router.post(

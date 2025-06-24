@@ -1,4 +1,3 @@
-// frontend/src/pages/quality/QualityControls.tsx - VERSION CORRIGÉE AVEC CONSTANTES
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -31,8 +30,7 @@ import { api } from "../../services/api";
 import { QualityControl } from "../../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
 import { formatDate } from "../../utils/formatters";
-import { QUALITY_TEST_RESULTS, getStatusConfig } from "../../constants"; // ✅ AJOUTÉ: Import des constantes
-import { DataTransformer } from "../../utils/transformers"; // ✅ AJOUTÉ: Import du transformateur
+import { QUALITY_TEST_RESULTS, getStatusConfig } from "../../constants";
 import { useDebounce } from "../../hooks/useDebounce";
 import { usePagination } from "../../hooks/usePagination";
 
@@ -42,7 +40,6 @@ const QualityControls: React.FC = () => {
   const debouncedSearch = useDebounce(search, 300);
   const { pagination, actions } = usePagination({ initialPageSize: 10 });
 
-  // ✅ CORRIGÉ: Query avec gestion de la transformation
   const { data, isLoading, error } = useQuery<ApiResponse<QualityControl[]>>({
     queryKey: [
       "quality-controls",
@@ -60,21 +57,13 @@ const QualityControls: React.FC = () => {
       };
 
       const response = await api.get("/quality-controls", { params });
-
-      // ✅ Transformer les données reçues de l'API
-      const transformedData = {
-        ...response.data,
-        data: response.data.data.map((qc: any) =>
-          DataTransformer.transformQualityControlFromAPI(qc)
-        ),
-      };
-
-      return transformedData;
+      // Les données arrivent déjà transformées depuis le backend
+      return response.data;
     },
   });
 
-  // ✅ CORRIGÉ: Utilisation des constantes pour les badges de résultat
   const getResultBadge = (result: string) => {
+    // Le résultat arrive déjà transformé en minuscules depuis le backend
     const config = getStatusConfig(result, QUALITY_TEST_RESULTS);
 
     const colorClasses = {
@@ -146,7 +135,6 @@ const QualityControls: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Tous les résultats</SelectItem>
-                {/* ✅ CORRIGÉ: Utilisation des constantes */}
                 {QUALITY_TEST_RESULTS.map((result) => (
                   <SelectItem key={result.value} value={result.value}>
                     {result.label}
@@ -158,7 +146,7 @@ const QualityControls: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Results */}
+      {/* Results Table */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -190,15 +178,46 @@ const QualityControls: React.FC = () => {
                   <TableRow key={control.id}>
                     <TableCell>
                       <div>
-                        <p className="font-mono text-sm">{control.lotId}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {control.seedLot.variety.name}
-                        </p>
+                        <Link
+                          to={`/dashboard/seed-lots/${control.lotId}`}
+                          className="font-mono text-sm text-blue-600 hover:underline"
+                        >
+                          {control.lotId}
+                        </Link>
+                        {control.seedLot && (
+                          <p className="text-xs text-muted-foreground">
+                            {control.seedLot.variety.name}
+                          </p>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>{formatDate(control.controlDate)}</TableCell>
-                    <TableCell>{control.germinationRate}%</TableCell>
-                    <TableCell>{control.varietyPurity}%</TableCell>
+                    <TableCell>
+                      <span
+                        className={`font-medium ${
+                          control.germinationRate >= 85
+                            ? "text-green-600"
+                            : control.germinationRate >= 70
+                            ? "text-yellow-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {control.germinationRate}%
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`font-medium ${
+                          control.varietyPurity >= 95
+                            ? "text-green-600"
+                            : control.varietyPurity >= 85
+                            ? "text-yellow-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {control.varietyPurity}%
+                      </span>
+                    </TableCell>
                     <TableCell>{getResultBadge(control.result)}</TableCell>
                     <TableCell>{control.inspector.name}</TableCell>
                     <TableCell className="text-right">
@@ -215,9 +234,19 @@ const QualityControls: React.FC = () => {
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <FileText className="h-4 w-4" />
-                        </Button>
+                        {control.certificateUrl && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              // Télécharger le certificat
+                              window.open(control.certificateUrl, "_blank");
+                            }}
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

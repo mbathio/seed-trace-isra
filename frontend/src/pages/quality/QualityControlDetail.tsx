@@ -1,4 +1,3 @@
-// frontend/src/pages/quality/QualityControlDetail.tsx - VERSION CORRIGÉE
 import React from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +10,7 @@ import {
   CheckCircle,
   XCircle,
   Download,
+  Package,
 } from "lucide-react";
 import {
   Card,
@@ -22,9 +22,10 @@ import {
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Separator } from "../../components/ui/separator";
+import { Progress } from "../../components/ui/progress";
 import { api } from "../../services/api";
 import type { QualityControl } from "../../types/entities";
-import { formatDate } from "../../utils/formatters";
+import { formatDate, formatNumber } from "../../utils/formatters";
 import { QUALITY_TEST_RESULTS, getStatusConfig } from "../../constants";
 
 const QualityControlDetail: React.FC = () => {
@@ -45,8 +46,7 @@ const QualityControlDetail: React.FC = () => {
   });
 
   const getResultBadge = (result: string) => {
-    // Le résultat arrive déjà transformé depuis le backend
-    const config = getStatusConfig(result.toLowerCase(), QUALITY_TEST_RESULTS);
+    const config = getStatusConfig(result, QUALITY_TEST_RESULTS);
     const colorClasses = {
       green: "bg-green-100 text-green-800 border-green-200",
       red: "bg-red-100 text-red-800 border-red-200",
@@ -59,6 +59,21 @@ const QualityControlDetail: React.FC = () => {
     return (
       <Badge className={`${colorClass} font-medium`}>{config.label}</Badge>
     );
+  };
+
+  // Fonction pour obtenir les seuils selon le niveau
+  const getThresholds = (level: string) => {
+    const thresholds: Record<string, { germination: number; purity: number }> =
+      {
+        GO: { germination: 98, purity: 99.9 },
+        G1: { germination: 95, purity: 99.5 },
+        G2: { germination: 90, purity: 99.0 },
+        G3: { germination: 85, purity: 98.0 },
+        G4: { germination: 80, purity: 97.0 },
+        R1: { germination: 80, purity: 97.0 },
+        R2: { germination: 80, purity: 95.0 },
+      };
+    return thresholds[level] || thresholds.R2;
   };
 
   if (isLoading) {
@@ -87,6 +102,8 @@ const QualityControlDetail: React.FC = () => {
       </div>
     );
   }
+
+  const thresholds = getThresholds(qualityControl.seedLot.level);
 
   return (
     <div className="space-y-6">
@@ -197,63 +214,113 @@ const QualityControlDetail: React.FC = () => {
         <Card>
           <CardHeader>
             <CardTitle>Résultats des tests</CardTitle>
+            <CardDescription>
+              Niveau {qualityControl.seedLot.level} - Seuils: Germination{" "}
+              {thresholds.germination}%, Pureté {thresholds.purity}%
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
+              {/* Taux de germination */}
               <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  Taux de germination
-                </label>
-                <p className="text-2xl font-bold text-green-600">
-                  {qualityControl.germinationRate}%
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-sm font-medium">
+                    Taux de germination
+                  </label>
+                  <span
+                    className={`text-xl font-bold ${
+                      qualityControl.germinationRate >= thresholds.germination
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {qualityControl.germinationRate}%
+                  </span>
+                </div>
+                <Progress
+                  value={qualityControl.germinationRate}
+                  className={`h-2 ${
+                    qualityControl.germinationRate >= thresholds.germination
+                      ? "bg-green-100"
+                      : "bg-red-100"
+                  }`}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Seuil minimum: {thresholds.germination}%
                 </p>
               </div>
+
+              {/* Pureté variétale */}
               <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  Pureté variétale
-                </label>
-                <p className="text-2xl font-bold text-blue-600">
-                  {qualityControl.varietyPurity}%
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-sm font-medium">
+                    Pureté variétale
+                  </label>
+                  <span
+                    className={`text-xl font-bold ${
+                      qualityControl.varietyPurity >= thresholds.purity
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {qualityControl.varietyPurity}%
+                  </span>
+                </div>
+                <Progress
+                  value={qualityControl.varietyPurity}
+                  className={`h-2 ${
+                    qualityControl.varietyPurity >= thresholds.purity
+                      ? "bg-green-100"
+                      : "bg-red-100"
+                  }`}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Seuil minimum: {thresholds.purity}%
                 </p>
               </div>
-              {qualityControl.moistureContent && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Taux d'humidité
-                  </label>
-                  <p className="text-2xl font-bold text-orange-600">
-                    {qualityControl.moistureContent}%
-                  </p>
-                </div>
-              )}
-              {qualityControl.seedHealth && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    État sanitaire
-                  </label>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {qualityControl.seedHealth}%
-                  </p>
-                </div>
-              )}
+
+              {/* Autres tests optionnels */}
+              <div className="grid grid-cols-2 gap-4 pt-4">
+                {qualityControl.moistureContent !== undefined && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Taux d'humidité
+                    </label>
+                    <p className="text-lg font-bold text-orange-600">
+                      {qualityControl.moistureContent}%
+                    </p>
+                  </div>
+                )}
+                {qualityControl.seedHealth !== undefined && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      État sanitaire
+                    </label>
+                    <p className="text-lg font-bold text-purple-600">
+                      {qualityControl.seedHealth}%
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <Separator />
 
             <div className="flex items-center space-x-4">
-              {qualityControl.result === "PASS" ? (
+              {qualityControl.result === "pass" ? (
                 <CheckCircle className="h-8 w-8 text-green-500" />
               ) : (
                 <XCircle className="h-8 w-8 text-red-500" />
               )}
               <div>
                 <p className="font-medium">
-                  {qualityControl.result === "PASS"
+                  {qualityControl.result === "pass"
                     ? "Lot certifié conforme"
                     : "Lot non conforme"}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Selon les standards de qualité ISRA
+                  Selon les standards de qualité ISRA pour le niveau{" "}
+                  {qualityControl.seedLot.level}
                 </p>
               </div>
             </div>
@@ -279,7 +346,10 @@ const QualityControlDetail: React.FC = () => {
       {qualityControl.seedLot && (
         <Card>
           <CardHeader>
-            <CardTitle>Informations sur le lot</CardTitle>
+            <CardTitle className="flex items-center">
+              <Package className="h-5 w-5 mr-2" />
+              Informations sur le lot
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -302,7 +372,7 @@ const QualityControlDetail: React.FC = () => {
                   Quantité
                 </label>
                 <p className="font-medium">
-                  {qualityControl.seedLot.quantity} kg
+                  {formatNumber(qualityControl.seedLot.quantity)} kg
                 </p>
               </div>
               <div>
@@ -313,6 +383,33 @@ const QualityControlDetail: React.FC = () => {
                   {formatDate(qualityControl.seedLot.productionDate)}
                 </p>
               </div>
+              {qualityControl.seedLot.multiplier && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Multiplicateur
+                  </label>
+                  <Link
+                    to={`/dashboard/multipliers/${qualityControl.seedLot.multiplier.id}`}
+                    className="text-blue-600 hover:underline"
+                  >
+                    {qualityControl.seedLot.multiplier.name}
+                  </Link>
+                </div>
+              )}
+              {qualityControl.seedLot.parcel && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Parcelle
+                  </label>
+                  <Link
+                    to={`/dashboard/parcels/${qualityControl.seedLot.parcel.id}`}
+                    className="text-blue-600 hover:underline"
+                  >
+                    {qualityControl.seedLot.parcel.name ||
+                      `Parcelle ${qualityControl.seedLot.parcel.id}`}
+                  </Link>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -339,7 +436,13 @@ const QualityControlDetail: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    window.open(qualityControl.certificateUrl, "_blank")
+                  }
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Télécharger
                 </Button>

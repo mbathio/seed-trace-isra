@@ -3,13 +3,13 @@ export interface User {
   name: string;
   email: string;
   role:
-    | "ADMIN"
-    | "MANAGER"
-    | "RESEARCHER"
-    | "TECHNICIAN"
-    | "INSPECTOR"
-    | "MULTIPLIER"
-    | "GUEST";
+    | "admin"
+    | "manager"
+    | "researcher"
+    | "technician"
+    | "inspector"
+    | "multiplier"
+    | "guest"; //
   avatar?: string;
   isActive: boolean;
   createdAt: string;
@@ -21,13 +21,13 @@ export interface Variety {
   code: string;
   name: string;
   cropType:
-    | "RICE"
-    | "MAIZE"
-    | "PEANUT"
-    | "SORGHUM"
-    | "COWPEA"
-    | "MILLET"
-    | "WHEAT";
+    | "rice"
+    | "maize"
+    | "peanut"
+    | "sorghum"
+    | "cowpea"
+    | "millet"
+    | "wheat";
   description?: string;
   maturityDays: number;
   yieldPotential?: number;
@@ -52,13 +52,13 @@ export interface SeedLot {
   productionDate: string;
   expiryDate?: string;
   status:
-    | "PENDING"
-    | "CERTIFIED"
-    | "REJECTED"
-    | "IN_STOCK"
-    | "ACTIVE"
-    | "DISTRIBUTED"
-    | "SOLD";
+    | "pending"
+    | "certified"
+    | "rejected"
+    | "in-stock"
+    | "active"
+    | "distributed"
+    | "sold"; // ✅ CORRIGÉ: Valeurs UI
   batchNumber?: string;
   parentLotId?: string;
   parentLot?: SeedLot;
@@ -109,7 +109,7 @@ export interface Parcel {
   area: number;
   latitude: number;
   longitude: number;
-  status: "AVAILABLE" | "IN_USE" | "RESTING";
+  status: "available" | "in-use" | "resting"; // ✅ CORRIGÉ: Valeurs UI
   soilType?: string;
   irrigationSystem?: string;
   address?: string;
@@ -135,7 +135,7 @@ export interface QualityControl {
   varietyPurity: number;
   moistureContent?: number;
   seedHealth?: number;
-  result: "PASS" | "FAIL";
+  result: "pass" | "fail"; // ✅ CORRIGÉ: Utiliser les valeurs UI en minuscules
   observations?: string;
   testMethod?: string;
   laboratoryRef?: string;
@@ -160,7 +160,7 @@ export interface Production {
   multiplier: Multiplier;
   parcelId: number;
   parcel: Parcel;
-  status: "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  status: "planned" | "in-progress" | "completed" | "cancelled"; // ✅ CORRIGÉ: Valeurs UI
   plannedQuantity?: number;
   actualYield?: number;
   notes?: string;
@@ -196,14 +196,14 @@ export interface ProductionActivity {
   id: number;
   productionId: number;
   type:
-    | "SOIL_PREPARATION"
-    | "SOWING"
-    | "FERTILIZATION"
-    | "IRRIGATION"
-    | "WEEDING"
-    | "PEST_CONTROL"
-    | "HARVEST"
-    | "OTHER";
+    | "soil-preparation"
+    | "sowing"
+    | "fertilization"
+    | "irrigation"
+    | "weeding"
+    | "pest-control"
+    | "harvest"
+    | "other";
   activityDate: string;
   description: string;
   personnel: string[];
@@ -228,9 +228,9 @@ export interface ProductionIssue {
   id: number;
   productionId: number;
   issueDate: string;
-  type: "DISEASE" | "PEST" | "WEATHER" | "MANAGEMENT" | "OTHER";
+  type: "disease" | "pest" | "weather" | "management" | "other"; // ✅ CORRIGÉ: Valeurs UI
   description: string;
-  severity: "LOW" | "MEDIUM" | "HIGH";
+  severity: "low" | "medium" | "high";
   actions: string;
   resolved: boolean;
   resolvedDate?: string;
@@ -248,7 +248,7 @@ export interface Contract {
   seedLevel: "GO" | "G1" | "G2" | "G3" | "G4" | "R1" | "R2";
   expectedQuantity: number;
   actualQuantity?: number;
-  status: "DRAFT" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+  status: "draft" | "active" | "completed" | "cancelled";
   parcelId?: number;
   paymentTerms?: string;
   notes?: string;
