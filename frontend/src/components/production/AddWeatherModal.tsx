@@ -1,4 +1,5 @@
 // frontend/src/components/production/AddWeatherModal.tsx - VERSION CORRIGÉE
+
 import React from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
@@ -45,11 +46,14 @@ export const AddWeatherModal: React.FC<AddWeatherModalProps> = ({
     control,
     handleSubmit,
     reset,
-    // ✅ CORRIGÉ: Suppression de la variable errors non utilisée
+    formState: { errors },
   } = useForm<AddWeatherForm>({
     defaultValues: {
       recordDate: new Date().toISOString().split("T")[0],
       source: "Manuel",
+      temperature: 0,
+      rainfall: 0,
+      humidity: 0,
     },
   });
 
@@ -62,14 +66,23 @@ export const AddWeatherModal: React.FC<AddWeatherModalProps> = ({
       reset();
       onSuccess();
     },
-    onError: () => {
-      toast.error("Erreur lors de l'ajout des données météo");
+    onError: (error: any) => {
+      const errorMessage =
+        error?.response?.data?.message ||
+        "Erreur lors de l'ajout des données météo";
+      toast.error(errorMessage);
     },
   });
 
   const onSubmit = (data: AddWeatherForm) => {
     addWeatherMutation.mutate(data);
   };
+
+  React.useEffect(() => {
+    if (!open) {
+      reset();
+    }
+  }, [open, reset]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,8 +104,14 @@ export const AddWeatherModal: React.FC<AddWeatherModalProps> = ({
             <Controller
               name="recordDate"
               control={control}
+              rules={{ required: "Date requise" }}
               render={({ field }) => <Input type="date" {...field} />}
             />
+            {errors.recordDate && (
+              <p className="text-sm text-red-500">
+                {errors.recordDate.message}
+              </p>
+            )}
           </div>
 
           {/* Température */}
@@ -101,6 +120,11 @@ export const AddWeatherModal: React.FC<AddWeatherModalProps> = ({
             <Controller
               name="temperature"
               control={control}
+              rules={{
+                required: "Température requise",
+                min: { value: -50, message: "Température trop basse" },
+                max: { value: 60, message: "Température trop élevée" },
+              }}
               render={({ field }) => (
                 <Input
                   type="number"
@@ -111,6 +135,11 @@ export const AddWeatherModal: React.FC<AddWeatherModalProps> = ({
                 />
               )}
             />
+            {errors.temperature && (
+              <p className="text-sm text-red-500">
+                {errors.temperature.message}
+              </p>
+            )}
           </div>
 
           {/* Précipitations */}
@@ -119,6 +148,13 @@ export const AddWeatherModal: React.FC<AddWeatherModalProps> = ({
             <Controller
               name="rainfall"
               control={control}
+              rules={{
+                required: "Précipitations requises",
+                min: {
+                  value: 0,
+                  message: "Précipitations ne peuvent pas être négatives",
+                },
+              }}
               render={({ field }) => (
                 <Input
                   type="number"
@@ -129,6 +165,9 @@ export const AddWeatherModal: React.FC<AddWeatherModalProps> = ({
                 />
               )}
             />
+            {errors.rainfall && (
+              <p className="text-sm text-red-500">{errors.rainfall.message}</p>
+            )}
           </div>
 
           {/* Humidité */}
@@ -137,6 +176,11 @@ export const AddWeatherModal: React.FC<AddWeatherModalProps> = ({
             <Controller
               name="humidity"
               control={control}
+              rules={{
+                required: "Humidité requise",
+                min: { value: 0, message: "Humidité minimum 0%" },
+                max: { value: 100, message: "Humidité maximum 100%" },
+              }}
               render={({ field }) => (
                 <Input
                   type="number"
@@ -148,6 +192,9 @@ export const AddWeatherModal: React.FC<AddWeatherModalProps> = ({
                 />
               )}
             />
+            {errors.humidity && (
+              <p className="text-sm text-red-500">{errors.humidity.message}</p>
+            )}
           </div>
 
           {/* Vitesse du vent */}

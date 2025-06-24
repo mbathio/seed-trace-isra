@@ -1,8 +1,10 @@
-// frontend/src/pages/productions/CreateProduction.tsx
+// frontend/src/pages/productions/CreateProduction.tsx - VERSION CORRIGÉE
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { ArrowLeft, Save, Loader2, Tractor } from "lucide-react";
 import {
   Card,
@@ -27,9 +29,7 @@ import { api } from "../../services/api";
 import { SeedLot, Multiplier, Parcel } from "../../types/entities";
 import { ApiResponse } from "../../types/api";
 import { PRODUCTION_STATUSES } from "../../constants";
-import { yupResolver } from "@hookform/resolvers/yup";
 import { productionValidationSchema } from "../../utils/validators";
-import { DataTransformer } from "../../utils/transformers";
 
 interface CreateProductionForm {
   lotId: string;
@@ -108,9 +108,8 @@ const CreateProduction: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateProductionForm) => {
-      // Transformer les données pour l'API
-      const transformedData = DataTransformer.transformProductionForAPI(data);
-      const response = await api.post("/productions", transformedData);
+      // Envoyer les données directement (pas de transformation nécessaire)
+      const response = await api.post("/productions", data);
       return response.data;
     },
     onSuccess: (data) => {
@@ -181,8 +180,8 @@ const CreateProduction: React.FC = () => {
                       <SelectContent>
                         {seedLots.map((lot) => (
                           <SelectItem key={lot.id} value={lot.id}>
-                            {lot.id} - {lot.variety.name} ({lot.level}) -{" "}
-                            {lot.quantity}kg
+                            {lot.id} - {lot.variety?.name || "Variété"} (
+                            {lot.level}) - {lot.quantity}kg
                           </SelectItem>
                         ))}
                       </SelectContent>

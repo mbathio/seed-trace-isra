@@ -1,7 +1,7 @@
-// frontend/src/components/production/AddActivityModal.tsx - CORRECTION DES TYPES
+// frontend/src/components/production/AddActivityModal.tsx - VERSION CORRIGÉE
 
 import React from "react";
-import { useForm, Controller } from "react-hook-form"; // ✅ SUPPRIMÉ SubmitHandler inutilisé
+import { useForm, Controller } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
@@ -36,7 +36,7 @@ interface ActivityInput {
   cost?: number;
 }
 
-// ✅ CORRIGÉ: Interface complète avec tous les champs requis par le schéma
+// ✅ CORRIGÉ: Interface complète avec tous les champs requis
 interface AddActivityForm {
   type:
     | "soil-preparation"
@@ -51,8 +51,7 @@ interface AddActivityForm {
   description: string;
   personnel: string[];
   notes?: string;
-  inputs: ActivityInput[]; // ✅ AJOUTÉ: Champ manquant
-  productionId: number;
+  inputs: ActivityInput[];
 }
 
 interface AddActivityModalProps {
@@ -76,14 +75,14 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     reset,
     formState: { errors },
   } = useForm<AddActivityForm>({
-    // ✅ CORRIGÉ: Type correct pour le resolver
     resolver: yupResolver(productionActivityValidationSchema) as any,
     defaultValues: {
       activityDate: new Date().toISOString().split("T")[0],
       personnel: [""],
       inputs: [],
-      productionId,
       type: "soil-preparation",
+      description: "",
+      notes: "",
     },
   });
 
@@ -112,7 +111,6 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     },
   });
 
-  // ✅ CORRIGÉ: Type explicite pour la fonction onSubmit
   const onSubmit = (data: AddActivityForm) => {
     addActivityMutation.mutate(data);
   };
@@ -197,7 +195,6 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
                       {ACTIVITY_TYPES.map((type) => (
                         <SelectItem key={type.value} value={type.value}>
                           <div className="flex items-center space-x-2">
-                            {type.icon && <span>{type.icon}</span>}
                             <span>{type.label}</span>
                           </div>
                         </SelectItem>

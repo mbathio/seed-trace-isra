@@ -1,4 +1,5 @@
-// frontend/src/pages/productions/ProductionDetail.tsx - VERSION AMÉLIORÉE
+// frontend/src/pages/productions/ProductionDetail.tsx - VERSION CORRIGÉE
+
 import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -77,20 +78,58 @@ import {
   ISSUE_SEVERITIES,
   getStatusConfig,
 } from "../../constants";
-import {
-  getActivityIcon,
-  getIssueIcon,
-  getSeverityIcon,
-  getStatusColors,
-  calculateProgress,
-  calculateDuration,
-  calculateEfficiency,
-} from "../../constants/production";
 
 // Composants modaux pour les actions
 import { AddActivityModal } from "../../components/production/AddActivityModal";
 import { AddIssueModal } from "../../components/production/AddIssueModal";
 import { AddWeatherModal } from "../../components/production/AddWeatherModal";
+
+// ✅ AJOUT: Fonctions utilitaires pour les calculs
+const calculateProgress = (
+  status: string,
+  startDate: string,
+  endDate?: string,
+  activities: any[] = []
+): number => {
+  switch (status) {
+    case "planned":
+      return 0;
+    case "completed":
+      return 100;
+    case "cancelled":
+      return 0;
+    case "in-progress":
+      // Calcul basé sur les activités (70%) et le temps écoulé (30%)
+      const totalActivities = 8; // Types d'activités possibles
+      const completedActivities = new Set(activities.map((a) => a.type)).size;
+      const activityProgress = (completedActivities / totalActivities) * 70;
+
+      // 30% basé sur le temps écoulé
+      const start = new Date(startDate);
+      const now = new Date();
+      const end = endDate
+        ? new Date(endDate)
+        : new Date(start.getTime() + 120 * 24 * 60 * 60 * 1000); // 120 jours par défaut
+      const totalDuration = end.getTime() - start.getTime();
+      const elapsedDuration = now.getTime() - start.getTime();
+      const timeProgress = Math.min((elapsedDuration / totalDuration) * 30, 30);
+
+      return Math.min(Math.round(activityProgress + timeProgress), 95);
+    default:
+      return 0;
+  }
+};
+
+const calculateDuration = (startDate: string, endDate?: string): number => {
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : new Date();
+  return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+};
+
+const calculateEfficiency = (actual: number, planned: number): number => {
+  if (!planned || planned === 0) return 0;
+  return Math.round((actual / planned) * 100);
+};
 
 const ProductionDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -185,16 +224,26 @@ const ProductionDetail: React.FC = () => {
       : null;
 
   const getStatusBadge = (status: string) => {
-    const colors = getStatusColors(status);
-    const IconComponent = colors.icon;
+    const config = getStatusConfig(status, PRODUCTION_STATUSES);
+    let colorClass = "bg-gray-100 text-gray-800";
+
+    switch (status) {
+      case "planned":
+        colorClass = "bg-blue-100 text-blue-800";
+        break;
+      case "in-progress":
+        colorClass = "bg-orange-100 text-orange-800";
+        break;
+      case "completed":
+        colorClass = "bg-green-100 text-green-800";
+        break;
+      case "cancelled":
+        colorClass = "bg-red-100 text-red-800";
+        break;
+    }
 
     return (
-      <Badge
-        className={`${colors.background} ${colors.text} ${colors.border} font-medium`}
-      >
-        <IconComponent className="h-3 w-3 mr-1" />
-        {getStatusConfig(status, PRODUCTION_STATUSES).label}
-      </Badge>
+      <Badge className={`${colorClass} font-medium`}>{config.label}</Badge>
     );
   };
 
@@ -481,7 +530,9 @@ const ProductionDetail: React.FC = () => {
                     <label className="text-sm font-medium text-muted-foreground">
                       Statut
                     </label>
-                    <p>{getStatusBadge(production.status)}</p>
+                    <div className="mt-1">
+                      {getStatusBadge(production.status)}
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">
@@ -672,7 +723,10 @@ const ProductionDetail: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {production.activities.map((activity) => {
-                      const IconComponent = getActivityIcon(activity.type);
+                      const activityConfig = getStatusConfig(
+                        activity.type,
+                        ACTIVITY_TYPES
+                      );
                       return (
                         <TableRow key={activity.id}>
                           <TableCell>
@@ -680,13 +734,7 @@ const ProductionDetail: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
-                              <IconComponent className="h-4 w-4" />
-                              <span>
-                                {
-                                  getStatusConfig(activity.type, ACTIVITY_TYPES)
-                                    .label
-                                }
-                              </span>
+                              <span>{activityConfig.label}</span>
                             </div>
                           </TableCell>
                           <TableCell className="max-w-xs truncate">
@@ -760,30 +808,25 @@ const ProductionDetail: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {production.issues.map((issue) => {
-                      const IssueIcon = getIssueIcon(issue.type);
-                      const SeverityIcon = getSeverityIcon(issue.severity);
+                      const issueConfig = getStatusConfig(
+                        issue.type,
+                        ISSUE_TYPES
+                      );
+                      const severityConfig = getStatusConfig(
+                        issue.severity,
+                        ISSUE_SEVERITIES
+                      );
                       return (
                         <TableRow key={issue.id}>
                           <TableCell>{formatDate(issue.issueDate)}</TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
-                              <IssueIcon className="h-4 w-4" />
-                              <span>
-                                {getStatusConfig(issue.type, ISSUE_TYPES).label}
-                              </span>
+                              <span>{issueConfig.label}</span>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
-                              <SeverityIcon className="h-4 w-4" />
-                              <span>
-                                {
-                                  getStatusConfig(
-                                    issue.severity,
-                                    ISSUE_SEVERITIES
-                                  ).label
-                                }
-                              </span>
+                              <span>{severityConfig.label}</span>
                             </div>
                           </TableCell>
                           <TableCell className="max-w-xs truncate">
