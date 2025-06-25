@@ -1,5 +1,5 @@
-// frontend/src/pages/seeds/SeedLotDetail.tsx - PAGE DE DÉTAILS LOT DE SEMENCES CORRIGÉE
-import React from "react";
+// frontend/src/pages/seeds/SeedLotDetail.tsx - VERSION AVEC QR CODE INTÉGRÉ
+import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -41,7 +41,8 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import { seedLotService } from "../../services/seedLotService"; // ✅ CORRIGÉ: Import correct
+import { QRCodeModal } from "../../components/qr-code/QRCodeModal";
+import { seedLotService } from "../../services/seedLotService";
 import { SeedLot } from "../../types/entities";
 import { formatDate, formatNumber } from "../../utils/formatters";
 import {
@@ -53,6 +54,7 @@ import {
 const SeedLotDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [showQRModal, setShowQRModal] = useState(false);
 
   const {
     data: seedLot,
@@ -61,7 +63,6 @@ const SeedLotDetail: React.FC = () => {
   } = useQuery<SeedLot>({
     queryKey: ["seed-lot", id],
     queryFn: async () => {
-      // ✅ CORRIGÉ: Utilisation correcte du service
       const response = await seedLotService.getById(id!);
       return response.data.data;
     },
@@ -94,6 +95,10 @@ const SeedLotDetail: React.FC = () => {
         {config.label}
       </Badge>
     );
+  };
+
+  const handleQRCodeClick = () => {
+    setShowQRModal(true);
   };
 
   if (isLoading) {
@@ -148,7 +153,7 @@ const SeedLotDetail: React.FC = () => {
           </div>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleQRCodeClick}>
             <QrCode className="h-4 w-4 mr-2" />
             QR Code
           </Button>
@@ -185,7 +190,7 @@ const SeedLotDetail: React.FC = () => {
               <Package className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-2xl font-bold">
-                  {formatNumber(seedLot.availableQuantity)}
+                  {formatNumber(seedLot.availableQuantity || seedLot.quantity)}
                 </p>
                 <p className="text-xs text-muted-foreground">kg disponible</p>
               </div>
@@ -610,6 +615,15 @@ const SeedLotDetail: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* QR Code Modal */}
+      {seedLot && (
+        <QRCodeModal
+          isOpen={showQRModal}
+          onClose={() => setShowQRModal(false)}
+          seedLot={seedLot}
+        />
+      )}
     </div>
   );
 };

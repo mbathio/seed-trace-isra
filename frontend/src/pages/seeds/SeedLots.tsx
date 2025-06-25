@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE
+// frontend/src/pages/seeds/SeedLots.tsx - VERSION AVEC QR CODE
 
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { SearchInput } from "../../components/forms/SearchInput";
+import { QRCodeModal } from "../../components/qr-code/QRCodeModal";
 import { api } from "../../services/api";
 import { SeedLot } from "../../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
@@ -39,6 +40,9 @@ import { formatDate, formatNumber } from "../../utils/formatters";
 const SeedLots: React.FC = () => {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterParams>({});
+  const [selectedLotForQR, setSelectedLotForQR] = useState<SeedLot | null>(
+    null
+  );
   const debouncedSearch = useDebounce(search, 300);
   const { pagination, actions } = usePagination({ initialPageSize: 10 });
 
@@ -60,14 +64,11 @@ const SeedLots: React.FC = () => {
       };
 
       const response = await api.get("/seed-lots", { params });
-
-      // Les données arrivent déjà transformées depuis le backend
       return response.data;
     },
   });
 
   const getStatusBadge = (status: string) => {
-    // Le status arrive maintenant en minuscules grâce au middleware
     const config = getStatusConfig(status, LOT_STATUSES);
     return (
       <Badge variant={config.variant || "default"} className={config.color}>
@@ -77,13 +78,16 @@ const SeedLots: React.FC = () => {
   };
 
   const getLevelBadge = (level: string) => {
-    // Le niveau arrive maintenant en minuscules grâce au middleware
     const config = getSeedLevelConfig(level);
     return (
       <Badge variant="outline" className={config.color}>
         {config.label}
       </Badge>
     );
+  };
+
+  const handleQRClick = (lot: SeedLot) => {
+    setSelectedLotForQR(lot);
   };
 
   if (error) {
@@ -250,7 +254,10 @@ const SeedLots: React.FC = () => {
                         <div>
                           <p>{formatNumber(lot.quantity)} kg</p>
                           <p className="text-sm text-muted-foreground">
-                            {formatNumber(lot.availableQuantity)} disponible
+                            {formatNumber(
+                              lot.availableQuantity || lot.quantity
+                            )}{" "}
+                            disponible
                           </p>
                         </div>
                       </TableCell>
@@ -266,11 +273,21 @@ const SeedLots: React.FC = () => {
                       </TableCell>
                       <TableCell>{getStatusBadge(lot.status)}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/dashboard/seed-lots/${lot.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
+                        <div className="flex items-center justify-end space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleQRClick(lot)}
+                            title="Générer QR Code"
+                          >
+                            <QrCode className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link to={`/dashboard/seed-lots/${lot.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -389,6 +406,15 @@ const SeedLots: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* QR Code Modal */}
+      {selectedLotForQR && (
+        <QRCodeModal
+          isOpen={!!selectedLotForQR}
+          onClose={() => setSelectedLotForQR(null)}
+          seedLot={selectedLotForQR}
+        />
+      )}
     </div>
   );
 };
