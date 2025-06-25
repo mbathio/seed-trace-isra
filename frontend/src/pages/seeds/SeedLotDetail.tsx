@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/SeedLotDetail.tsx - VERSION AVEC QR CODE INTÉGRÉ
+// frontend/src/pages/seeds/SeedLotDetail.tsx - VERSION AVEC QR CODE CORRIGÉ
 import React, { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -16,6 +16,8 @@ import {
   GitBranch,
   FlaskConical,
   Plus,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Card,
@@ -50,6 +52,7 @@ import {
   getStatusConfig,
   getSeedLevelConfig,
 } from "../../constants";
+import { toast } from "react-toastify";
 
 const SeedLotDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -63,17 +66,19 @@ const SeedLotDetail: React.FC = () => {
   } = useQuery<SeedLot>({
     queryKey: ["seed-lot", id],
     queryFn: async () => {
-      const response = await seedLotService.getById(id!);
+      if (!id) throw new Error("ID manquant");
+      const response = await seedLotService.getById(id);
       return response.data.data;
     },
     enabled: !!id,
   });
 
   // Récupération de la généalogie
-  const { data: genealogy } = useQuery({
+  const { data: genealogy, isLoading: genealogyLoading } = useQuery({
     queryKey: ["seed-lot-genealogy", id],
     queryFn: async () => {
-      const response = await seedLotService.getGenealogy(id!);
+      if (!id) throw new Error("ID manquant");
+      const response = await seedLotService.getGenealogy(id);
       return response.data.data;
     },
     enabled: !!id,
@@ -98,15 +103,28 @@ const SeedLotDetail: React.FC = () => {
   };
 
   const handleQRCodeClick = () => {
+    if (!seedLot) {
+      toast.error("Données du lot non disponibles");
+      return;
+    }
+
+    console.log("Opening QR Modal for seedLot:", seedLot);
     setShowQRModal(true);
+  };
+
+  const handleCloseQRModal = () => {
+    console.log("Closing QR Modal");
+    setShowQRModal(false);
   };
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">
+            Chargement du lot de semences...
+          </p>
         </div>
       </div>
     );
@@ -114,16 +132,20 @@ const SeedLotDetail: React.FC = () => {
 
   if (error || !seedLot) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600">
-          Erreur lors du chargement du lot de semences
-        </p>
-        <Button
-          onClick={() => navigate("/dashboard/seed-lots")}
-          className="mt-4"
-        >
-          Retour à la liste
-        </Button>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Erreur de chargement</h2>
+          <p className="text-muted-foreground mb-4">
+            Impossible de charger les informations du lot de semences
+          </p>
+          <Button
+            onClick={() => navigate("/dashboard/seed-lots")}
+            variant="outline"
+          >
+            Retour à la liste
+          </Button>
+        </div>
       </div>
     );
   }
@@ -421,7 +443,14 @@ const SeedLotDetail: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {genealogy ? (
+              {genealogyLoading ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-green-600 mx-auto mb-4" />
+                  <p className="text-muted-foreground">
+                    Chargement de la généalogie...
+                  </p>
+                </div>
+              ) : genealogy ? (
                 <div className="space-y-4">
                   {seedLot.parentLot && (
                     <div>
@@ -496,9 +525,9 @@ const SeedLotDetail: React.FC = () => {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+                  <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">
-                    Chargement de la généalogie...
+                    Erreur lors du chargement de la généalogie
                   </p>
                 </div>
               )}
@@ -616,14 +645,12 @@ const SeedLotDetail: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* QR Code Modal */}
-      {seedLot && (
-        <QRCodeModal
-          isOpen={showQRModal}
-          onClose={() => setShowQRModal(false)}
-          seedLot={seedLot}
-        />
-      )}
+      {/* QR Code Modal - Toujours rendu mais contrôlé par showQRModal */}
+      <QRCodeModal
+        isOpen={showQRModal}
+        onClose={handleCloseQRModal}
+        seedLot={seedLot}
+      />
     </div>
   );
 };
