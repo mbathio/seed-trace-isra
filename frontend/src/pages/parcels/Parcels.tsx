@@ -1,9 +1,18 @@
-// frontend/src/pages/parcels/Parcels.tsx - VERSION CORRIGÉE
+// frontend/src/pages/parcels/Parcels.tsx - VERSION AVEC VUE CARTE
 
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Plus, Download, Eye, MapPin, Droplets, TreePine } from "lucide-react";
+import {
+  Plus,
+  Download,
+  Eye,
+  MapPin,
+  Droplets,
+  TreePine,
+  List,
+  Map,
+} from "lucide-react";
 import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
@@ -22,6 +31,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs";
 import { SearchInput } from "../../components/forms/SearchInput";
 import { api } from "../../services/api";
 import { Parcel } from "../../types/entities";
@@ -30,13 +45,16 @@ import { PARCEL_STATUSES, getStatusConfig } from "../../constants";
 import { useDebounce } from "../../hooks/useDebounce";
 import { usePagination } from "../../hooks/usePagination";
 import { formatNumber } from "../../utils/formatters";
+import { ParcelsMap } from "./ParcelsMap";
 
 const Parcels: React.FC = () => {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterParams>({});
+  const [activeTab, setActiveTab] = useState("list");
   const debouncedSearch = useDebounce(search, 300);
   const { pagination, actions } = usePagination({ initialPageSize: 10 });
 
+  // Query pour la liste avec pagination
   const { data, isLoading, error } = useQuery<ApiResponse<Parcel[]>>({
     queryKey: [
       "parcels",
@@ -55,15 +73,30 @@ const Parcels: React.FC = () => {
       };
 
       const response = await api.get("/parcels", { params });
-
-      // Les données arrivent déjà transformées depuis le backend
       return response.data;
     },
   });
 
-  // CORRIGÉ: Fonction pour obtenir le badge de statut
+  // Query séparée pour la carte (toutes les parcelles sans pagination)
+  const { data: allParcelsData, isLoading: isLoadingMap } = useQuery<
+    ApiResponse<Parcel[]>
+  >({
+    queryKey: ["parcels-map", debouncedSearch, filters],
+    queryFn: async () => {
+      const params: FilterParams = {
+        pageSize: 1000, // Récupérer toutes les parcelles pour la carte
+        search: debouncedSearch || undefined,
+        includeRelations: true,
+        ...filters,
+      };
+
+      const response = await api.get("/parcels", { params });
+      return response.data;
+    },
+    enabled: activeTab === "map", // Ne charger que si on est sur l'onglet carte
+  });
+
   const getStatusBadge = (status: string) => {
-    // Le status arrive maintenant en minuscules grâce au middleware
     const config = getStatusConfig(status, PARCEL_STATUSES);
     return (
       <Badge variant={config.variant || "default"} className={config.color}>
@@ -72,7 +105,6 @@ const Parcels: React.FC = () => {
     );
   };
 
-  // CORRIGÉ: Fonction pour afficher les caractéristiques
   const getParcelFeatures = (parcel: Parcel) => {
     const features = [];
 
@@ -105,7 +137,6 @@ const Parcels: React.FC = () => {
     ) : null;
   };
 
-  // CORRIGÉ: Gestion des erreurs
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -188,122 +219,158 @@ const Parcels: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-pulse text-muted-foreground">
-                Chargement des parcelles...
-              </div>
-            </div>
-          ) : data?.data && data.data.length > 0 ? (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Identification</TableHead>
-                    <TableHead>Localisation</TableHead>
-                    <TableHead>Surface</TableHead>
-                    <TableHead>Multiplicateur</TableHead>
-                    <TableHead>Caractéristiques</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.data.map((parcel) => (
-                    <TableRow key={parcel.id}>
-                      <TableCell className="font-medium">
-                        <div>
-                          <p>{parcel.name || `Parcelle ${parcel.code}`}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {parcel.code}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-start space-x-1">
-                          <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-sm">{parcel.address}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {parcel.latitude.toFixed(4)},{" "}
-                              {parcel.longitude.toFixed(4)}
-                            </p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <p>{formatNumber(parcel.area)} ha</p>
-                      </TableCell>
-                      <TableCell>
-                        {parcel.multiplier ? (
-                          <p className="text-sm">{parcel.multiplier.name}</p>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{getParcelFeatures(parcel)}</TableCell>
-                      <TableCell>{getStatusBadge(parcel.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/dashboard/parcels/${parcel.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+      {/* Tabs pour Liste et Carte */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="list" className="flex items-center gap-2">
+            <List className="h-4 w-4" />
+            Liste
+          </TabsTrigger>
+          <TabsTrigger value="map" className="flex items-center gap-2">
+            <Map className="h-4 w-4" />
+            Carte
+          </TabsTrigger>
+        </TabsList>
 
-              {/* Pagination */}
-              {data.meta && data.meta.totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-4 border-t">
-                  <p className="text-sm text-muted-foreground">
-                    Page {data.meta.page} sur {data.meta.totalPages} • Total:{" "}
-                    {data.meta.totalCount} parcelle(s)
-                  </p>
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={actions.previousPage}
-                      disabled={!data.meta.hasPreviousPage}
-                    >
-                      Précédent
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={actions.nextPage}
-                      disabled={!data.meta.hasNextPage}
-                    >
-                      Suivant
-                    </Button>
+        {/* Vue Liste */}
+        <TabsContent value="list" className="mt-6">
+          <Card>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-pulse text-muted-foreground">
+                    Chargement des parcelles...
                   </div>
                 </div>
+              ) : data?.data && data.data.length > 0 ? (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Identification</TableHead>
+                        <TableHead>Localisation</TableHead>
+                        <TableHead>Surface</TableHead>
+                        <TableHead>Multiplicateur</TableHead>
+                        <TableHead>Caractéristiques</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {data.data.map((parcel) => (
+                        <TableRow key={parcel.id}>
+                          <TableCell className="font-medium">
+                            <div>
+                              <p>{parcel.name || `Parcelle ${parcel.code}`}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {parcel.code}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-start space-x-1">
+                              <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <p className="text-sm">{parcel.address}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {parcel.latitude.toFixed(4)},{" "}
+                                  {parcel.longitude.toFixed(4)}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <p>{formatNumber(parcel.area)} ha</p>
+                          </TableCell>
+                          <TableCell>
+                            {parcel.multiplier ? (
+                              <p className="text-sm">
+                                {parcel.multiplier.name}
+                              </p>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>{getParcelFeatures(parcel)}</TableCell>
+                          <TableCell>{getStatusBadge(parcel.status)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link to={`/dashboard/parcels/${parcel.id}`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {/* Pagination */}
+                  {data.meta && data.meta.totalPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-4 border-t">
+                      <p className="text-sm text-muted-foreground">
+                        Page {data.meta.page} sur {data.meta.totalPages} •
+                        Total: {data.meta.totalCount} parcelle(s)
+                      </p>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={actions.previousPage}
+                          disabled={!data.meta.hasPreviousPage}
+                        >
+                          Précédent
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={actions.nextPage}
+                          disabled={!data.meta.hasNextPage}
+                        >
+                          Suivant
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-64 text-center">
+                  <MapPin className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-2">
+                    {search || Object.keys(filters).length > 0
+                      ? "Aucune parcelle ne correspond à vos critères"
+                      : "Aucune parcelle enregistrée"}
+                  </p>
+                  <Button asChild>
+                    <Link to="/dashboard/parcels/create">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Ajouter une parcelle
+                    </Link>
+                  </Button>
+                </div>
               )}
-            </>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Vue Carte */}
+        <TabsContent value="map" className="mt-6">
+          {isLoadingMap ? (
+            <Card>
+              <CardContent className="flex items-center justify-center h-96">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">
+                    Chargement de la carte...
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <MapPin className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">
-                {search || Object.keys(filters).length > 0
-                  ? "Aucune parcelle ne correspond à vos critères"
-                  : "Aucune parcelle enregistrée"}
-              </p>
-              <Button asChild>
-                <Link to="/dashboard/parcels/create">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ajouter une parcelle
-                </Link>
-              </Button>
-            </div>
+            <ParcelsMap parcels={allParcelsData?.data || []} />
           )}
-        </CardContent>
-      </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

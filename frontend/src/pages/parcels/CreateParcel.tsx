@@ -1,9 +1,9 @@
-// frontend/src/pages/parcels/CreateParcel.tsx - PAGE DE CRÉATION PARCELLE
+// frontend/src/pages/parcels/CreateParcel.tsx - VERSION COMPLÈTE AVEC CARTE
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller, SubmitHandler } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Save, Loader2, MapPin } from "lucide-react";
+import { ArrowLeft, Save, Loader2, MapPin, Map, List } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -21,6 +21,12 @@ import {
   SelectValue,
 } from "../../components/ui/select";
 import { Label } from "../../components/ui/label";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs";
 import { toast } from "react-toastify";
 import { api } from "../../services/api";
 import { Multiplier } from "../../types/entities";
@@ -28,6 +34,7 @@ import { ApiResponse } from "../../types/api";
 import { PARCEL_STATUSES, SENEGAL_BOUNDS } from "../../constants";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { parcelValidationSchema } from "../../utils/validators";
+import { LocationPicker } from "../../components/map/LocationPicker";
 
 interface CreateParcelForm {
   name?: string;
@@ -44,11 +51,15 @@ interface CreateParcelForm {
 const CreateParcel: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localisationMethod, setLocalisationMethod] = useState<
+    "map" | "manual"
+  >("map");
 
   const {
     control,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<CreateParcelForm>({
     resolver: yupResolver(parcelValidationSchema),
@@ -59,6 +70,10 @@ const CreateParcel: React.FC = () => {
       longitude: SENEGAL_BOUNDS.CENTER.lng,
     },
   });
+
+  // Surveiller les valeurs actuelles
+  const watchedLatitude = watch("latitude");
+  const watchedLongitude = watch("longitude");
 
   // Récupération des multiplicateurs pour assignation
   const { data: multipliersResponse } = useQuery<ApiResponse<Multiplier[]>>({
@@ -260,7 +275,9 @@ const CreateParcel: React.FC = () => {
                   render={({ field }) => (
                     <Select
                       value={field.value?.toString()}
-                      onValueChange={(value) => field.onChange(parseInt(value))}
+                      onValueChange={(value) =>
+                        field.onChange(value ? parseInt(value) : undefined)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un multiplicateur (optionnel)" />
@@ -359,6 +376,31 @@ const CreateParcel: React.FC = () => {
                 )}
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="address">Adresse</Label>
+                <Controller
+                  name="address"
+                  control={control}
+                  render={({ field }) => (
+                    <Input
+                      placeholder="Village, Commune, Région"
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        if (localisationMethod === "manual") {
+                          handleAddressChange(e.target.value);
+                        }
+                      }}
+                    />
+                  )}
+                />
+                {errors.address && (
+                  <p className="text-sm text-red-500">
+                    {errors.address.message}
+                  </p>
+                )}
+              </div>
+
               <div className="p-4 bg-blue-50 rounded-lg">
                 <h4 className="font-medium text-blue-900 mb-2">💡 Conseil</h4>
                 <p className="text-sm text-blue-700">
@@ -375,107 +417,146 @@ const CreateParcel: React.FC = () => {
             <CardHeader>
               <CardTitle>Localisation géographique</CardTitle>
               <CardDescription>
-                Adresse et coordonnées GPS de la parcelle
+                Définissez l'emplacement précis de la parcelle
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="address">Adresse</Label>
-                <Controller
-                  name="address"
-                  control={control}
-                  render={({ field }) => (
-                    <Input
-                      placeholder="Village, Commune, Région"
-                      {...field}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        handleAddressChange(e.target.value);
-                      }}
-                    />
-                  )}
-                />
-                {errors.address && (
-                  <p className="text-sm text-red-500">
-                    {errors.address.message}
-                  </p>
-                )}
-              </div>
+            <CardContent>
+              <Tabs
+                value={localisationMethod}
+                onValueChange={(value) =>
+                  setLocalisationMethod(value as "map" | "manual")
+                }
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="map" className="flex items-center gap-2">
+                    <Map className="h-4 w-4" />
+                    Carte interactive
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="manual"
+                    className="flex items-center gap-2"
+                  >
+                    <List className="h-4 w-4" />
+                    Saisie manuelle
+                  </TabsTrigger>
+                </TabsList>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="latitude">Latitude *</Label>
+                <TabsContent value="map" className="mt-4">
                   <Controller
                     name="latitude"
                     control={control}
-                    render={({ field }) => (
-                      <Input
-                        type="number"
-                        step="any"
-                        min={SENEGAL_BOUNDS.LAT_MIN}
-                        max={SENEGAL_BOUNDS.LAT_MAX}
-                        placeholder="14.7167"
-                        {...field}
-                        onChange={(e) =>
-                          field.onChange(parseFloat(e.target.value) || 0)
-                        }
+                    render={({ field: latField }) => (
+                      <Controller
+                        name="longitude"
+                        control={control}
+                        render={({ field: lngField }) => (
+                          <LocationPicker
+                            latitude={latField.value}
+                            longitude={lngField.value}
+                            onChange={({ latitude, longitude }) => {
+                              latField.onChange(latitude);
+                              lngField.onChange(longitude);
+                            }}
+                          />
+                        )}
                       />
                     )}
                   />
-                  {errors.latitude && (
-                    <p className="text-sm text-red-500">
-                      {errors.latitude.message}
+                  {(errors.latitude || errors.longitude) && (
+                    <p className="text-sm text-red-500 mt-2">
+                      {errors.latitude?.message || errors.longitude?.message}
                     </p>
                   )}
-                </div>
+                </TabsContent>
 
-                <div className="space-y-2">
-                  <Label htmlFor="longitude">Longitude *</Label>
-                  <Controller
-                    name="longitude"
-                    control={control}
-                    render={({ field }) => (
-                      <Input
-                        type="number"
-                        step="any"
-                        min={SENEGAL_BOUNDS.LNG_MIN}
-                        max={SENEGAL_BOUNDS.LNG_MAX}
-                        placeholder="-17.4677"
-                        {...field}
-                        onChange={(e) =>
-                          field.onChange(parseFloat(e.target.value) || 0)
-                        }
+                <TabsContent value="manual" className="mt-4 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="latitude">Latitude *</Label>
+                      <Controller
+                        name="latitude"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            type="number"
+                            step="any"
+                            min={SENEGAL_BOUNDS.LAT_MIN}
+                            max={SENEGAL_BOUNDS.LAT_MAX}
+                            placeholder="14.7167"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(parseFloat(e.target.value) || 0)
+                            }
+                          />
+                        )}
                       />
-                    )}
-                  />
-                  {errors.longitude && (
-                    <p className="text-sm text-red-500">
-                      {errors.longitude.message}
-                    </p>
-                  )}
-                </div>
-              </div>
+                      {errors.latitude && (
+                        <p className="text-sm text-red-500">
+                          {errors.latitude.message}
+                        </p>
+                      )}
+                    </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-muted-foreground">
-                <div className="p-3 bg-gray-50 rounded">
-                  <strong>Limites Sénégal:</strong>
-                  <br />
-                  Lat: {SENEGAL_BOUNDS.LAT_MIN} à {SENEGAL_BOUNDS.LAT_MAX}
-                  <br />
-                  Lng: {SENEGAL_BOUNDS.LNG_MIN} à {SENEGAL_BOUNDS.LNG_MAX}
-                </div>
-                <div className="p-3 bg-gray-50 rounded">
-                  <strong>Astuce:</strong>
-                  <br />
-                  Tapez le nom d'une ville dans l'adresse pour une approximation
-                  automatique des coordonnées
-                </div>
-                <div className="p-3 bg-gray-50 rounded">
-                  <strong>Aide:</strong>
-                  <br />
-                  Utilisez Google Maps ou GPS pour obtenir les coordonnées
-                  précises
-                </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="longitude">Longitude *</Label>
+                      <Controller
+                        name="longitude"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            type="number"
+                            step="any"
+                            min={SENEGAL_BOUNDS.LNG_MIN}
+                            max={SENEGAL_BOUNDS.LNG_MAX}
+                            placeholder="-17.4677"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(parseFloat(e.target.value) || 0)
+                            }
+                          />
+                        )}
+                      />
+                      {errors.longitude && (
+                        <p className="text-sm text-red-500">
+                          {errors.longitude.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-muted-foreground">
+                    <div className="p-3 bg-gray-50 rounded">
+                      <strong>Limites Sénégal:</strong>
+                      <br />
+                      Lat: {SENEGAL_BOUNDS.LAT_MIN} à {SENEGAL_BOUNDS.LAT_MAX}
+                      <br />
+                      Lng: {SENEGAL_BOUNDS.LNG_MIN} à {SENEGAL_BOUNDS.LNG_MAX}
+                    </div>
+                    <div className="p-3 bg-gray-50 rounded">
+                      <strong>Astuce:</strong>
+                      <br />
+                      Tapez le nom d'une ville dans l'adresse pour une
+                      approximation automatique des coordonnées
+                    </div>
+                    <div className="p-3 bg-gray-50 rounded">
+                      <strong>Aide:</strong>
+                      <br />
+                      Utilisez Google Maps ou GPS pour obtenir les coordonnées
+                      précises
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              {/* Affichage des coordonnées actuelles */}
+              <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                <p className="text-sm text-green-800 font-medium">
+                  Position actuelle:
+                </p>
+                <p className="text-sm text-green-700">
+                  Latitude: {watchedLatitude?.toFixed(6)} | Longitude:{" "}
+                  {watchedLongitude?.toFixed(6)}
+                </p>
               </div>
             </CardContent>
           </Card>
