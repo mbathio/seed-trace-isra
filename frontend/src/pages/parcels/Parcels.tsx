@@ -439,3 +439,5 @@ const Parcels: React.FC = () => {
     </div>
   );
 };
+
+export default Parcels;
