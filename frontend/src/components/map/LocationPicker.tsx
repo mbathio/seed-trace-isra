@@ -1,8 +1,8 @@
 // frontend/src/components/map/LocationPicker.tsx
 import React, { useState, useCallback } from "react";
 import Map, { Marker, NavigationControl } from "react-map-gl";
+import type { MarkerDragEvent } from "react-map-gl";
 import { MapPin } from "lucide-react";
-import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -101,17 +101,16 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           style={{ width: "100%", height: "100%" }}
           cursor={readOnly ? "default" : "pointer"}
         >
-          <NavigationControl position="top-right" />
+          <NavigationControl />
 
           <Marker
             longitude={marker.longitude}
             latitude={marker.latitude}
-            anchor="bottom"
             draggable={!readOnly}
-            onDragEnd={(evt: mapboxgl.MapLayerMouseEvent) => {
-              const { lng, lat } = evt.lngLat;
-              setMarker({ longitude: lng, latitude: lat });
-              onChange({ latitude: lat, longitude: lng });
+            onDragEnd={(evt: MarkerDragEvent) => {
+              const lngLat = evt.lngLat;
+              setMarker({ longitude: lngLat.lng, latitude: lngLat.lat });
+              onChange({ latitude: lngLat.lat, longitude: lngLat.lng });
             }}
           >
             <MapPin className="h-8 w-8 text-red-500" fill="currentColor" />

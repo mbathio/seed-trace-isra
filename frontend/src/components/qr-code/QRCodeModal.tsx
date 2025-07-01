@@ -1,5 +1,5 @@
 // frontend/src/components/qr-code/QRCodeModal.tsx - VERSION CORRIGÉE
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import QRCode from "qrcode";
 import { Download, Printer, X, QrCode, Loader2 } from "lucide-react";
 import {

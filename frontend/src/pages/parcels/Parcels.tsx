@@ -83,7 +83,7 @@ const Parcels: React.FC = () => {
   >({
     queryKey: ["parcels-map", debouncedSearch, filters],
     queryFn: async () => {
-      const params: FilterParams = {
+      const params: Record<string, any> = {
         pageSize: 1000, // Récupérer toutes les parcelles pour la carte
         search: debouncedSearch || undefined,
         includeRelations: true,
@@ -366,9 +366,9 @@ const Parcels: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-          ) : (
-            <ParcelsMap parcels={allParcelsData?.data || []} />
-          )}
+          ) : allParcelsData?.data ? (
+            <ParcelsMap parcels={allParcelsData.data} />
+          ) : null}
         </TabsContent>
       </Tabs>
 
@@ -439,5 +439,3 @@ const Parcels: React.FC = () => {
     </div>
   );
 };
-
-export default Parcels;

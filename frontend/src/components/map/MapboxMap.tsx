@@ -87,10 +87,10 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
         style={{ width: "100%", height: "100%" }}
       >
         {/* Contrôles de navigation */}
-        <NavigationControl position="top-right" />
-        <FullscreenControl position="top-right" />
+        <NavigationControl />
+        <FullscreenControl />
         <ScaleControl />
-        <GeolocateControl position="top-right" />
+        <GeolocateControl />
 
         {/* Marqueurs */}
         {locations.map((location) => (
@@ -98,8 +98,7 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
             key={location.id}
             longitude={location.longitude}
             latitude={location.latitude}
-            anchor="bottom"
-            onClick={(e) => {
+            onClick={(e: any) => {
               e.originalEvent.stopPropagation();
               handleMarkerClick(location);
             }}

@@ -1,6 +1,5 @@
 // frontend/src/pages/parcels/ParcelsMap.tsx
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
 import { MapboxMap } from "../../components/map/MapboxMap";
 import {
   Card,
@@ -8,23 +7,14 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import { api } from "../../services/api";
 import { Parcel } from "../../types/entities";
 import { formatNumber } from "../../utils/formatters";
 
-export const ParcelsMap: React.FC = () => {
-  const { data: parcelsResponse, isLoading } = useQuery({
-    queryKey: ["parcels-map"],
-    queryFn: async () => {
-      const response = await api.get("/parcels", {
-        params: { pageSize: 100, includeRelations: true },
-      });
-      return response.data;
-    },
-  });
+interface ParcelsMapProps {
+  parcels: Parcel[];
+}
 
-  const parcels = parcelsResponse?.data || [];
-
+export const ParcelsMap: React.FC<ParcelsMapProps> = ({ parcels }) => {
   const mapLocations = parcels.map((parcel: Parcel) => ({
     id: parcel.id,
     latitude: parcel.latitude,
@@ -37,14 +27,6 @@ export const ParcelsMap: React.FC = () => {
       multiplicateur: parcel.multiplier?.name || "Non assigné",
     },
   }));
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-      </div>
-    );
-  }
 
   return (
     <Card>

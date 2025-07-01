@@ -3,7 +3,6 @@
 import React from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { yupResolver } from "@hookform/resolvers/yup";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +27,6 @@ import { Loader2, AlertTriangle } from "lucide-react";
 import { api } from "../../services/api";
 import { toast } from "react-toastify";
 import { ISSUE_TYPES, ISSUE_SEVERITIES } from "../../constants";
-import { productionIssueValidationSchema } from "../../utils/validators";
 
 // ✅ CORRIGÉ: Interface mise à jour sans productionId requis dans le form
 interface AddIssueForm {
