@@ -108,7 +108,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             latitude={marker.latitude}
             anchor="bottom"
             draggable={!readOnly}
-            onDragEnd={(evt) => {
+            onDragEnd={(evt: mapboxgl.MapLayerMouseEvent) => {
               const { lng, lat } = evt.lngLat;
               setMarker({ longitude: lng, latitude: lat });
               onChange({ latitude: lat, longitude: lng });
