@@ -1,8 +1,8 @@
-// frontend/src/pages/parcels/Parcels.tsx - VERSION AVEC VUE CARTE
+// frontend/src/pages/parcels/Parcels.tsx - VERSION COMPLÈTE AVEC ITINÉRAIRES ET CRUD
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Plus,
   Download,
@@ -12,6 +12,11 @@ import {
   TreePine,
   List,
   Map,
+  Edit,
+  Trash2,
+  MoreVertical,
+  FileText,
+  Navigation,
 } from "lucide-react";
 import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -37,25 +42,63 @@ import {
   TabsList,
   TabsTrigger,
 } from "../../components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
 import { SearchInput } from "../../components/forms/SearchInput";
+import { MapboxMapWithRoutes } from "../../components/map/MapboxMapWithRoutes";
+import { DeleteParcelDialog } from "./DeleteParcelDialog";
 import { api } from "../../services/api";
+import { parcelService } from "../../services/parcelService";
 import { Parcel } from "../../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
 import { PARCEL_STATUSES, getStatusConfig } from "../../constants";
 import { useDebounce } from "../../hooks/useDebounce";
 import { usePagination } from "../../hooks/usePagination";
 import { formatNumber } from "../../utils/formatters";
-import { ParcelsMap } from "./ParcelsMap";
 
 const Parcels: React.FC = () => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterParams>({});
   const [activeTab, setActiveTab] = useState("list");
+  const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [exportFormat, setExportFormat] = useState<"csv" | "xlsx" | "pdf">(
+    "csv"
+  );
+
   const debouncedSearch = useDebounce(search, 300);
   const { pagination, actions } = usePagination({ initialPageSize: 10 });
 
+  // Obtenir la position de l'utilisateur au chargement
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error("Erreur de géolocalisation:", error);
+        }
+      );
+    }
+  }, []);
+
   // Query pour la liste avec pagination
-  const { data, isLoading, error } = useQuery<ApiResponse<Parcel[]>>({
+  const { data, isLoading, error, refetch } = useQuery<ApiResponse<Parcel[]>>({
     queryKey: [
       "parcels",
       pagination.page,
@@ -94,6 +137,12 @@ const Parcels: React.FC = () => {
       return response.data;
     },
     enabled: activeTab === "map", // Ne charger que si on est sur l'onglet carte
+  });
+
+  // Query pour les statistiques
+  const { data: statistics } = useQuery({
+    queryKey: ["parcel-statistics"],
+    queryFn: parcelService.getStatistics,
   });
 
   const getStatusBadge = (status: string) => {
@@ -137,6 +186,24 @@ const Parcels: React.FC = () => {
     ) : null;
   };
 
+  const handleExport = async () => {
+    try {
+      await parcelService.export(exportFormat, filters);
+    } catch (error) {
+      console.error("Erreur lors de l'export:", error);
+    }
+  };
+
+  const handleDeleteClick = (parcel: Parcel) => {
+    setSelectedParcel(parcel);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteSuccess = () => {
+    refetch();
+    navigate("/dashboard/parcels");
+  };
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -169,10 +236,45 @@ const Parcels: React.FC = () => {
           </p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Exporter
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Exporter
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Format d'export</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  setExportFormat("csv");
+                  handleExport();
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Export CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setExportFormat("xlsx");
+                  handleExport();
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Export Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setExportFormat("pdf");
+                  handleExport();
+                }}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Export PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button asChild>
             <Link to="/dashboard/parcels/create">
               <Plus className="h-4 w-4 mr-2" />
@@ -185,7 +287,7 @@ const Parcels: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <div className="md:col-span-2">
               <SearchInput
                 value={search}
@@ -213,6 +315,24 @@ const Parcels: React.FC = () => {
                     {status.label}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={filters.multiplierId?.toString() || "all"}
+              onValueChange={(value) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  multiplierId: value === "all" ? undefined : parseInt(value),
+                }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Tous les multiplicateurs" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les multiplicateurs</SelectItem>
+                <SelectItem value="unassigned">Non assignées</SelectItem>
+                {/* Ici, vous devriez charger la liste des multiplicateurs */}
               </SelectContent>
             </Select>
           </div>
@@ -271,7 +391,9 @@ const Parcels: React.FC = () => {
                             <div className="flex items-start space-x-1">
                               <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
                               <div>
-                                <p className="text-sm">{parcel.address}</p>
+                                <p className="text-sm">
+                                  {parcel.address || "Non spécifiée"}
+                                </p>
                                 <p className="text-xs text-muted-foreground">
                                   {parcel.latitude.toFixed(4)},{" "}
                                   {parcel.longitude.toFixed(4)}
@@ -284,9 +406,16 @@ const Parcels: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             {parcel.multiplier ? (
-                              <p className="text-sm">
-                                {parcel.multiplier.name}
-                              </p>
+                              <div>
+                                <p className="text-sm">
+                                  {parcel.multiplier.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {parcel.multiplier.status === "active"
+                                    ? "Actif"
+                                    : "Inactif"}
+                                </p>
+                              </div>
                             ) : (
                               <span className="text-muted-foreground">-</span>
                             )}
@@ -294,11 +423,48 @@ const Parcels: React.FC = () => {
                           <TableCell>{getParcelFeatures(parcel)}</TableCell>
                           <TableCell>{getStatusBadge(parcel.status)}</TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" asChild>
-                              <Link to={`/dashboard/parcels/${parcel.id}`}>
-                                <Eye className="h-4 w-4" />
-                              </Link>
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                  <Link to={`/dashboard/parcels/${parcel.id}`}>
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Voir détails
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link
+                                    to={`/dashboard/parcels/${parcel.id}/edit`}
+                                  >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Modifier
+                                  </Link>
+                                </DropdownMenuItem>
+                                {userLocation && (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setActiveTab("map");
+                                      // Logique pour centrer sur cette parcelle
+                                    }}
+                                  >
+                                    <Navigation className="h-4 w-4 mr-2" />
+                                    Voir itinéraire
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteClick(parcel)}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Supprimer
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -353,7 +519,7 @@ const Parcels: React.FC = () => {
           </Card>
         </TabsContent>
 
-        {/* Vue Carte */}
+        {/* Vue Carte avec itinéraires */}
         <TabsContent value="map" className="mt-6">
           {isLoadingMap ? (
             <Card>
@@ -367,7 +533,37 @@ const Parcels: React.FC = () => {
               </CardContent>
             </Card>
           ) : allParcelsData?.data ? (
-            <ParcelsMap parcels={allParcelsData.data} />
+            <Card>
+              <CardContent className="p-0">
+                <MapboxMapWithRoutes
+                  locations={allParcelsData.data.map((parcel: Parcel) => ({
+                    id: parcel.id,
+                    latitude: parcel.latitude,
+                    longitude: parcel.longitude,
+                    name: parcel.name || `Parcelle ${parcel.code}`,
+                    type: "parcel" as const,
+                    details: {
+                      surface: `${formatNumber(parcel.area)} ha`,
+                      statut: parcel.status,
+                      multiplicateur: parcel.multiplier?.name || "Non assigné",
+                      irrigation: parcel.irrigationSystem || "Non spécifié",
+                      sol: parcel.soilType || "Non spécifié",
+                    },
+                  }))}
+                  height="600px"
+                  userLocation={userLocation || undefined}
+                  showRoute={true}
+                  onMarkerClick={(location) => {
+                    // Option pour naviguer directement
+                    if (
+                      window.confirm(`Voir les détails de ${location.name} ?`)
+                    ) {
+                      navigate(`/dashboard/parcels/${location.id}`);
+                    }
+                  }}
+                />
+              </CardContent>
+            </Card>
           ) : null}
         </TabsContent>
       </Tabs>
@@ -380,7 +576,9 @@ const Parcels: React.FC = () => {
               <MapPin className="h-4 w-4 text-green-600" />
               <div>
                 <p className="text-2xl font-bold">
-                  {data?.data?.filter((p) => p.status === "available").length ||
+                  {statistics?.disponibles ||
+                    data?.data?.filter((p) => p.status === "available")
+                      .length ||
                     0}
                 </p>
                 <p className="text-xs text-muted-foreground">Disponibles</p>
@@ -395,7 +593,9 @@ const Parcels: React.FC = () => {
               <MapPin className="h-4 w-4 text-orange-600" />
               <div>
                 <p className="text-2xl font-bold">
-                  {data?.data?.filter((p) => p.status === "in-use").length || 0}
+                  {statistics?.enUtilisation ||
+                    data?.data?.filter((p) => p.status === "in-use").length ||
+                    0}
                 </p>
                 <p className="text-xs text-muted-foreground">En utilisation</p>
               </div>
@@ -409,7 +609,8 @@ const Parcels: React.FC = () => {
               <MapPin className="h-4 w-4 text-gray-600" />
               <div>
                 <p className="text-2xl font-bold">
-                  {data?.data?.filter((p) => p.status === "resting").length ||
+                  {statistics?.auRepos ||
+                    data?.data?.filter((p) => p.status === "resting").length ||
                     0}
                 </p>
                 <p className="text-xs text-muted-foreground">Au repos</p>
@@ -425,7 +626,9 @@ const Parcels: React.FC = () => {
               <div>
                 <p className="text-2xl font-bold">
                   {formatNumber(
-                    data?.data?.reduce((sum, p) => sum + p.area, 0) || 0
+                    statistics?.surfaceTotale ||
+                      data?.data?.reduce((sum, p) => sum + p.area, 0) ||
+                      0
                   )}
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -436,6 +639,14 @@ const Parcels: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog de suppression */}
+      <DeleteParcelDialog
+        parcel={selectedParcel}
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onSuccess={handleDeleteSuccess}
+      />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React from "react";
-import { MapboxMap } from "../../components/map/MapboxMap";
+import { MapboxMap } from "../../components/map/MapboxMapWithRoutes";
 import {
   Card,
   CardContent,

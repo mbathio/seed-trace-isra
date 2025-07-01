@@ -1,4 +1,4 @@
-// backend/src/services/ParcelService.ts
+// backend/src/services/ParcelService.ts - VERSION CORRIGÉE
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { PaginationQuery } from "../types/api";
@@ -89,21 +89,23 @@ export class ParcelService {
           },
           orderBy: { [sortBy]: sortOrder },
           skip,
-          take: pageSize,
+          take: pageSizeNum, // ✅ CORRECTION: Utiliser pageSizeNum
         }),
         prisma.parcel.count({ where }),
       ]);
 
-      const totalPages = Math.ceil(total / pageSize);
+      const totalPages = Math.ceil(total / pageSizeNum); // ✅ CORRECTION: Utiliser pageSizeNum
 
       return {
         parcels,
         total,
         meta: {
-          page,
-          pageSize,
+          page: pageNum, // ✅ CORRECTION: Utiliser pageNum
+          pageSize: pageSizeNum, // ✅ CORRECTION: Utiliser pageSizeNum
           totalCount: total,
           totalPages,
+          hasNextPage: pageNum < totalPages,
+          hasPreviousPage: pageNum > 1,
         },
       };
     } catch (error) {
@@ -112,10 +114,14 @@ export class ParcelService {
     }
   }
 
+  // ✅ CORRECTION PRINCIPALE: Utiliser findFirst avec une combinaison de conditions
   static async getParcelById(id: number): Promise<any> {
     try {
-      const parcel = await prisma.parcel.findUnique({
-        where: { id, isActive: true },
+      const parcel = await prisma.parcel.findFirst({
+        where: {
+          id: id,
+          isActive: true,
+        },
         include: {
           multiplier: true,
           soilAnalyses: {
@@ -200,6 +206,152 @@ export class ParcelService {
       return analysis;
     } catch (error) {
       logger.error("Erreur lors de l'ajout de l'analyse de sol:", error);
+      throw error;
+    }
+  }
+
+  // ✅ NOUVELLE MÉTHODE: Récupérer les analyses de sol d'une parcelle
+  static async getSoilAnalyses(parcelId: number): Promise<any[]> {
+    try {
+      const analyses = await prisma.soilAnalysis.findMany({
+        where: { parcelId },
+        orderBy: { analysisDate: "desc" },
+      });
+
+      return analyses;
+    } catch (error) {
+      logger.error(
+        "Erreur lors de la récupération des analyses de sol:",
+        error
+      );
+      throw error;
+    }
+  }
+
+  // ✅ NOUVELLE MÉTHODE: Récupérer les statistiques des parcelles
+  static async getStatistics(): Promise<any> {
+    try {
+      const [total, disponibles, enUtilisation, auRepos, surfaceTotale] =
+        await Promise.all([
+          prisma.parcel.count({ where: { isActive: true } }),
+          prisma.parcel.count({
+            where: { isActive: true, status: ParcelStatus.AVAILABLE },
+          }),
+          prisma.parcel.count({
+            where: { isActive: true, status: ParcelStatus.IN_USE },
+          }),
+          prisma.parcel.count({
+            where: { isActive: true, status: ParcelStatus.RESTING },
+          }),
+          prisma.parcel.aggregate({
+            where: { isActive: true },
+            _sum: { area: true },
+          }),
+        ]);
+
+      return {
+        total,
+        disponibles,
+        enUtilisation,
+        auRepos,
+        surfaceTotale: surfaceTotale._sum.area || 0,
+      };
+    } catch (error) {
+      logger.error("Erreur lors de la récupération des statistiques:", error);
+      throw error;
+    }
+  }
+
+  // ✅ NOUVELLE MÉTHODE: Vérifier la disponibilité d'une parcelle
+  static async checkAvailability(
+    parcelId: number,
+    startDate: string,
+    endDate: string
+  ): Promise<boolean> {
+    try {
+      const conflictingProductions = await prisma.production.count({
+        where: {
+          parcelId,
+          OR: [
+            {
+              AND: [
+                { startDate: { lte: new Date(endDate) } },
+                { endDate: { gte: new Date(startDate) } },
+              ],
+            },
+            {
+              AND: [
+                { startDate: { gte: new Date(startDate) } },
+                { startDate: { lte: new Date(endDate) } },
+              ],
+            },
+          ],
+        },
+      });
+
+      return conflictingProductions === 0;
+    } catch (error) {
+      logger.error("Erreur lors de la vérification de disponibilité:", error);
+      throw error;
+    }
+  }
+
+  // ✅ NOUVELLE MÉTHODE: Assigner un multiplicateur à une parcelle
+  static async assignMultiplier(
+    parcelId: number,
+    multiplierId: number
+  ): Promise<any> {
+    try {
+      const parcel = await prisma.parcel.update({
+        where: { id: parcelId },
+        data: {
+          multiplierId,
+          updatedAt: new Date(),
+        },
+        include: {
+          multiplier: true,
+        },
+      });
+
+      return parcel;
+    } catch (error) {
+      logger.error("Erreur lors de l'assignation du multiplicateur:", error);
+      throw error;
+    }
+  }
+
+  // ✅ NOUVELLE MÉTHODE: Récupérer l'historique d'une parcelle
+  static async getHistory(parcelId: number): Promise<any> {
+    try {
+      const [productions, soilAnalyses, crops] = await Promise.all([
+        prisma.production.findMany({
+          where: { parcelId },
+          include: {
+            seedLot: {
+              include: {
+                variety: true,
+              },
+            },
+          },
+          orderBy: { startDate: "desc" },
+        }),
+        prisma.soilAnalysis.findMany({
+          where: { parcelId },
+          orderBy: { analysisDate: "desc" },
+        }),
+        prisma.previousCrop.findMany({
+          where: { parcelId },
+          orderBy: { year: "desc" },
+        }),
+      ]);
+
+      return {
+        productions,
+        soilAnalyses,
+        previousCrops: crops,
+      };
+    } catch (error) {
+      logger.error("Erreur lors de la récupération de l'historique:", error);
       throw error;
     }
   }

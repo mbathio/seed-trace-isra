@@ -56,6 +56,7 @@ import CreateParcelPage from "./pages/parcels/CreateParcel";
 import GenealogyPage from "./pages/genealogy/Genealogy";
 import ReportsPage from "./pages/reports/Reports";
 import UsersPage from "./pages/users/Users";
+import EditParcel from "./pages/parcels/EditParcel";
 
 // Configuration React Query
 const queryClient = new QueryClient({
@@ -124,7 +125,7 @@ function App() {
               <Route path="parcels" element={<ParcelsPage />} />
               <Route path="parcels/create" element={<CreateParcelPage />} />
               <Route path="parcels/:id" element={<ParcelDetailsPage />} />
-
+              <Route path="parcels/:id/edit" element={<EditParcel />} />
               {/* Routes des productions */}
               <Route path="productions" element={<ProductionsPage />} />
               <Route

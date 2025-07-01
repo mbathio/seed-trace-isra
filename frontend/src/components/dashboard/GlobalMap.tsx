@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapboxMap } from "../map/MapboxMap";
+import { MapboxMap } from "../map/MapboxMapWithRoutes";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { api } from "../../services/api";
