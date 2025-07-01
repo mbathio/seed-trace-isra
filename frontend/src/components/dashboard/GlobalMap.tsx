@@ -1,4 +1,3 @@
-// frontend/src/components/dashboard/GlobalMap.tsx
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MapboxMap } from "../map/MapboxMap";

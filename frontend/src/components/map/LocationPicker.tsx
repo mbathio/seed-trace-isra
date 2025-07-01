@@ -1,4 +1,3 @@
-// frontend/src/components/map/LocationPicker.tsx
 import React, { useState, useCallback } from "react";
 import Map, { Marker, NavigationControl } from "react-map-gl";
 import { MapPin } from "lucide-react";
@@ -93,31 +92,23 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       <div className="h-96 rounded-lg overflow-hidden border">
         <Map
           {...viewState}
-          onViewportChange={(viewport: any) => setViewState(viewport)}
+          onMove={(evt) => setViewState(evt.viewState)}
           mapStyle="mapbox://styles/mapbox/satellite-streets-v12"
           mapboxAccessToken={MAPBOX_TOKEN}
           onClick={handleMapClick}
-          width="100%"
-          height="100%"
+          style={{ width: "100%", height: "100%" }}
           getCursor={() => (readOnly ? "default" : "pointer")}
         >
-          <NavigationControl
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              margin: "10px",
-            }}
-          />
+          <NavigationControl position="top-right" />
 
           <Marker
             longitude={marker.longitude}
             latitude={marker.latitude}
             draggable={!readOnly}
             onDragEnd={(evt: any) => {
-              const lngLat = evt.lngLat;
-              setMarker({ longitude: lngLat[0], latitude: lngLat[1] });
-              onChange({ latitude: lngLat[1], longitude: lngLat[0] });
+              const { lng, lat } = evt.lngLat;
+              setMarker({ longitude: lng, latitude: lat });
+              onChange({ latitude: lat, longitude: lng });
             }}
           >
             <MapPin className="h-8 w-8 text-red-500" fill="currentColor" />

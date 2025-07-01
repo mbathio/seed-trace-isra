@@ -1,4 +1,3 @@
-// frontend/src/App.tsx - ✅ ROUTES ENTIÈREMENT CORRIGÉES ET STANDARDISÉES
 import {
   BrowserRouter as Router,
   Routes,
@@ -23,37 +22,37 @@ import RegisterPage from "./pages/auth/Register";
 import DashboardPage from "./pages/Dashboard";
 import LandingPage from "./pages/LandingPage";
 
-// ✅ CORRECTION: Routes des semences standardisées
+// Routes des semences
 import SeedLotsPage from "./pages/seeds/SeedLots";
 import SeedLotDetailsPage from "./pages/seeds/SeedLotDetail";
 import CreateSeedLotPage from "./pages/seeds/CreateSeedLot";
 
-// ✅ Routes des variétés
+// Routes des variétés
 import VarietiesPage from "./pages/varieties/Varieties";
 import VarietyDetailsPage from "./pages/varieties/VarietyDetail";
 import CreateVarietyPage from "./pages/varieties/CreateVariety";
 
-// ✅ Routes des multiplicateurs
+// Routes des multiplicateurs
 import MultipliersPage from "./pages/multipliers/Multipliers";
 import MultiplierDetailsPage from "./pages/multipliers/MultiplierDetail";
 import CreateMultiplierPage from "./pages/multipliers/CreateMultiplier";
 
-// ✅ Routes des contrôles qualité
+// Routes des contrôles qualité
 import QualityControlsPage from "./pages/quality/QualityControls";
 import QualityControlDetailsPage from "./pages/quality/QualityControlDetail";
 import CreateQualityControlPage from "./pages/quality/CreateQualityControl";
 
-// ✅ Routes des productions
+// Routes des productions
 import ProductionsPage from "./pages/productions/Productions";
 import ProductionDetailsPage from "./pages/productions/ProductionDetail";
 import CreateProductionPage from "./pages/productions/CreateProduction";
 
-// ✅ Routes des parcelles
+// Routes des parcelles
 import ParcelsPage from "./pages/parcels/Parcels";
 import ParcelDetailsPage from "./pages/parcels/ParcelDetail";
 import CreateParcelPage from "./pages/parcels/CreateParcel";
 
-// ✅ Autres pages
+// Autres pages
 import GenealogyPage from "./pages/genealogy/Genealogy";
 import ReportsPage from "./pages/reports/Reports";
 import UsersPage from "./pages/users/Users";
@@ -64,7 +63,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 3,
       staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // ✅ CORRIGÉ: gcTime au lieu de cacheTime
+      gcTime: 10 * 60 * 1000, // 10 minutes
       refetchOnWindowFocus: false,
     },
     mutations: {
@@ -79,16 +78,16 @@ function App() {
       <AuthProvider>
         <Router>
           <Routes>
-            {/* ✅ Page d'accueil publique */}
+            {/* Page d'accueil publique */}
             <Route path="/" element={<LandingPage />} />
 
-            {/* ✅ Routes d'authentification */}
+            {/* Routes d'authentification */}
             <Route path="/auth" element={<AuthLayout />}>
               <Route path="login" element={<LoginPage />} />
               <Route path="register" element={<RegisterPage />} />
             </Route>
 
-            {/* ✅ Routes protégées avec layout dashboard - STRUCTURE UNIFIÉE */}
+            {/* Routes protégées avec layout dashboard */}
             <Route
               path="/dashboard"
               element={
@@ -100,17 +99,17 @@ function App() {
               {/* Dashboard principal */}
               <Route index element={<DashboardPage />} />
 
-              {/* ✅ SECTION SEEDS: Routes des semences */}
+              {/* Routes des semences */}
               <Route path="seed-lots" element={<SeedLotsPage />} />
               <Route path="seed-lots/create" element={<CreateSeedLotPage />} />
               <Route path="seed-lots/:id" element={<SeedLotDetailsPage />} />
 
-              {/* ✅ SECTION VARIETIES: Routes des variétés */}
+              {/* Routes des variétés */}
               <Route path="varieties" element={<VarietiesPage />} />
               <Route path="varieties/create" element={<CreateVarietyPage />} />
               <Route path="varieties/:id" element={<VarietyDetailsPage />} />
 
-              {/* ✅ SECTION MULTIPLIERS: Routes des multiplicateurs */}
+              {/* Routes des multiplicateurs */}
               <Route path="multipliers" element={<MultipliersPage />} />
               <Route
                 path="multipliers/create"
@@ -121,12 +120,12 @@ function App() {
                 element={<MultiplierDetailsPage />}
               />
 
-              {/* ✅ SECTION PARCELS: Routes des parcelles */}
+              {/* Routes des parcelles */}
               <Route path="parcels" element={<ParcelsPage />} />
               <Route path="parcels/create" element={<CreateParcelPage />} />
               <Route path="parcels/:id" element={<ParcelDetailsPage />} />
 
-              {/* ✅ SECTION PRODUCTIONS: Routes des productions */}
+              {/* Routes des productions */}
               <Route path="productions" element={<ProductionsPage />} />
               <Route
                 path="productions/create"
@@ -137,7 +136,7 @@ function App() {
                 element={<ProductionDetailsPage />}
               />
 
-              {/* ✅ SECTION QUALITY: Routes des contrôles qualité */}
+              {/* Routes des contrôles qualité */}
               <Route
                 path="quality-controls"
                 element={<QualityControlsPage />}
@@ -151,14 +150,14 @@ function App() {
                 element={<QualityControlDetailsPage />}
               />
 
-              {/* ✅ SECTION GENEALOGY: Route de généalogie */}
+              {/* Route de généalogie */}
               <Route path="genealogy" element={<GenealogyPage />} />
               <Route path="genealogy/:lotId" element={<GenealogyPage />} />
 
-              {/* ✅ SECTION REPORTS: Routes des rapports */}
+              {/* Routes des rapports */}
               <Route path="reports" element={<ReportsPage />} />
 
-              {/* ✅ SECTION ADMIN: Routes d'administration */}
+              {/* Routes d'administration */}
               <Route
                 path="users"
                 element={
@@ -169,8 +168,7 @@ function App() {
               />
             </Route>
 
-            {/* ✅ REDIRECTIONS POUR COMPATIBILITÉ: Support des anciennes URLs */}
-            {/* Redirections pour seeds */}
+            {/* Redirections pour compatibilité */}
             <Route
               path="/seeds"
               element={<Navigate to="/dashboard/seed-lots" replace />}
@@ -179,8 +177,6 @@ function App() {
               path="/seeds/*"
               element={<Navigate to="/dashboard/seed-lots" replace />}
             />
-
-            {/* Redirections pour quality */}
             <Route
               path="/quality"
               element={<Navigate to="/dashboard/quality-controls" replace />}
@@ -189,8 +185,6 @@ function App() {
               path="/quality/*"
               element={<Navigate to="/dashboard/quality-controls" replace />}
             />
-
-            {/* Redirections pour autres sections */}
             <Route
               path="/varieties"
               element={<Navigate to="/dashboard/varieties" replace />}
@@ -248,7 +242,7 @@ function App() {
               element={<Navigate to="/dashboard/users" replace />}
             />
 
-            {/* ✅ FALLBACK: Route par défaut pour les URLs non trouvées */}
+            {/* Route par défaut */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>

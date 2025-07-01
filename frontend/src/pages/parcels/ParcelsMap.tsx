@@ -1,4 +1,3 @@
-// frontend/src/pages/parcels/ParcelsMap.tsx
 import React from "react";
 import { MapboxMap } from "../../components/map/MapboxMap";
 import {

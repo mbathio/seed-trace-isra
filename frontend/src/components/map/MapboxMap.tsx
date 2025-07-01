@@ -1,4 +1,3 @@
-// frontend/src/components/map/MapboxMap.tsx
 import React, { useState, useRef, useCallback } from "react";
 import Map, {
   Marker,
