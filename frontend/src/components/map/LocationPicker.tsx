@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import Map, { Marker, NavigationControl } from "react-map-gl";
+import Map, { Marker, NavigationControl, MapMouseEvent } from "react-map-gl";
 import { MapPin } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -32,7 +32,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
   });
 
   const handleMapClick = useCallback(
-    (event: any) => {
+    (event: MapMouseEvent) => {
       if (readOnly) return;
 
       const { lng, lat } = event.lngLat;
@@ -97,7 +97,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           mapboxAccessToken={MAPBOX_TOKEN}
           onClick={handleMapClick}
           style={{ width: "100%", height: "100%" }}
-          getCursor={() => (readOnly ? "default" : "pointer")}
+          cursor={readOnly ? "default" : "pointer"}
         >
           <NavigationControl position="top-right" />
 
@@ -105,10 +105,11 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             longitude={marker.longitude}
             latitude={marker.latitude}
             draggable={!readOnly}
-            onDragEnd={(evt: any) => {
-              const { lng, lat } = evt.lngLat;
-              setMarker({ longitude: lng, latitude: lat });
-              onChange({ latitude: lat, longitude: lng });
+            onDragEnd={(evt) => {
+              const newLng = evt.lngLat.lng;
+              const newLat = evt.lngLat.lat;
+              setMarker({ longitude: newLng, latitude: newLat });
+              onChange({ latitude: newLat, longitude: newLng });
             }}
           >
             <MapPin className="h-8 w-8 text-red-500" fill="currentColor" />

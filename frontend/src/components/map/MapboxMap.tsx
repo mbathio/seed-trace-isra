@@ -6,6 +6,7 @@ import Map, {
   FullscreenControl,
   ScaleControl,
   GeolocateControl,
+  MapRef,
 } from "react-map-gl";
 import { MapPin } from "lucide-react";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -44,7 +45,7 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
   onMarkerClick,
 }) => {
   const [popupInfo, setPopupInfo] = useState<MapLocation | null>(null);
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<MapRef>(null);
 
   const [viewState, setViewState] = useState({
     longitude: center.longitude,
@@ -86,10 +87,10 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
         style={{ width: "100%", height: "100%" }}
       >
         {/* Contrôles de navigation */}
-        <NavigationControl />
-        <FullscreenControl />
-        <ScaleControl />
-        <GeolocateControl />
+        <NavigationControl position="top-right" />
+        <FullscreenControl position="top-right" />
+        <ScaleControl position="bottom-right" />
+        <GeolocateControl position="top-left" />
 
         {/* Marqueurs */}
         {locations.map((location) => (
@@ -97,7 +98,7 @@ export const MapboxMap: React.FC<MapboxMapProps> = ({
             key={location.id}
             longitude={location.longitude}
             latitude={location.latitude}
-            onClick={(e: any) => {
+            onClick={(e) => {
               e.originalEvent.stopPropagation();
               handleMarkerClick(location);
             }}
