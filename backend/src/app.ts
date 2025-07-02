@@ -23,6 +23,8 @@ import exportRoutes from "./routes/export";
 // Import des middlewares
 import { errorHandler } from "./middleware/errorHandler";
 import { parseQueryParams } from "./middleware/queryParser";
+import { enumTransformMiddleware } from "./middleware/enumTransformMiddleware";
+
 // Import des middlewares
 
 // Charger les variables d'environnement
@@ -74,6 +76,8 @@ const limiter = rateLimit({
     data: null,
   },
 });
+app.use(enumTransformMiddleware);
+
 app.use("/api/", limiter);
 
 // Servir les fichiers statiques (uploads)
