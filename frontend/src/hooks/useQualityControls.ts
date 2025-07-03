@@ -1,4 +1,3 @@
-// frontend/src/hooks/useQualityControls.ts - NOUVEAU HOOK SPÉCIALISÉ
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../services/api";
 import { QualityControl } from "../types/entities";

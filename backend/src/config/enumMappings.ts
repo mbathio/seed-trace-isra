@@ -115,16 +115,7 @@ export const ENUM_MAPPINGS = {
     },
   },
   // Résultats de tests
-  TEST_RESULT: {
-    UI_TO_DB: {
-      pass: "PASS",
-      fail: "FAIL",
-    },
-    DB_TO_UI: {
-      PASS: "pass",
-      FAIL: "fail",
-    },
-  },
+
   // Niveaux de certification
   CERTIFICATION_LEVEL: {
     UI_TO_DB: {
@@ -230,6 +221,17 @@ export const ENUM_MAPPINGS = {
       G4: "G4",
       R1: "R1",
       R2: "R2",
+    },
+  },
+
+  TEST_RESULT: {
+    UI_TO_DB: {
+      pass: "PASS",
+      fail: "FAIL",
+    },
+    DB_TO_UI: {
+      PASS: "pass",
+      FAIL: "fail",
     },
   },
 };

@@ -473,29 +473,37 @@ export const qualityControlTransformation = (
     req.query = cleanQueryParams(req.query);
   }
 
-  // Transformation UI → DB pour le résultat
-  if (req.body?.result) {
-    const uiToDbMap: Record<string, string> = {
-      passed: "PASS",
-      failed: "FAIL",
-      pending: "PENDING",
+  // Transformation UI → DB pour les requêtes
+  if (req.body || req.query) {
+    const resultUiToDbMap: Record<string, string> = {
+      pass: "PASS",
+      fail: "FAIL",
     };
 
-    if (uiToDbMap[req.body.result]) {
-      req.body.result = uiToDbMap[req.body.result];
+    // Transformer req.body
+    if (req.body?.result && resultUiToDbMap[req.body.result]) {
+      req.body.result = resultUiToDbMap[req.body.result];
+    }
+
+    // Transformer req.query
+    if (req.query?.result && typeof req.query.result === "string") {
+      const lowerResult = req.query.result.toLowerCase();
+      if (resultUiToDbMap[lowerResult]) {
+        req.query.result = resultUiToDbMap[lowerResult];
+      }
     }
   }
 
+  // Intercepter la réponse pour transformation DB → UI
   const originalJson = res.json.bind(res);
   res.json = function (data: any) {
     if (!data || typeof data !== "object") {
       return originalJson(data);
     }
 
-    const dbToUiMap: Record<string, string> = {
-      PASS: "passed",
-      FAIL: "failed",
-      PENDING: "pending",
+    const resultDbToUiMap: Record<string, string> = {
+      PASS: "pass",
+      FAIL: "fail",
     };
 
     const transformQualityControl = (qc: any) => {
@@ -503,21 +511,89 @@ export const qualityControlTransformation = (
 
       const transformed = { ...qc };
 
-      if (qc.result && dbToUiMap[qc.result]) {
-        transformed.result = dbToUiMap[qc.result];
+      // Transformer le résultat
+      if (qc.result && resultDbToUiMap[qc.result]) {
+        transformed.result = resultDbToUiMap[qc.result];
+      }
+
+      // Transformer l'inspecteur s'il est présent
+      if (qc.inspector && qc.inspector.role) {
+        const roleDbToUiMap: Record<string, string> = {
+          ADMIN: "admin",
+          MANAGER: "manager",
+          RESEARCHER: "researcher",
+          TECHNICIAN: "technician",
+          INSPECTOR: "inspector",
+          MULTIPLIER: "multiplier",
+        };
+        if (roleDbToUiMap[qc.inspector.role]) {
+          transformed.inspector = {
+            ...qc.inspector,
+            role: roleDbToUiMap[qc.inspector.role],
+          };
+        }
+      }
+
+      // Transformer le lot s'il est présent
+      if (qc.seedLot) {
+        transformed.seedLot = transformSeedLot(qc.seedLot);
       }
 
       return transformed;
     };
 
+    // Fonction helper pour transformer un lot
+    const transformSeedLot = (lot: any) => {
+      if (!lot || typeof lot !== "object") return lot;
+
+      const transformed = { ...lot };
+
+      // Transformer le niveau
+      const levelDbToUiMap: Record<string, string> = {
+        GO: "GO",
+        G1: "G1",
+        G2: "G2",
+        G3: "G3",
+        G4: "G4",
+        R1: "R1",
+        R2: "R2",
+      };
+
+      if (lot.level && levelDbToUiMap[lot.level]) {
+        transformed.level = levelDbToUiMap[lot.level];
+      }
+
+      // Transformer le statut
+      const statusDbToUiMap: Record<string, string> = {
+        PENDING: "pending",
+        CERTIFIED: "certified",
+        REJECTED: "rejected",
+        IN_STOCK: "in-stock",
+        SOLD: "sold",
+        ACTIVE: "active",
+        DISTRIBUTED: "distributed",
+      };
+
+      if (lot.status && statusDbToUiMap[lot.status]) {
+        transformed.status = statusDbToUiMap[lot.status];
+      }
+
+      return transformed;
+    };
+
+    // Cloner les données pour éviter les mutations
     const transformedData = JSON.parse(JSON.stringify(data));
 
+    // Transformer les données
     if (transformedData?.data) {
+      // Transformer un tableau de contrôles qualité
       if (Array.isArray(transformedData.data)) {
         transformedData.data = transformedData.data.map(
           transformQualityControl
         );
-      } else if (typeof transformedData.data === "object") {
+      }
+      // Transformer un seul contrôle qualité
+      else if (typeof transformedData.data === "object") {
         transformedData.data = transformQualityControl(transformedData.data);
       }
     }

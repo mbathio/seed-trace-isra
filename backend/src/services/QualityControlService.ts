@@ -176,88 +176,77 @@ export class QualityControlService {
         where.result = resultMap[result] || result;
       }
 
-      if (lotId) {
-        where.lotId = lotId;
-      }
+      if (lotId) where.lotId = lotId;
+      if (inspectorId) where.inspectorId = parseInt(inspectorId.toString());
+      if (varietyId) where.seedLot = { varietyId: varietyId.toString() };
+      if (multiplierId)
+        where.seedLot = { multiplierId: parseInt(multiplierId.toString()) };
 
-      if (inspectorId) {
-        where.inspectorId = parseInt(inspectorId.toString());
-      }
-
-      // Filtres sur les dates
+      // Filtres de date
       if (startDate || endDate) {
         where.controlDate = {};
-        if (startDate) {
-          where.controlDate.gte = new Date(startDate);
-        }
-        if (endDate) {
-          where.controlDate.lte = new Date(endDate);
-        }
+        if (startDate) where.controlDate.gte = new Date(startDate);
+        if (endDate) where.controlDate.lte = new Date(endDate);
       }
 
-      // Filtres sur les taux
+      // Filtres de taux
       if (minGerminationRate || maxGerminationRate) {
         where.germinationRate = {};
-        if (minGerminationRate) {
+        if (minGerminationRate)
           where.germinationRate.gte = parseFloat(minGerminationRate.toString());
-        }
-        if (maxGerminationRate) {
+        if (maxGerminationRate)
           where.germinationRate.lte = parseFloat(maxGerminationRate.toString());
-        }
       }
 
-      // Filtres sur les relations
-      if (varietyId || multiplierId) {
-        where.seedLot = {};
-        if (varietyId) {
-          where.seedLot.varietyId = parseInt(varietyId.toString());
-        }
-        if (multiplierId) {
-          where.seedLot.multiplierId = parseInt(multiplierId.toString());
-        }
-      }
+      // Compter le total
+      const total = await prisma.qualityControl.count({ where });
 
-      // Exécution des requêtes
-      const [controls, total] = await Promise.all([
-        prisma.qualityControl.findMany({
-          where,
-          include: {
-            seedLot: {
-              include: {
-                variety: true,
-                multiplier: true,
-                parcel: true,
-              },
-            },
-            inspector: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-              },
+      // Récupérer les contrôles avec pagination
+      const qualityControls = await prisma.qualityControl.findMany({
+        where,
+        skip,
+        take: pageSizeNum,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          seedLot: {
+            include: {
+              variety: true,
+              multiplier: true,
             },
           },
-          orderBy: { [sortBy]: sortOrder },
-          skip,
-          take: pageSizeNum,
-        }),
-        prisma.qualityControl.count({ where }),
-      ]);
+          inspector: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+            },
+          },
+        },
+      });
 
+      // Calculer les métadonnées de pagination
       const totalPages = Math.ceil(total / pageSizeNum);
+      const hasNext = pageNum < totalPages;
+      const hasPrev = pageNum > 1;
 
-      // ✅ IMPORTANT: Retourner 'data' au lieu de 'controls' pour compatibilité avec le contrôleur
+      logger.info(`Contrôles qualité récupérés`, {
+        total,
+        page: pageNum,
+        pageSize: pageSizeNum,
+      });
+
+      // ✅ IMPORTANT: Retourner 'data' et non 'controls'
       return {
-        data: controls,
+        data: qualityControls, // ✅ CHANGÉ de 'controls' à 'data'
         total,
         meta: {
           page: pageNum,
           pageSize: pageSizeNum,
-          totalCount: total,
+          total,
           totalPages,
-          hasNextPage: pageNum < totalPages,
-          hasPreviousPage: pageNum > 1,
+          hasNext,
+          hasPrev,
         },
       };
     } catch (error) {

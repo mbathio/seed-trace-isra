@@ -1,4 +1,3 @@
-// backend/src/controllers/QualityControlController.ts - CONTRÔLEUR CORRIGÉ
 import { Request, Response, NextFunction } from "express";
 import { QualityControlService } from "../services/QualityControlService";
 import { ResponseHandler } from "../utils/response";
