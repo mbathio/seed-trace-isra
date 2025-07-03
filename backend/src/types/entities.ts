@@ -91,6 +91,7 @@ export interface CreateQualityControlData {
   observations?: string;
   testMethod?: string;
   laboratoryRef?: string;
+  certificateUrl?: string; // ✅ Ajouté pour résoudre l'erreur TypeScript
 }
 
 export interface UpdateQualityControlData {
@@ -102,5 +103,113 @@ export interface UpdateQualityControlData {
   observations?: string;
   testMethod?: string;
   laboratoryRef?: string;
-  result?: string;
+  result?: "PASS" | "FAIL"; // Peut être recalculé automatiquement
 }
+
+/**
+ * Interface pour les filtres de recherche de contrôles qualité
+ */
+export interface QualityControlFilters {
+  search?: string;
+  result?: "PASS" | "FAIL" | "pass" | "fail";
+  lotId?: string;
+  inspectorId?: number;
+  varietyId?: number;
+  multiplierId?: number;
+  startDate?: string;
+  endDate?: string;
+  minGerminationRate?: number;
+  maxGerminationRate?: number;
+}
+
+/**
+ * Interface pour les statistiques de contrôle qualité
+ */
+export interface QualityControlStats {
+  totalControls: number;
+  passedControls: number;
+  failedControls: number;
+  passRate: number;
+  averageGerminationRate: number;
+  averageVarietyPurity: number;
+  lastControlDate: Date;
+}
+
+/**
+ * Interface pour le rapport de contrôle qualité
+ */
+export interface QualityControlReport {
+  data: any[];
+  summary: {
+    totalControls: number;
+    passedControls: number;
+    failedControls: number;
+    averageGerminationRate: number;
+    averageVarietyPurity: number;
+    byVariety: VarietyStats[];
+    byMultiplier: MultiplierStats[];
+    byMonth: MonthlyStats[];
+  };
+}
+
+/**
+ * Statistiques par variété
+ */
+export interface VarietyStats {
+  varietyId: number;
+  varietyName: string;
+  totalControls: number;
+  passedControls: number;
+  failedControls: number;
+  averageGerminationRate: number;
+  averageVarietyPurity: number;
+  passRate: number;
+}
+
+/**
+ * Statistiques par multiplicateur
+ */
+export interface MultiplierStats {
+  multiplierId: number;
+  multiplierName: string;
+  totalControls: number;
+  passedControls: number;
+  failedControls: number;
+  averageGerminationRate: number;
+  averageVarietyPurity: number;
+  passRate: number;
+}
+
+/**
+ * Statistiques mensuelles
+ */
+export interface MonthlyStats {
+  month: string; // Format: YYYY-MM
+  totalControls: number;
+  passedControls: number;
+  failedControls: number;
+  passRate: number;
+}
+
+/**
+ * Seuils de validation par niveau de semence
+ */
+export interface QualityThresholds {
+  [level: string]: {
+    germination: number;
+    purity: number;
+  };
+}
+
+/**
+ * Configuration des seuils par défaut
+ */
+export const DEFAULT_QUALITY_THRESHOLDS: QualityThresholds = {
+  GO: { germination: 98, purity: 99.9 },
+  G1: { germination: 95, purity: 99.5 },
+  G2: { germination: 90, purity: 99.0 },
+  G3: { germination: 85, purity: 98.0 },
+  G4: { germination: 80, purity: 97.0 },
+  R1: { germination: 80, purity: 97.0 },
+  R2: { germination: 80, purity: 95.0 },
+};
