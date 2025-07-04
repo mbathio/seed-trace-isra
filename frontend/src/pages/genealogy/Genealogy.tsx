@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+// frontend/src/pages/genealogy/Genealogy.tsx - VERSION CORRIGÉE
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,7 +11,6 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   GitBranch,
@@ -25,7 +25,8 @@ import {
 } from "lucide-react";
 import { seedLotService, GenealogyNode } from "@/services/seedLotService";
 import { SeedLot } from "@/types/entities";
-import { formatDate } from "@/lib/utils";
+// CORRIGÉ: Import de formatDate depuis formatters au lieu de utils
+import { formatDate } from "@/utils/formatters";
 import { toast } from "react-toastify";
 
 export default function Genealogy() {
@@ -170,9 +171,7 @@ export default function Genealogy() {
                   </div>
                   <div className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    <span>
-                      Production: {formatDate(new Date(node.productionDate))}
-                    </span>
+                    <span>Production: {formatDate(node.productionDate)}</span>
                   </div>
                   <div>Quantité: {node.quantity} kg</div>
                   <div>Statut: {node.status}</div>

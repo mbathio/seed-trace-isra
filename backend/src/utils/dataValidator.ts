@@ -46,7 +46,6 @@ export class DataValidator {
     return { valid, invalid };
   }
 
-  // Validation conditionnelle basée sur le contexte
   static createConditionalValidator<T>(
     baseSchema: z.ZodSchema<T>,
     conditions: Array<{
@@ -54,20 +53,25 @@ export class DataValidator {
       then: (schema: z.ZodSchema<T>) => z.ZodSchema<T>;
     }>
   ): z.ZodSchema<T> {
-    return z.preprocess((data) => {
-      let schema = baseSchema;
+    return baseSchema.superRefine((data, ctx) => {
+      let currentSchema = baseSchema;
 
       for (const condition of conditions) {
         if (condition.when(data)) {
-          schema = condition.then(schema);
+          currentSchema = condition.then(currentSchema);
         }
       }
 
-      return schema.parse(data);
-    }, z.any()) as z.ZodSchema<T>;
+      // Valider avec le schéma conditionnel
+      const result = currentSchema.safeParse(data);
+      if (!result.success) {
+        result.error.issues.forEach((issue) => {
+          ctx.addIssue(issue);
+        });
+      }
+    }) as z.ZodSchema<T>;
   }
 
-  // Validation avec nettoyage automatique
   static createSanitizingValidator<T>(
     schema: z.ZodSchema<T>,
     sanitizers: Record<string, (value: any) => any>
@@ -75,7 +79,9 @@ export class DataValidator {
     return z.preprocess((data) => {
       if (typeof data !== "object" || !data) return data;
 
-      const sanitized = { ...data };
+      const sanitized: Record<string, any> = {
+        ...(data as Record<string, any>),
+      };
 
       for (const [field, sanitizer] of Object.entries(sanitizers)) {
         if (field in sanitized) {
@@ -84,6 +90,6 @@ export class DataValidator {
       }
 
       return sanitized;
-    }, schema);
+    }, schema) as z.ZodSchema<T>;
   }
 }

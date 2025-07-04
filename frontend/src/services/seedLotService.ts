@@ -1,11 +1,8 @@
+// frontend/src/services/seedLotService.ts - VERSION COMPLÈTE AVEC TOUTES LES MÉTHODES
+
 import { api } from "./api";
 import { SeedLot } from "../types/entities";
-import {
-  ApiResponse,
-  PaginationParams,
-  FilterParams,
-  SeedLotFilters,
-} from "../types/api";
+import { ApiResponse, PaginationParams, SeedLotFilters } from "../types/api";
 import { DataTransformer } from "../utils/transformers";
 import { toast } from "react-toastify";
 
@@ -310,6 +307,263 @@ class SeedLotService {
         error,
         "Erreur lors de la récupération des statistiques"
       );
+      throw error;
+    }
+  }
+
+  /**
+   * Récupère les statistiques globales des lots
+   */
+  async getStatistics(
+    params?: Partial<SeedLotFilters>
+  ): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.get<ApiResponse<any>>(
+        `${this.basePath}/statistics`,
+        { params }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      this.handleError(
+        error,
+        "Erreur lors de la récupération des statistiques"
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Récupère les lots expirant bientôt
+   */
+  async getExpiring(days: number = 30): Promise<ApiResponse<SeedLot[]>> {
+    try {
+      const response = await api.get<ApiResponse<SeedLot[]>>(
+        `${this.basePath}/expiring`,
+        { params: { days } }
+      );
+
+      // Transformer les données
+      if (response.data.data && Array.isArray(response.data.data)) {
+        response.data.data = response.data.data.map((lot) =>
+          DataTransformer.transformSeedLotFromAPI(lot)
+        );
+      }
+
+      return response.data;
+    } catch (error: any) {
+      this.handleError(
+        error,
+        "Erreur lors de la récupération des lots expirant"
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Recherche des lots
+   */
+  async search(
+    query: string,
+    params?: Partial<SeedLotFilters>
+  ): Promise<ApiResponse<SeedLot[]>> {
+    try {
+      const response = await api.get<ApiResponse<SeedLot[]>>(
+        `${this.basePath}/search`,
+        {
+          params: {
+            q: query,
+            ...params,
+          },
+        }
+      );
+
+      // Transformer les données
+      if (response.data.data && Array.isArray(response.data.data)) {
+        response.data.data = response.data.data.map((lot) =>
+          DataTransformer.transformSeedLotFromAPI(lot)
+        );
+      }
+
+      return response.data;
+    } catch (error: any) {
+      this.handleError(error, "Erreur lors de la recherche");
+      throw error;
+    }
+  }
+
+  /**
+   * Exporte les lots
+   */
+  async export(
+    format: "csv" | "xlsx" | "json",
+    filters?: Partial<SeedLotFilters>
+  ): Promise<Blob> {
+    try {
+      const response = await api.get(`${this.basePath}/export`, {
+        params: {
+          format,
+          ...filters,
+        },
+        responseType: "blob",
+      });
+
+      // Créer un lien de téléchargement
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `seed-lots-export-${new Date().toISOString()}.${format}`
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      return response.data;
+    } catch (error: any) {
+      this.handleError(error, "Erreur lors de l'export");
+      throw error;
+    }
+  }
+
+  /**
+   * Met à jour le statut d'un lot
+   */
+  async updateStatus(
+    id: string,
+    status: string,
+    notes?: string
+  ): Promise<ApiResponse<SeedLot>> {
+    try {
+      const response = await api.patch<ApiResponse<SeedLot>>(
+        `${this.basePath}/${id}/status`,
+        { status, notes }
+      );
+
+      // Transformer la réponse
+      if (response.data.data) {
+        response.data.data = DataTransformer.transformSeedLotFromAPI(
+          response.data.data
+        );
+      }
+
+      toast.success(response.data.message || "Statut mis à jour avec succès");
+
+      return response.data;
+    } catch (error: any) {
+      this.handleError(error, "Erreur lors de la mise à jour du statut");
+      throw error;
+    }
+  }
+
+  /**
+   * Récupère les lots d'une variété
+   */
+  async getByVariety(varietyId: number): Promise<ApiResponse<SeedLot[]>> {
+    try {
+      const response = await api.get<ApiResponse<SeedLot[]>>(
+        `${this.basePath}/variety/${varietyId}`
+      );
+
+      // Transformer les données
+      if (response.data.data && Array.isArray(response.data.data)) {
+        response.data.data = response.data.data.map((lot) =>
+          DataTransformer.transformSeedLotFromAPI(lot)
+        );
+      }
+
+      return response.data;
+    } catch (error: any) {
+      this.handleError(
+        error,
+        "Erreur lors de la récupération des lots de la variété"
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Récupère les lots d'un multiplicateur
+   */
+  async getByMultiplier(multiplierId: number): Promise<ApiResponse<SeedLot[]>> {
+    try {
+      const response = await api.get<ApiResponse<SeedLot[]>>(
+        `${this.basePath}/multiplier/${multiplierId}`
+      );
+
+      // Transformer les données
+      if (response.data.data && Array.isArray(response.data.data)) {
+        response.data.data = response.data.data.map((lot) =>
+          DataTransformer.transformSeedLotFromAPI(lot)
+        );
+      }
+
+      return response.data;
+    } catch (error: any) {
+      this.handleError(
+        error,
+        "Erreur lors de la récupération des lots du multiplicateur"
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Récupère les lots d'une parcelle
+   */
+  async getByParcel(parcelId: number): Promise<ApiResponse<SeedLot[]>> {
+    try {
+      const response = await api.get<ApiResponse<SeedLot[]>>(
+        `${this.basePath}/parcel/${parcelId}`
+      );
+
+      // Transformer les données
+      if (response.data.data && Array.isArray(response.data.data)) {
+        response.data.data = response.data.data.map((lot) =>
+          DataTransformer.transformSeedLotFromAPI(lot)
+        );
+      }
+
+      return response.data;
+    } catch (error: any) {
+      this.handleError(
+        error,
+        "Erreur lors de la récupération des lots de la parcelle"
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Génère un rapport pour un lot
+   */
+  async generateReport(
+    id: string,
+    type: "certificate" | "history" | "quality"
+  ): Promise<Blob> {
+    try {
+      const response = await api.get(`${this.basePath}/${id}/report/${type}`, {
+        responseType: "blob",
+      });
+
+      // Créer un lien de téléchargement
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `seed-lot-${type}-${id}-${new Date().toISOString()}.pdf`
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      return response.data;
+    } catch (error: any) {
+      this.handleError(error, "Erreur lors de la génération du rapport");
       throw error;
     }
   }

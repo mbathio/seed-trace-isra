@@ -560,4 +560,80 @@ export class SeedLotService {
       throw error;
     }
   }
+  /**
+   * Récupérer les statistiques d'un lot
+   */
+  static async getSeedLotStats(id: string) {
+    try {
+      const seedLot = await prisma.seedLot.findUnique({
+        where: { id },
+        include: {
+          variety: true,
+          multiplier: true,
+          qualityControls: true,
+          productions: true,
+          childLots: true,
+          _count: {
+            select: {
+              childLots: true,
+              qualityControls: true,
+              productions: true,
+            },
+          },
+        },
+      });
+
+      if (!seedLot) {
+        throw new SeedLotError("LOT_NOT_FOUND", "Lot non trouvé");
+      }
+
+      // Calculer les statistiques
+      const stats = {
+        lot: {
+          id: seedLot.id,
+          level: seedLot.level,
+          quantity: seedLot.quantity,
+          status: seedLot.status,
+          productionDate: seedLot.productionDate,
+        },
+        variety: seedLot.variety,
+        multiplier: seedLot.multiplier,
+        counts: {
+          childLots: seedLot._count.childLots,
+          qualityControls: seedLot._count.qualityControls,
+          productions: seedLot._count.productions,
+        },
+        qualityMetrics:
+          seedLot.qualityControls.length > 0
+            ? {
+                averageGerminationRate:
+                  seedLot.qualityControls.reduce(
+                    (sum, qc) => sum + qc.germinationRate,
+                    0
+                  ) / seedLot.qualityControls.length,
+                averageVarietyPurity:
+                  seedLot.qualityControls.reduce(
+                    (sum, qc) => sum + qc.varietyPurity,
+                    0
+                  ) / seedLot.qualityControls.length,
+                lastControl: seedLot.qualityControls[0],
+              }
+            : null,
+        productionMetrics: {
+          totalProductions: seedLot.productions.length,
+          activeProductions: seedLot.productions.filter(
+            (p) => p.status === "IN_PROGRESS"
+          ).length,
+          completedProductions: seedLot.productions.filter(
+            (p) => p.status === "COMPLETED"
+          ).length,
+        },
+      };
+
+      return stats;
+    } catch (error) {
+      logger.error("Error fetching seed lot stats", { error, id });
+      throw error;
+    }
+  }
 }

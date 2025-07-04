@@ -18,7 +18,7 @@ export class CacheService {
           db: config.redis.db,
         });
 
-        this.redis.on("error", (err) => {
+        this.redis.on("error", (err: Error) => {
           logger.error("Redis connection error:", err);
           this.redis = null; // Fallback to local cache
         });

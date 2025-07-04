@@ -1,4 +1,4 @@
-// frontend/src/hooks/useSeedLots.ts - Hooks personnalisés pour les seed lots
+// frontend/src/hooks/useSeedLots.ts - VERSION CORRIGÉE
 
 import {
   useQuery,
@@ -27,6 +27,7 @@ export const SEED_LOT_KEYS = {
   genealogy: (id: string) => [...SEED_LOT_KEYS.all, "genealogy", id] as const,
   statistics: () => [...SEED_LOT_KEYS.all, "statistics"] as const,
   expiring: (days: number) => [...SEED_LOT_KEYS.all, "expiring", days] as const,
+  qrcode: (id: string) => [...SEED_LOT_KEYS.detail(id), "qrcode"] as const,
 };
 
 /**
@@ -122,13 +123,14 @@ export function useUpdateSeedLot(
 
 /**
  * Hook pour supprimer un lot de semences
+ * CORRIGÉ: La méthode delete retourne Promise<void>
  */
 export function useDeleteSeedLot(
-  options?: UseMutationOptions<ApiResponse<void>, Error, string>
+  options?: UseMutationOptions<void, Error, string>
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<ApiResponse<void>, Error, string>({
+  return useMutation<void, Error, string>({
     mutationFn: (id) => seedLotService.delete(id),
     onSuccess: (_, id) => {
       // Invalider les listes
@@ -160,13 +162,14 @@ export function useSeedLotGenealogy(
 
 /**
  * Hook pour récupérer le QR Code d'un lot
+ * CORRIGÉ: Type de retour correct { qrCode: string }
  */
 export function useSeedLotQRCode(
   id: string,
-  options?: UseQueryOptions<ApiResponse<string>>
+  options?: UseQueryOptions<ApiResponse<{ qrCode: string }>>
 ) {
-  return useQuery<ApiResponse<string>>({
-    queryKey: [...SEED_LOT_KEYS.detail(id), "qrcode"],
+  return useQuery<ApiResponse<{ qrCode: string }>>({
+    queryKey: SEED_LOT_KEYS.qrcode(id),
     queryFn: () => seedLotService.getQRCode(id),
     enabled: !!id,
     staleTime: 60 * 60 * 1000, // 1 heure
@@ -241,6 +244,7 @@ export function useTransferSeedLot(
 
 /**
  * Hook pour récupérer les statistiques des lots
+ * CORRIGÉ: Ajout de la méthode getStatistics dans seedLotService
  */
 export function useSeedLotStatistics(
   params?: Partial<SeedLotFilters>,
@@ -256,6 +260,7 @@ export function useSeedLotStatistics(
 
 /**
  * Hook pour récupérer les lots expirant bientôt
+ * CORRIGÉ: Ajout de la méthode getExpiring dans seedLotService
  */
 export function useExpiringSeedLots(
   days: number = 30,
@@ -271,6 +276,7 @@ export function useExpiringSeedLots(
 
 /**
  * Hook pour rechercher des lots
+ * CORRIGÉ: Ajout de la méthode search dans seedLotService
  */
 export function useSearchSeedLots(
   query: string,
@@ -288,6 +294,7 @@ export function useSearchSeedLots(
 
 /**
  * Hook pour exporter les lots
+ * CORRIGÉ: Ajout de la méthode export dans seedLotService
  */
 export function useExportSeedLots() {
   return useMutation<
@@ -307,6 +314,7 @@ export function useExportSeedLots() {
 
 /**
  * Hook pour mettre à jour le statut d'un lot
+ * CORRIGÉ: Ajout de la méthode updateStatus dans seedLotService
  */
 export function useUpdateSeedLotStatus(
   options?: UseMutationOptions<
@@ -342,6 +350,7 @@ export function useUpdateSeedLotStatus(
 
 /**
  * Hook pour récupérer les lots d'une variété
+ * CORRIGÉ: Ajout de la méthode getByVariety dans seedLotService
  */
 export function useSeedLotsByVariety(
   varietyId: number,
@@ -358,6 +367,7 @@ export function useSeedLotsByVariety(
 
 /**
  * Hook pour récupérer les lots d'un multiplicateur
+ * CORRIGÉ: Ajout de la méthode getByMultiplier dans seedLotService
  */
 export function useSeedLotsByMultiplier(
   multiplierId: number,
@@ -374,6 +384,7 @@ export function useSeedLotsByMultiplier(
 
 /**
  * Hook pour récupérer les lots d'une parcelle
+ * CORRIGÉ: Ajout de la méthode getByParcel dans seedLotService
  */
 export function useSeedLotsByParcel(
   parcelId: number,
@@ -390,6 +401,7 @@ export function useSeedLotsByParcel(
 
 /**
  * Hook pour générer un rapport de lot
+ * CORRIGÉ: Ajout de la méthode generateReport dans seedLotService
  */
 export function useGenerateSeedLotReport() {
   return useMutation<

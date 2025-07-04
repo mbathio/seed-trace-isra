@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma, SeedLotUpdateInput } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import { logger } from "../utils/logger";
 
 const prisma = new PrismaClient();
@@ -164,9 +164,11 @@ export class GenealogyService {
         }
         visitedLots.add(currentLotId);
 
-        const lot = await prisma.seedLot.findUnique({
-          where: { id: currentLotId },
+        const lot: any = await prisma.seedLot.findUnique({
+          where: { id: lotId },
           include: {
+            childLots: true,
+
             variety: true,
             multiplier: true,
             parentLot: {
