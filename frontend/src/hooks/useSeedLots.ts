@@ -20,7 +20,7 @@ import { toast } from "react-toastify";
 export const SEED_LOT_KEYS = {
   all: ["seedLots"] as const,
   lists: () => [...SEED_LOT_KEYS.all, "list"] as const,
-  list: (filters: SeedLotFilters) =>
+  list: (filters: Partial<SeedLotFilters>) =>
     [...SEED_LOT_KEYS.lists(), filters] as const,
   details: () => [...SEED_LOT_KEYS.all, "detail"] as const,
   detail: (id: string) => [...SEED_LOT_KEYS.details(), id] as const,
@@ -33,7 +33,7 @@ export const SEED_LOT_KEYS = {
  * Hook pour récupérer la liste des lots de semences
  */
 export function useSeedLots(
-  params?: PaginationParams & SeedLotFilters,
+  params?: PaginationParams & Partial<SeedLotFilters>,
   options?: UseQueryOptions<ApiResponse<SeedLot[]>>
 ) {
   return useQuery<ApiResponse<SeedLot[]>>({
@@ -90,7 +90,7 @@ export function useCreateSeedLot(
  * Hook pour mettre à jour un lot de semences
  */
 export function useUpdateSeedLot(
-  options?: UseMutationOptions<
+  options?: UseMutationOptions
     ApiResponse<SeedLot>,
     Error,
     { id: string; data: UpdateSeedLotData }
@@ -98,7 +98,7 @@ export function useUpdateSeedLot(
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<
+  return useMutation
     ApiResponse<SeedLot>,
     Error,
     { id: string; data: UpdateSeedLotData }
@@ -178,7 +178,7 @@ export function useSeedLotQRCode(
  * Hook pour créer un lot enfant
  */
 export function useCreateChildLot(
-  options?: UseMutationOptions<
+  options?: UseMutationOptions
     ApiResponse<SeedLot>,
     Error,
     { parentId: string; data: any }
@@ -186,14 +186,14 @@ export function useCreateChildLot(
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<
+  return useMutation
     ApiResponse<SeedLot>,
     Error,
     { parentId: string; data: any }
   >({
     mutationFn: ({ parentId, data }) =>
       seedLotService.createChildLot(parentId, data),
-    onSuccess: (response, variables) => {
+    onSuccess: (_response, variables) => {
       // Invalider les listes et la généalogie du parent
       queryClient.invalidateQueries({ queryKey: SEED_LOT_KEYS.lists() });
       queryClient.invalidateQueries({
@@ -211,7 +211,7 @@ export function useCreateChildLot(
  * Hook pour transférer un lot
  */
 export function useTransferSeedLot(
-  options?: UseMutationOptions<
+  options?: UseMutationOptions
     ApiResponse<SeedLot>,
     Error,
     { id: string; targetMultiplierId: number; quantity: number; notes?: string }
@@ -219,13 +219,13 @@ export function useTransferSeedLot(
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<
+  return useMutation
     ApiResponse<SeedLot>,
     Error,
     { id: string; targetMultiplierId: number; quantity: number; notes?: string }
   >({
     mutationFn: ({ id, ...data }) => seedLotService.transferLot(id, data),
-    onSuccess: (response, variables) => {
+    onSuccess: (_response, variables) => {
       // Invalider les caches pertinents
       queryClient.invalidateQueries({ queryKey: SEED_LOT_KEYS.lists() });
       queryClient.invalidateQueries({
@@ -243,7 +243,7 @@ export function useTransferSeedLot(
  * Hook pour récupérer les statistiques des lots
  */
 export function useSeedLotStatistics(
-  params?: SeedLotFilters,
+  params?: Partial<SeedLotFilters>,
   options?: UseQueryOptions<ApiResponse<any>>
 ) {
   return useQuery<ApiResponse<any>>({
@@ -274,7 +274,7 @@ export function useExpiringSeedLots(
  */
 export function useSearchSeedLots(
   query: string,
-  params?: SeedLotFilters,
+  params?: Partial<SeedLotFilters>,
   options?: UseQueryOptions<ApiResponse<SeedLot[]>>
 ) {
   return useQuery<ApiResponse<SeedLot[]>>({
@@ -290,10 +290,10 @@ export function useSearchSeedLots(
  * Hook pour exporter les lots
  */
 export function useExportSeedLots() {
-  return useMutation<
+  return useMutation
     Blob,
     Error,
-    { format: "csv" | "xlsx" | "json"; filters?: SeedLotFilters }
+    { format: "csv" | "xlsx" | "json"; filters?: Partial<SeedLotFilters> }
   >({
     mutationFn: ({ format, filters }) => seedLotService.export(format, filters),
     onSuccess: () => {
@@ -309,7 +309,7 @@ export function useExportSeedLots() {
  * Hook pour mettre à jour le statut d'un lot
  */
 export function useUpdateSeedLotStatus(
-  options?: UseMutationOptions<
+  options?: UseMutationOptions
     ApiResponse<SeedLot>,
     Error,
     { id: string; status: string; notes?: string }
@@ -317,7 +317,7 @@ export function useUpdateSeedLotStatus(
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<
+  return useMutation
     ApiResponse<SeedLot>,
     Error,
     { id: string; status: string; notes?: string }
@@ -392,7 +392,7 @@ export function useSeedLotsByParcel(
  * Hook pour générer un rapport de lot
  */
 export function useGenerateSeedLotReport() {
-  return useMutation<
+  return useMutation
     Blob,
     Error,
     { id: string; type: "certificate" | "history" | "quality" }

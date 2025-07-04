@@ -650,35 +650,35 @@ export const apiService = {
       return apiService.get("/export/formats");
     },
 
-    async seedLots(format: string = "csv", params?: any) {
+    async seedLots(format: string = "csv", _params?: any) {
       return apiService.downloadFile(
         `/export/seed-lots?format=${format}`,
         `lots_semences.${format}`
       );
     },
 
-    async varieties(format: string = "csv", params?: any) {
+    async varieties(format: string = "csv", _params?: any) {
       return apiService.downloadFile(
         `/export/varieties?format=${format}`,
         `varietes.${format}`
       );
     },
 
-    async multipliers(format: string = "csv", params?: any) {
+    async multipliers(format: string = "csv", _params?: any) {
       return apiService.downloadFile(
         `/export/multipliers?format=${format}`,
         `multiplicateurs.${format}`
       );
     },
 
-    async qualityReport(params?: any) {
+    async qualityReport(_params?: any) {
       return apiService.downloadFile(
         "/export/quality-report",
         "rapport_qualite.pdf"
       );
     },
 
-    async productionReport(params?: any) {
+    async productionReport(_params?: any) {
       return apiService.downloadFile(
         "/export/production-report",
         "rapport_production.pdf"

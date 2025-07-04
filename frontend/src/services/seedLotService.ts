@@ -1,6 +1,5 @@
 // frontend/src/services/seedLotService.ts - VERSION COMPLÈTE ET CORRIGÉE
 
-import { AxiosResponse } from "axios";
 import { api } from "./api";
 import { SeedLot } from "../types/entities";
 import {
@@ -8,7 +7,6 @@ import {
   PaginationParams,
   FilterParams,
   SeedLotFilters,
-  ExtendedApiResponse,
 } from "../types/api";
 import { DataTransformer } from "../utils/transformers";
 import { toast } from "react-toastify";
@@ -65,7 +63,7 @@ class SeedLotService {
    * Récupère la liste des lots avec pagination et filtres
    */
   async getAll(
-    params?: PaginationParams & SeedLotFilters
+    params?: PaginationParams & Partial<SeedLotFilters>
   ): Promise<ApiResponse<SeedLot[]>> {
     try {
       const response = await api.get<ApiResponse<SeedLot[]>>(this.basePath, {
@@ -311,7 +309,7 @@ class SeedLotService {
    */
   async export(
     format: "csv" | "xlsx" | "json" = "csv",
-    params?: SeedLotFilters
+    params?: Partial<SeedLotFilters>
   ): Promise<Blob> {
     try {
       const response = await api.get(`/export/seed-lots`, {
@@ -336,7 +334,9 @@ class SeedLotService {
   /**
    * Récupère les statistiques des lots
    */
-  async getStatistics(params?: SeedLotFilters): Promise<ApiResponse<any>> {
+  async getStatistics(
+    params?: Partial<SeedLotFilters>
+  ): Promise<ApiResponse<any>> {
     try {
       const response = await api.get<ApiResponse<any>>(
         `${this.basePath}/statistics`,
