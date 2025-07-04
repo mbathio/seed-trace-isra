@@ -1,10 +1,8 @@
-// backend/src/routes/seed-lots.ts - VERSION CORRIGÉE
 import { Router } from "express";
 import { SeedLotController } from "../controllers/SeedLotController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole, authMiddleware } from "../middleware/auth";
 import { parseQueryParams } from "../middleware/queryParser";
-import { seedLotTransformation } from "../middleware/transformationMiddleware";
 import {
   createSeedLotSchema,
   updateSeedLotSchema,
@@ -15,9 +13,7 @@ import {
 
 const router = Router();
 
-// ✅ IMPORTANT: Appliquer le middleware de transformation à TOUTES les routes
-router.use(seedLotTransformation);
-
+// Routes publiques (pas d'authentification requise pour la consultation)
 // GET /api/seed-lots - Liste des lots de semences
 router.get(
   "/",
@@ -35,6 +31,10 @@ router.get("/:id/genealogy", SeedLotController.getGenealogyTree);
 // GET /api/seed-lots/:id/qr-code - Code QR du lot
 router.get("/:id/qr-code", SeedLotController.getQRCode);
 
+// GET /api/seed-lots/:id/stats - Statistiques du lot
+router.get("/:id/stats", SeedLotController.getSeedLotStats);
+
+// Routes protégées (authentification requise)
 // POST /api/seed-lots - Créer un nouveau lot
 router.post(
   "/",

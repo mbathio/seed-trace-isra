@@ -1,11 +1,18 @@
-// backend/src/middleware/errorHandler.ts - ✅ CORRIGÉ avec gestion uniforme
+// 1. backend/src/middleware/errorHandler.ts - CORRIGÉ
 import { Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
 import { logger } from "../utils/logger";
 import { ResponseHandler } from "../utils/response";
-import { SeedLotError } from "../services/SeedLotService";
 
-// ✅ CORRECTION: Interface pour les erreurs personnalisées
+// ✅ CORRECTION: Définir SeedLotError localement
+export class SeedLotError extends Error {
+  constructor(public code: string, message: string) {
+    super(message);
+    this.name = "SeedLotError";
+  }
+}
+
+// Interface pour les erreurs personnalisées
 interface CustomError extends Error {
   code?: string;
   statusCode?: number;
@@ -18,7 +25,7 @@ export function errorHandler(
   res: Response,
   next: NextFunction
 ): Response | void {
-  // ✅ CORRECTION: Logging structuré avec plus de détails
+  // Logging structuré avec plus de détails
   const errorInfo = {
     message: error.message,
     stack: error.stack,
@@ -35,7 +42,7 @@ export function errorHandler(
 
   logger.error("Error handled:", errorInfo);
 
-  // ✅ CORRECTION: Gestion des erreurs personnalisées de l'application
+  // Gestion des erreurs personnalisées de l'application
   if (error instanceof SeedLotError) {
     switch (error.code) {
       case "VARIETY_NOT_FOUND":
@@ -53,6 +60,8 @@ export function errorHandler(
         return ResponseHandler.error(res, error.message, 400);
     }
   }
+
+  // Gestion des erreurs de transformation
   if (
     error.message.includes("transformation") ||
     error.message.includes("enum")
@@ -61,7 +70,8 @@ export function errorHandler(
       "Erreur de transformation des données. Vérifiez les valeurs envoyées.",
     ]);
   }
-  // ✅ CORRECTION: Gestion améliorée des erreurs Prisma
+
+  // Gestion améliorée des erreurs Prisma
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     switch (error.code) {
       case "P2002":
@@ -118,7 +128,7 @@ export function errorHandler(
     }
   }
 
-  // ✅ CORRECTION: Gestion des erreurs de validation Prisma
+  // Gestion des erreurs de validation Prisma
   if (error instanceof Prisma.PrismaClientValidationError) {
     return ResponseHandler.validationError(
       res,
@@ -127,7 +137,7 @@ export function errorHandler(
     );
   }
 
-  // ✅ CORRECTION: Gestion des erreurs de connexion Prisma
+  // Gestion des erreurs de connexion Prisma
   if (error instanceof Prisma.PrismaClientInitializationError) {
     logger.error("Database initialization error:", error);
     return ResponseHandler.serverError(
@@ -144,7 +154,7 @@ export function errorHandler(
     );
   }
 
-  // ✅ CORRECTION: Gestion améliorée des erreurs JWT
+  // Gestion améliorée des erreurs JWT
   if (error.name === "JsonWebTokenError") {
     return ResponseHandler.unauthorized(
       res,
@@ -163,7 +173,7 @@ export function errorHandler(
     );
   }
 
-  // ✅ CORRECTION: Gestion des erreurs de validation Zod
+  // Gestion des erreurs de validation Zod
   if (error.name === "ZodError") {
     const zodError = error as any;
     const errors = zodError.errors?.map(
@@ -173,7 +183,7 @@ export function errorHandler(
     return ResponseHandler.validationError(res, errors, "Données invalides");
   }
 
-  // ✅ CORRECTION: Gestion des erreurs de validation personnalisées
+  // Gestion des erreurs de validation personnalisées
   if (error.name === "ValidationError") {
     const errors = (error as any).errors
       ? Object.values((error as any).errors).map((err: any) => err.message)
@@ -181,7 +191,7 @@ export function errorHandler(
     return ResponseHandler.validationError(res, errors);
   }
 
-  // ✅ CORRECTION: Gestion des erreurs de multer (upload de fichiers)
+  // Gestion des erreurs de multer (upload de fichiers)
   if (error.code === "LIMIT_FILE_SIZE") {
     return ResponseHandler.error(res, "Fichier trop volumineux", 400, [
       "La taille du fichier dépasse la limite autorisée",
@@ -194,26 +204,26 @@ export function errorHandler(
     ]);
   }
 
-  // ✅ CORRECTION: Gestion des erreurs de syntaxe JSON
+  // Gestion des erreurs de syntaxe JSON
   if (error instanceof SyntaxError && "body" in error) {
     return ResponseHandler.error(res, "Format JSON invalide", 400, [
       "Vérifiez la syntaxe de votre requête JSON",
     ]);
   }
 
-  // ✅ CORRECTION: Gestion des erreurs de timeout
+  // Gestion des erreurs de timeout
   if (error.code === "ETIMEDOUT" || error.code === "ECONNRESET") {
     return ResponseHandler.error(res, "Timeout de la requête", 408, [
       "La requête a pris trop de temps",
     ]);
   }
 
-  // ✅ CORRECTION: Gestion des erreurs avec statusCode personnalisé
+  // Gestion des erreurs avec statusCode personnalisé
   if (error.statusCode) {
     return ResponseHandler.error(res, error.message, error.statusCode);
   }
 
-  // ✅ CORRECTION: Gestion des erreurs par défaut avec message sécurisé
+  // Gestion des erreurs par défaut avec message sécurisé
   const isDevelopment = process.env.NODE_ENV === "development";
   const message = isDevelopment
     ? error.message
@@ -235,7 +245,7 @@ export function errorHandler(
   return ResponseHandler.serverError(res, message);
 }
 
-// ✅ CORRECTION: Middleware pour gérer les promesses rejetées
+// Middleware pour gérer les promesses rejetées
 export function asyncErrorHandler(
   fn: (req: Request, res: Response, next: NextFunction) => Promise<any>
 ) {
@@ -244,7 +254,7 @@ export function asyncErrorHandler(
   };
 }
 
-// ✅ CORRECTION: Gestionnaire d'erreurs pour les routes non trouvées
+// Gestionnaire d'erreurs pour les routes non trouvées
 export function notFoundHandler(req: Request, res: Response): Response {
   return ResponseHandler.notFound(
     res,

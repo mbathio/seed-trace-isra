@@ -1,4 +1,4 @@
-// backend/src/services/SeedLotService.ts
+// 3. backend/src/services/SeedLotService.ts - CORRECTION COMPLÈTE
 import { PrismaClient, Prisma, SeedLevel, LotStatus } from "@prisma/client";
 import {
   generateLotId,
@@ -9,7 +9,7 @@ import { logger } from "../utils/logger";
 
 const prisma = new PrismaClient();
 
-// Interface pour les erreurs personnalisées
+// ✅ EXPORT de SeedLotError
 export class SeedLotError extends Error {
   constructor(public code: string, message: string) {
     super(message);
@@ -106,11 +106,11 @@ export class SeedLotService {
         data: {
           id: lotId,
           variety: { connect: { id: data.varietyId } },
-          level: seedLevel, // Utiliser l'enum
+          level: seedLevel,
           quantity: data.quantity,
           productionDate: new Date(data.productionDate),
           expiryDate: data.expiryDate ? new Date(data.expiryDate) : undefined,
-          status: lotStatus, // Utiliser l'enum
+          status: lotStatus,
           multiplier: data.multiplierId
             ? { connect: { id: data.multiplierId } }
             : undefined,
@@ -170,9 +170,11 @@ export class SeedLotService {
 
       // Filtres spécifiques avec conversion en enums
       if (params.level) {
+        // ✅ CORRECTION: Utiliser l'enum SeedLevel avec assertion de type
         where.level = params.level as SeedLevel;
       }
       if (params.status) {
+        // ✅ CORRECTION: Utiliser l'enum LotStatus avec assertion de type
         where.status = params.status as LotStatus;
       }
       if (params.varietyId) {
@@ -308,6 +310,7 @@ export class SeedLotService {
 
       // Ajouter status seulement s'il est fourni
       if (data.status) {
+        // ✅ CORRECTION: Utiliser l'enum LotStatus avec assertion de type
         updateData.status = data.status as LotStatus;
       }
 
@@ -540,7 +543,7 @@ export class SeedLotService {
         multiplierId: targetMultiplierId,
         parentLotId: lotId,
         notes: notes || `Transféré depuis ${lotId}`,
-        status: sourceLot.status, // Conserver le statut du lot source
+        status: sourceLot.status,
       });
 
       // Mettre à jour la quantité du lot source

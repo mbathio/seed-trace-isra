@@ -1,6 +1,4 @@
-// backend/src/services/GenealogyService.ts - Service pour la gestion de la généalogie
-
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient, Prisma, SeedLotUpdateInput } from "@prisma/client";
 import { logger } from "../utils/logger";
 
 const prisma = new PrismaClient();
@@ -20,6 +18,7 @@ export interface GenealogyNode {
     id: number;
     name: string;
   };
+  parentLotId?: string; // ✅ AJOUT de parentLotId
   children: GenealogyNode[];
   _depth?: number;
   _path?: string[];
@@ -131,6 +130,7 @@ export class GenealogyService {
                 name: lot.multiplier.name,
               }
             : undefined,
+          parentLotId: lot.parentLotId || undefined, // ✅ CORRECTION: Convertir null en undefined
           children,
           _depth: depth,
           _path: currentPath,
@@ -187,6 +187,7 @@ export class GenealogyService {
           productionDate: lot.productionDate,
           status: lot.status,
           multiplier: lot.multiplier,
+          parentLotId: lot.parentLotId || undefined, // ✅ CORRECTION: Convertir null en undefined
         });
 
         currentLotId = lot.parentLotId;
@@ -232,7 +233,7 @@ export class GenealogyService {
             productionDate: child.productionDate,
             status: child.status,
             multiplier: child.multiplier,
-            parentLotId: child.parentLotId,
+            parentLotId: child.parentLotId || undefined, // ✅ CORRECTION: Convertir null en undefined
           });
           queue.push(child.id);
         }
@@ -274,36 +275,22 @@ export class GenealogyService {
         throw new Error(`Lot not found: ${lotId}`);
       }
 
+      // ✅ CORRECTION: Fonction helper pour transformer un lot
+      const transformLot = (seedLot: any) => ({
+        id: seedLot.id,
+        level: seedLot.level,
+        variety: seedLot.variety,
+        quantity: seedLot.quantity,
+        productionDate: seedLot.productionDate,
+        status: seedLot.status,
+        multiplier: seedLot.multiplier,
+        parentLotId: seedLot.parentLotId || undefined,
+      });
+
       return {
-        current: {
-          id: lot.id,
-          level: lot.level,
-          variety: lot.variety,
-          quantity: lot.quantity,
-          productionDate: lot.productionDate,
-          status: lot.status,
-          multiplier: lot.multiplier,
-        },
-        parent: lot.parentLot
-          ? {
-              id: lot.parentLot.id,
-              level: lot.parentLot.level,
-              variety: lot.parentLot.variety,
-              quantity: lot.parentLot.quantity,
-              productionDate: lot.parentLot.productionDate,
-              status: lot.parentLot.status,
-              multiplier: lot.parentLot.multiplier,
-            }
-          : null,
-        children: lot.childLots.map((child) => ({
-          id: child.id,
-          level: child.level,
-          variety: child.variety,
-          quantity: child.quantity,
-          productionDate: child.productionDate,
-          status: child.status,
-          multiplier: child.multiplier,
-        })),
+        current: transformLot(lot),
+        parent: lot.parentLot ? transformLot(lot.parentLot) : null,
+        children: lot.childLots.map(transformLot),
       };
     } catch (error) {
       logger.error("Error getting direct relations:", error);
@@ -472,7 +459,10 @@ export class GenealogyService {
           );
         }
 
-        updateData.parentLotId = data.newParentId;
+        // ✅ CORRECTION: Utiliser parentLot au lieu de parentLotId
+        updateData.parentLot = {
+          connect: { id: data.newParentId },
+        };
       }
 
       if (data.notes) {

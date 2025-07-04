@@ -149,78 +149,85 @@ export const varietyTransformation = (
 /**
  * Transforme les énumérations entre UI et DB pour les lots de semences
  */
+// backend/src/middleware/transformationMiddleware.ts - EXTRAIT CORRIGÉ
 export const seedLotTransformation = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  // Nettoyer les paramètres de requête
-  if (req.query) {
-    req.query = cleanQueryParams(req.query);
-  }
+  // Transformer les données entrantes (body)
+  if (req.body) {
+    // Convertir level en majuscules
+    if (req.body.level && typeof req.body.level === "string") {
+      req.body.level = req.body.level.toUpperCase();
+    }
 
-  // Transformation UI → DB pour les niveaux et statuts
-  if (req.body?.level) {
-    req.body.level = req.body.level.toUpperCase();
-  }
+    // Convertir status en majuscules
+    if (req.body.status && typeof req.body.status === "string") {
+      req.body.status = req.body.status.toUpperCase();
+    }
 
-  if (req.body?.status) {
-    const uiToDbMap: Record<string, string> = {
-      pending: "PENDING",
-      certified: "CERTIFIED",
-      rejected: "REJECTED",
-      "in-stock": "IN_STOCK",
-      sold: "SOLD",
-      active: "ACTIVE",
-      distributed: "DISTRIBUTED",
-    };
-
-    if (uiToDbMap[req.body.status]) {
-      req.body.status = uiToDbMap[req.body.status];
+    // Convertir seedLevel en level si présent
+    if (req.body.seedLevel && !req.body.level) {
+      req.body.level = req.body.seedLevel.toUpperCase();
+      delete req.body.seedLevel;
     }
   }
 
-  // Intercepter la réponse pour transformation DB → UI
+  // Transformer les query params
+  if (req.query) {
+    if (req.query.level && typeof req.query.level === "string") {
+      req.query.level = req.query.level.toUpperCase();
+    }
+    if (req.query.status && typeof req.query.status === "string") {
+      req.query.status = req.query.status.toUpperCase();
+    }
+  }
+
+  // Intercepter la réponse pour transformer les données sortantes
   const originalJson = res.json.bind(res);
   res.json = function (data: any) {
-    // Ne pas transformer si pas de données
-    if (!data || typeof data !== "object") {
-      return originalJson(data);
-    }
+    // Maps de conversion DB -> UI
+    const levelDbToUiMap: Record<string, string> = {
+      GO: "GO",
+      G1: "G1",
+      G2: "G2",
+      G3: "G3",
+      G4: "G4",
+      R1: "R1",
+      R2: "R2",
+    };
 
     const statusDbToUiMap: Record<string, string> = {
       PENDING: "pending",
       CERTIFIED: "certified",
       REJECTED: "rejected",
-      IN_STOCK: "in-stock",
-      SOLD: "sold",
-      ACTIVE: "active",
-      DISTRIBUTED: "distributed",
+      EXPIRED: "expired",
     };
 
-    const levelDbToUiMap: Record<string, string> = {
-      GO: "go",
-      G1: "g1",
-      G2: "g2",
-      G3: "g3",
-      G4: "g4",
-      R1: "r1",
-      R2: "r2",
-      N: "n",
-    };
-
-    // Fonction helper pour transformer un lot
-    const transformLot = (lot: any): any => {
+    // Fonction pour transformer un lot
+    const transformSeedLot = (lot: any): any => {
       if (!lot || typeof lot !== "object") return lot;
 
       const transformed = { ...lot };
 
+      // Transformer le niveau si présent
+      if (lot.level && levelDbToUiMap[lot.level]) {
+        transformed.level = levelDbToUiMap[lot.level];
+      }
+
+      // Transformer le status si présent
       if (lot.status && statusDbToUiMap[lot.status]) {
         transformed.status = statusDbToUiMap[lot.status];
       }
 
-      if (lot.level && levelDbToUiMap[lot.level.toUpperCase()]) {
-        transformed.level = levelDbToUiMap[lot.level.toUpperCase()];
+      // Transformer récursivement les relations
+      if (lot.parentLot) {
+        transformed.parentLot = transformSeedLot(lot.parentLot);
+      }
+
+      if (lot.childLots && Array.isArray(lot.childLots)) {
+        transformed.childLots = lot.childLots.map(transformSeedLot);
       }
 
       return transformed;
@@ -229,15 +236,12 @@ export const seedLotTransformation = (
     // Cloner les données pour éviter les mutations
     const transformedData = JSON.parse(JSON.stringify(data));
 
-    // Transformer les données
+    // Transformer les données selon la structure
     if (transformedData?.data) {
-      // Transformer un tableau de lots
       if (Array.isArray(transformedData.data)) {
-        transformedData.data = transformedData.data.map(transformLot);
-      }
-      // Transformer un seul lot
-      else if (typeof transformedData.data === "object") {
-        transformedData.data = transformLot(transformedData.data);
+        transformedData.data = transformedData.data.map(transformSeedLot);
+      } else if (typeof transformedData.data === "object") {
+        transformedData.data = transformSeedLot(transformedData.data);
       }
     }
 

@@ -1,20 +1,12 @@
-// backend/src/controllers/SeedLotController.ts
 import { Request, Response, NextFunction } from "express";
 import { SeedLotService } from "../services/SeedLotService";
 import { ResponseHandler } from "../utils/response";
 import { logger } from "../utils/logger";
 import QRCode from "qrcode";
 
-// Interface étendue pour les requêtes authentifiées (si nécessaire)
-interface AuthenticatedRequest extends Request {
-  user?: {
-    userId: number;
-    role: string;
-  };
-}
-
 export class SeedLotController {
   /**
+   * GET /api/seed-lots
    * Récupère la liste des lots avec pagination et filtres
    */
   static async getSeedLots(
@@ -27,14 +19,19 @@ export class SeedLotController {
 
       const result = await SeedLotService.getSeedLots(req.query);
 
-      // Retourner les données dans le format standard
-      return res.json(result);
+      return ResponseHandler.success(
+        res,
+        result.data,
+        "Lots récupérés avec succès",
+        result.meta
+      );
     } catch (error) {
       next(error);
     }
   }
 
   /**
+   * GET /api/seed-lots/:id
    * Récupère un lot par son ID
    */
   static async getSeedLotById(
@@ -53,6 +50,7 @@ export class SeedLotController {
   }
 
   /**
+   * POST /api/seed-lots
    * Crée un nouveau lot
    */
   static async createSeedLot(
@@ -76,6 +74,7 @@ export class SeedLotController {
   }
 
   /**
+   * PUT /api/seed-lots/:id
    * Met à jour un lot
    */
   static async updateSeedLot(
@@ -99,6 +98,7 @@ export class SeedLotController {
   }
 
   /**
+   * DELETE /api/seed-lots/:id
    * Supprime un lot
    */
   static async deleteSeedLot(
@@ -111,7 +111,6 @@ export class SeedLotController {
 
       await SeedLotService.deleteSeedLot(id);
 
-      // Utiliser noContent pour les suppressions
       return ResponseHandler.noContent(res);
     } catch (error) {
       next(error);
@@ -119,6 +118,7 @@ export class SeedLotController {
   }
 
   /**
+   * GET /api/seed-lots/:id/genealogy
    * Récupère l'arbre généalogique d'un lot
    */
   static async getGenealogyTree(
@@ -142,6 +142,7 @@ export class SeedLotController {
   }
 
   /**
+   * GET /api/seed-lots/:id/qr-code
    * Génère le QR Code d'un lot
    */
   static async getQRCode(
@@ -159,8 +160,10 @@ export class SeedLotController {
         id: seedLot.id,
         variety: seedLot.variety.name,
         level: seedLot.level,
-        productionDate: seedLot.productionDate,
         quantity: seedLot.quantity,
+        productionDate: seedLot.productionDate,
+        status: seedLot.status,
+        parentLotId: seedLot.parentLotId,
       };
 
       // Générer le QR Code
@@ -175,7 +178,7 @@ export class SeedLotController {
 
       return ResponseHandler.success(
         res,
-        qrCodeDataUrl,
+        { qrCode: qrCodeDataUrl },
         "QR Code généré avec succès"
       );
     } catch (error) {
@@ -184,6 +187,7 @@ export class SeedLotController {
   }
 
   /**
+   * POST /api/seed-lots/:id/child-lots
    * Crée un lot enfant
    */
   static async createChildLot(
@@ -207,7 +211,8 @@ export class SeedLotController {
   }
 
   /**
-   * Transfère un lot
+   * POST /api/seed-lots/:id/transfer
+   * Transfère un lot vers un autre multiplicateur
    */
   static async transferLot(
     req: Request,
@@ -218,17 +223,37 @@ export class SeedLotController {
       const { id } = req.params;
       const { targetMultiplierId, quantity, notes } = req.body;
 
-      const transferredLot = await SeedLotService.transferLot(
+      const result = await SeedLotService.transferLot(
         id,
         targetMultiplierId,
         quantity,
         notes
       );
 
+      return ResponseHandler.success(res, result, "Lot transféré avec succès");
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/seed-lots/:id/stats
+   * Récupère les statistiques d'un lot
+   */
+  static async getSeedLotStats(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { id } = req.params;
+
+      const stats = await SeedLotService.getSeedLotStats(id);
+
       return ResponseHandler.success(
         res,
-        transferredLot,
-        "Lot transféré avec succès"
+        stats,
+        "Statistiques récupérées avec succès"
       );
     } catch (error) {
       next(error);
