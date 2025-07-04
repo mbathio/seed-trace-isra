@@ -56,7 +56,7 @@ const VarietyDetail: React.FC = () => {
     queryKey: ["variety-seed-lots", id], // ✅ CORRIGÉ: Clé cohérente
     queryFn: async () => {
       const response = await seedLotService.getAll({ varietyId: id }); // ✅ CORRIGÉ: Service unifié
-      return response.data.data;
+      return response.data;
     },
     enabled: !!id,
   });

@@ -84,7 +84,7 @@ const CreateSeedLot: React.FC = () => {
     },
     onSuccess: (data) => {
       toast.success("Lot de semences créé avec succès !");
-      navigate(`/dashboard/seed-lots/${data.data.id}`);
+      navigate(`/dashboard/seed-lots/${data.id}`);
     },
     onError: (error: any) => {
       const errorMessage =

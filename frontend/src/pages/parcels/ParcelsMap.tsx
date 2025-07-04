@@ -1,5 +1,5 @@
 import React from "react";
-import { MapboxMap } from "../../components/map/MapboxMapWithRoutes";
+import { MapboxMapWithRoutes } from "../../components/map/MapboxMapWithRoutes";
 import {
   Card,
   CardContent,
@@ -33,7 +33,7 @@ export const ParcelsMap: React.FC<ParcelsMapProps> = ({ parcels }) => {
         <CardTitle>Carte des parcelles</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <MapboxMap
+        <MapboxMapWithRoutes
           locations={mapLocations}
           height="600px"
           onMarkerClick={(location) => {

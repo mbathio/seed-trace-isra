@@ -1,6 +1,6 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapboxMap } from "../map/MapboxMapWithRoutes";
+import { MapboxMapWithRoutes } from "../map/MapboxMapWithRoutes";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { api } from "../../services/api";
@@ -66,7 +66,7 @@ export const GlobalMap: React.FC = () => {
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <MapboxMap locations={allLocations} height="400px" />
+        <MapboxMapWithRoutes locations={allLocations} height="400px" />
       </CardContent>
     </Card>
   );

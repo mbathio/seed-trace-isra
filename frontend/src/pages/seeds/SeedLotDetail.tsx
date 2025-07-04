@@ -68,7 +68,7 @@ const SeedLotDetail: React.FC = () => {
     queryFn: async () => {
       if (!id) throw new Error("ID manquant");
       const response = await seedLotService.getById(id);
-      return response.data.data;
+      return response.data;
     },
     enabled: !!id,
   });
