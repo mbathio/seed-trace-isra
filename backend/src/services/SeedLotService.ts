@@ -1,4 +1,4 @@
-// backend/src/services/SeedLotService.ts
+// backend/src/services/SeedLotService.ts - VERSION CORRIGÉE COMPLÈTE
 
 import { PrismaClient, Prisma, SeedLevel, LotStatus } from "@prisma/client";
 import {
@@ -11,6 +11,7 @@ import { logger } from "../utils/logger";
 import { CacheService } from "./CacheService";
 import { NotificationService } from "./NotificationService";
 import { ValidationService } from "./ValidationService";
+import { GenealogyService } from "./GenealogyService";
 
 const prisma = new PrismaClient();
 
@@ -52,6 +53,21 @@ interface SeedLotFilters {
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   includeRelations?: boolean;
+}
+
+// Interface pour le résultat de getSeedLots
+interface GetSeedLotsResult {
+  success: boolean;
+  message: string;
+  data: any[];
+  meta: {
+    totalCount: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
 }
 
 export class SeedLotService {
@@ -187,7 +203,9 @@ export class SeedLotService {
   /**
    * READ - Récupérer la liste des lots avec pagination et filtres
    */
-  static async getSeedLots(filters: SeedLotFilters = {}) {
+  static async getSeedLots(
+    filters: SeedLotFilters = {}
+  ): Promise<GetSeedLotsResult> {
     try {
       // 1. Paramètres de pagination
       const page = filters.page || 1;
@@ -262,7 +280,7 @@ export class SeedLotService {
       const cached = await CacheService.get(cacheKey);
       if (cached) {
         logger.info("Returning cached seed lots");
-        return cached;
+        return cached as GetSeedLotsResult;
       }
 
       // 5. Requêtes à la base de données
@@ -315,7 +333,7 @@ export class SeedLotService {
       const hasNextPage = page < totalPages;
       const hasPreviousPage = page > 1;
 
-      const result = {
+      const result: GetSeedLotsResult = {
         success: true,
         message: "Lots récupérés avec succès",
         data: seedLots,
@@ -664,13 +682,6 @@ export class SeedLotService {
       await CacheService.invalidate("seedlots:*");
       await CacheService.invalidate("stats:*");
 
-      // 5. Log d'audit
-      logger.audit("Seed lot deleted", {
-        lotId: id,
-        hardDelete,
-        deletedBy: "system", // À remplacer par l'utilisateur actuel
-      });
-
       logger.info(`Seed lot deleted successfully: ${id}`);
       return { success: true, message: `Lot ${id} supprimé avec succès` };
     } catch (error) {
@@ -782,7 +793,7 @@ export class SeedLotService {
       }
 
       // Préparer les données de mise à jour
-      const dataToUpdate: any = {
+      const dataToUpdate: Prisma.SeedLotUpdateManyMutationInput = {
         updatedAt: new Date(),
       };
 
@@ -790,7 +801,7 @@ export class SeedLotService {
       if (updateData.quantity !== undefined)
         dataToUpdate.quantity = updateData.quantity;
       if (updateData.status !== undefined)
-        dataToUpdate.status = updateData.status;
+        dataToUpdate.status = updateData.status as LotStatus;
       if (updateData.notes !== undefined) dataToUpdate.notes = updateData.notes;
       if (updateData.expiryDate !== undefined)
         dataToUpdate.expiryDate = updateData.expiryDate
@@ -805,7 +816,7 @@ export class SeedLotService {
           id: { in: ids },
           isActive: true,
         },
-        data: dataToUpdate, // Utiliser dataToUpdate au lieu de destructurer
+        data: dataToUpdate,
       });
 
       // Invalider le cache
@@ -826,42 +837,13 @@ export class SeedLotService {
     }
   }
 
+  // Méthode pour récupérer l'arbre généalogique (utilise GenealogyService)
   static async getGenealogyTree(
     lotId: string,
     maxDepth: number = 10
   ): Promise<any> {
     try {
-      const buildTree = async (
-        currentId: string,
-        depth: number = 0
-      ): Promise<any> => {
-        if (depth > maxDepth) return null;
-
-        const lot = await prisma.seedLot.findUnique({
-          where: { id: currentId },
-          include: {
-            variety: true,
-            multiplier: true,
-            childLots: {
-              include: { variety: true },
-            },
-          },
-        });
-
-        if (!lot) return null;
-
-        const children = await Promise.all(
-          lot.childLots.map((child) => buildTree(child.id, depth + 1))
-        );
-
-        return {
-          ...lot,
-          children: children.filter(Boolean),
-          _depth: depth,
-        };
-      };
-
-      return await buildTree(lotId);
+      return await GenealogyService.getGenealogyTree(lotId, maxDepth);
     } catch (error) {
       logger.error("Error getting genealogy tree", error);
       throw error;
@@ -920,6 +902,7 @@ export class SeedLotService {
     try {
       const sourceLot = await prisma.seedLot.findUnique({
         where: { id: lotId },
+        include: { variety: true }, // Ajout de l'include pour avoir accès à variety
       });
 
       if (!sourceLot) {

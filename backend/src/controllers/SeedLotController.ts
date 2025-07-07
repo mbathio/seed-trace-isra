@@ -1,9 +1,9 @@
-// backend/src/controllers/SeedLotController.ts
+// backend/src/controllers/SeedLotController.ts - VERSION CORRIGÉE
 
 import { Request, Response, NextFunction } from "express";
 import { SeedLotService } from "../services/SeedLotService";
 import { ResponseHandler } from "../utils/response";
-import { logger } from "../utils/logger";
+import { logger, LoggerUtils } from "../utils/logger"; // Import corrigé
 import { AuthenticatedRequest } from "../middleware/auth";
 import QRCode from "qrcode";
 
@@ -25,9 +25,8 @@ export class SeedLotController {
 
       const seedLot = await SeedLotService.createSeedLot(req.body);
 
-      // Log d'audit
-      logger.audit("Seed lot created", {
-        userId: req.user?.userId,
+      // Log d'audit - Utiliser LoggerUtils au lieu de logger.audit
+      LoggerUtils.audit("Seed lot created", req.user?.userId, {
         seedLotId: seedLot.id,
         variety: seedLot.variety.name,
         level: seedLot.level,
@@ -77,12 +76,28 @@ export class SeedLotController {
 
       const result = await SeedLotService.getSeedLots(filters);
 
-      return ResponseHandler.success(
-        res,
-        result.data,
-        result.message,
-        result.meta
-      );
+      // Correction: Accéder correctement aux propriétés du résultat
+      if (
+        result &&
+        typeof result === "object" &&
+        "data" in result &&
+        "message" in result &&
+        "meta" in result
+      ) {
+        return ResponseHandler.success(
+          res,
+          result.data,
+          result.message,
+          result.meta
+        );
+      } else {
+        // Si la structure est différente, adapter
+        return ResponseHandler.success(
+          res,
+          result,
+          "Lots récupérés avec succès"
+        );
+      }
     } catch (error) {
       next(error);
     }
@@ -132,9 +147,8 @@ export class SeedLotController {
 
       const seedLot = await SeedLotService.updateSeedLot(id, req.body);
 
-      // Log d'audit
-      logger.audit("Seed lot updated", {
-        userId: req.user?.userId,
+      // Log d'audit - Utiliser LoggerUtils
+      LoggerUtils.audit("Seed lot updated", req.user?.userId, {
         seedLotId: id,
         changes: Object.keys(req.body),
       });
@@ -170,9 +184,8 @@ export class SeedLotController {
 
       await SeedLotService.deleteSeedLot(id, hardDelete);
 
-      // Log d'audit
-      logger.audit("Seed lot deleted", {
-        userId: req.user?.userId,
+      // Log d'audit - Utiliser LoggerUtils
+      LoggerUtils.audit("Seed lot deleted", req.user?.userId, {
         seedLotId: id,
         hardDelete,
       });
@@ -201,8 +214,7 @@ export class SeedLotController {
 
       const result = await SeedLotService.bulkUpdateSeedLots(ids, updateData);
 
-      logger.audit("Bulk seed lots update", {
-        userId: req.user?.userId,
+      LoggerUtils.audit("Bulk seed lots update", req.user?.userId, {
         count: result.count,
         ids: ids.slice(0, 10), // Log seulement les 10 premiers
       });
@@ -317,14 +329,22 @@ export class SeedLotController {
 
       const seedLot = await SeedLotService.getSeedLotById(id, false);
 
+      // Vérifier que le lot a les propriétés nécessaires
+      if (!seedLot || typeof seedLot !== "object") {
+        return ResponseHandler.notFound(res, "Lot non trouvé");
+      }
+
+      // Créer un type safe pour le lot
+      const safeSeedLot = seedLot as any;
+
       // Données à encoder dans le QR Code
       const qrData = {
-        id: seedLot.id,
-        variety: seedLot.variety.code,
-        level: seedLot.level,
-        quantity: seedLot.quantity,
-        productionDate: seedLot.productionDate,
-        status: seedLot.status,
+        id: safeSeedLot.id,
+        variety: safeSeedLot.variety?.code || "N/A",
+        level: safeSeedLot.level,
+        quantity: safeSeedLot.quantity,
+        productionDate: safeSeedLot.productionDate,
+        status: safeSeedLot.status,
         url: `${process.env.CLIENT_URL}/seed-lots/${id}`,
       };
 
@@ -405,8 +425,7 @@ export class SeedLotController {
 
       const childLot = await SeedLotService.createChildLot(id, childLotData);
 
-      logger.audit("Child lot created", {
-        userId: req.user?.userId,
+      LoggerUtils.audit("Child lot created", req.user?.userId, {
         parentLotId: id,
         childLotId: childLot.id,
         quantity: childLot.quantity,
@@ -442,8 +461,7 @@ export class SeedLotController {
         notes
       );
 
-      logger.audit("Lot transferred", {
-        userId: req.user?.userId,
+      LoggerUtils.audit("Lot transferred", req.user?.userId, {
         sourceLotId: id,
         targetMultiplierId,
         quantity,

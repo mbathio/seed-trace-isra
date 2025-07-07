@@ -175,7 +175,7 @@ const Login: React.FC = () => {
               onClick={() => quickLogin("admin@isra.sn", "12345")}
               disabled={isLoading}
             >
-              <strong className="mr-2">Admin :</strong> admin@isra.sn / 12345
+              <strong className="mr-2">Admin :</strong> admin@isra.sn / 123456
             </Button>
             <Button
               type="button"
@@ -186,7 +186,7 @@ const Login: React.FC = () => {
               disabled={isLoading}
             >
               <strong className="mr-2">Chercheur :</strong> adiop@isra.sn /
-              12345
+              123456
             </Button>
             <Button
               type="button"
@@ -196,7 +196,8 @@ const Login: React.FC = () => {
               onClick={() => quickLogin("fsy@isra.sn", "12345")}
               disabled={isLoading}
             >
-              <strong className="mr-2">Technicien :</strong> fsy@isra.sn / 12345
+              <strong className="mr-2">Technicien :</strong> fsy@isra.sn /
+              123456
             </Button>
           </div>
         </div>
