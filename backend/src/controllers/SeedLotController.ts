@@ -1,67 +1,38 @@
+// backend/src/controllers/SeedLotController.ts
+
 import { Request, Response, NextFunction } from "express";
 import { SeedLotService } from "../services/SeedLotService";
 import { ResponseHandler } from "../utils/response";
 import { logger } from "../utils/logger";
+import { AuthenticatedRequest } from "../middleware/auth";
 import QRCode from "qrcode";
 
 export class SeedLotController {
   /**
-   * GET /api/seed-lots
-   * Récupère la liste des lots avec pagination et filtres
-   */
-  static async getSeedLots(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<Response | void> {
-    try {
-      logger.info("Getting seed lots with params:", req.query);
-
-      const result = await SeedLotService.getSeedLots(req.query);
-
-      return ResponseHandler.success(
-        res,
-        result.data,
-        "Lots récupérés avec succès",
-        result.meta
-      );
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * GET /api/seed-lots/:id
-   * Récupère un lot par son ID
-   */
-  static async getSeedLotById(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<Response | void> {
-    try {
-      const { id } = req.params;
-      const seedLot = await SeedLotService.getSeedLotById(id);
-
-      return ResponseHandler.success(res, seedLot, "Lot récupéré avec succès");
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
    * POST /api/seed-lots
-   * Crée un nouveau lot
+   * Créer un nouveau lot
    */
   static async createSeedLot(
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<Response | void> {
     try {
-      logger.info("Creating seed lot with data:", req.body);
+      logger.info("Creating seed lot", {
+        userId: req.user?.userId,
+        data: req.body,
+      });
 
       const seedLot = await SeedLotService.createSeedLot(req.body);
+
+      // Log d'audit
+      logger.audit("Seed lot created", {
+        userId: req.user?.userId,
+        seedLotId: seedLot.id,
+        variety: seedLot.variety.name,
+        level: seedLot.level,
+        quantity: seedLot.quantity,
+      });
 
       return ResponseHandler.created(
         res,
@@ -74,18 +45,99 @@ export class SeedLotController {
   }
 
   /**
-   * PUT /api/seed-lots/:id
-   * Met à jour un lot
+   * GET /api/seed-lots
+   * Récupérer la liste des lots avec pagination et filtres
    */
-  static async updateSeedLot(
+  static async getSeedLots(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const filters = {
+        page: req.query.page ? parseInt(req.query.page as string) : undefined,
+        pageSize: req.query.pageSize
+          ? parseInt(req.query.pageSize as string)
+          : undefined,
+        search: req.query.search as string,
+        level: req.query.level as string,
+        status: req.query.status as string,
+        varietyId: req.query.varietyId
+          ? parseInt(req.query.varietyId as string)
+          : undefined,
+        multiplierId: req.query.multiplierId
+          ? parseInt(req.query.multiplierId as string)
+          : undefined,
+        startDate: req.query.startDate as string,
+        endDate: req.query.endDate as string,
+        sortBy: req.query.sortBy as string,
+        sortOrder: req.query.sortOrder as "asc" | "desc",
+        includeRelations: req.query.includeRelations === "true",
+      };
+
+      const result = await SeedLotService.getSeedLots(filters);
+
+      return ResponseHandler.success(
+        res,
+        result.data,
+        result.message,
+        result.meta
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/seed-lots/:id
+   * Récupérer un lot par son ID
+   */
+  static async getSeedLotById(
     req: Request,
     res: Response,
     next: NextFunction
   ): Promise<Response | void> {
     try {
       const { id } = req.params;
+      const includeFullDetails = req.query.full !== "false";
+
+      const seedLot = await SeedLotService.getSeedLotById(
+        id,
+        includeFullDetails
+      );
+
+      return ResponseHandler.success(res, seedLot, "Lot récupéré avec succès");
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * PUT /api/seed-lots/:id
+   * Mettre à jour un lot
+   */
+  static async updateSeedLot(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { id } = req.params;
+
+      logger.info("Updating seed lot", {
+        userId: req.user?.userId,
+        seedLotId: id,
+        updates: req.body,
+      });
 
       const seedLot = await SeedLotService.updateSeedLot(id, req.body);
+
+      // Log d'audit
+      logger.audit("Seed lot updated", {
+        userId: req.user?.userId,
+        seedLotId: id,
+        changes: Object.keys(req.body),
+      });
 
       return ResponseHandler.updated(
         res,
@@ -99,17 +151,31 @@ export class SeedLotController {
 
   /**
    * DELETE /api/seed-lots/:id
-   * Supprime un lot
+   * Supprimer un lot
    */
   static async deleteSeedLot(
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<Response | void> {
     try {
       const { id } = req.params;
+      const hardDelete = req.query.hard === "true";
 
-      await SeedLotService.deleteSeedLot(id);
+      logger.warn("Deleting seed lot", {
+        userId: req.user?.userId,
+        seedLotId: id,
+        hardDelete,
+      });
+
+      await SeedLotService.deleteSeedLot(id, hardDelete);
+
+      // Log d'audit
+      logger.audit("Seed lot deleted", {
+        userId: req.user?.userId,
+        seedLotId: id,
+        hardDelete,
+      });
 
       return ResponseHandler.noContent(res);
     } catch (error) {
@@ -118,8 +184,186 @@ export class SeedLotController {
   }
 
   /**
+   * POST /api/seed-lots/bulk-update
+   * Mise à jour en masse
+   */
+  static async bulkUpdateSeedLots(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { ids, updateData } = req.body;
+
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return ResponseHandler.badRequest(res, "Liste d'IDs requise");
+      }
+
+      const result = await SeedLotService.bulkUpdateSeedLots(ids, updateData);
+
+      logger.audit("Bulk seed lots update", {
+        userId: req.user?.userId,
+        count: result.count,
+        ids: ids.slice(0, 10), // Log seulement les 10 premiers
+      });
+
+      return ResponseHandler.success(res, result, result.message);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/seed-lots/search
+   * Recherche avancée
+   */
+  static async searchSeedLots(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const searchCriteria = {
+        query: req.query.q as string,
+        filters: req.query.filters
+          ? JSON.parse(req.query.filters as string)
+          : undefined,
+        dateRange: req.query.dateRange
+          ? JSON.parse(req.query.dateRange as string)
+          : undefined,
+        includeExpired: req.query.includeExpired === "true",
+        includeInactive: req.query.includeInactive === "true",
+      };
+
+      const results = await SeedLotService.searchSeedLots(searchCriteria);
+
+      return ResponseHandler.success(
+        res,
+        results,
+        `${results.length} lots trouvés`
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/seed-lots/export
+   * Export des données
+   */
+  static async exportSeedLots(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const format = (req.query.format as string) || "csv";
+      const filters = {
+        ...req.query,
+        format: undefined, // Retirer format des filtres
+      };
+
+      const data = await SeedLotService.exportSeedLots(
+        filters as any,
+        format as "csv" | "json" | "xlsx"
+      );
+
+      // Définir les headers selon le format
+      switch (format) {
+        case "csv":
+          res.setHeader("Content-Type", "text/csv; charset=utf-8");
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="seed-lots-${Date.now()}.csv"`
+          );
+          break;
+        case "json":
+          res.setHeader("Content-Type", "application/json");
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="seed-lots-${Date.now()}.json"`
+          );
+          break;
+        case "xlsx":
+          res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          );
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="seed-lots-${Date.now()}.xlsx"`
+          );
+          break;
+      }
+
+      return res.send(data);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/seed-lots/:id/qr-code
+   * Générer le QR Code d'un lot
+   */
+  static async getQRCode(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { id } = req.params;
+      const size = parseInt(req.query.size as string) || 300;
+
+      const seedLot = await SeedLotService.getSeedLotById(id, false);
+
+      // Données à encoder dans le QR Code
+      const qrData = {
+        id: seedLot.id,
+        variety: seedLot.variety.code,
+        level: seedLot.level,
+        quantity: seedLot.quantity,
+        productionDate: seedLot.productionDate,
+        status: seedLot.status,
+        url: `${process.env.CLIENT_URL}/seed-lots/${id}`,
+      };
+
+      // Options de génération
+      const qrOptions = {
+        width: size,
+        margin: 2,
+        color: {
+          dark: "#000000",
+          light: "#FFFFFF",
+        },
+      };
+
+      // Générer selon le format demandé
+      const format = req.query.format || "dataurl";
+
+      if (format === "png") {
+        const buffer = await QRCode.toBuffer(JSON.stringify(qrData), qrOptions);
+        res.setHeader("Content-Type", "image/png");
+        return res.send(buffer);
+      } else {
+        const qrCodeDataUrl = await QRCode.toDataURL(
+          JSON.stringify(qrData),
+          qrOptions
+        );
+        return ResponseHandler.success(
+          res,
+          { qrCode: qrCodeDataUrl },
+          "QR Code généré avec succès"
+        );
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * GET /api/seed-lots/:id/genealogy
-   * Récupère l'arbre généalogique d'un lot
+   * Récupérer l'arbre généalogique
    */
   static async getGenealogyTree(
     req: Request,
@@ -128,8 +372,9 @@ export class SeedLotController {
   ): Promise<Response | void> {
     try {
       const { id } = req.params;
+      const maxDepth = parseInt(req.query.maxDepth as string) || 10;
 
-      const genealogyTree = await SeedLotService.getGenealogyTree(id);
+      const genealogyTree = await SeedLotService.getGenealogyTree(id, maxDepth);
 
       return ResponseHandler.success(
         res,
@@ -142,63 +387,30 @@ export class SeedLotController {
   }
 
   /**
-   * GET /api/seed-lots/:id/qr-code
-   * Génère le QR Code d'un lot
-   */
-  static async getQRCode(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<Response | void> {
-    try {
-      const { id } = req.params;
-
-      const seedLot = await SeedLotService.getSeedLotById(id);
-
-      // Données à encoder dans le QR Code
-      const qrData = {
-        id: seedLot.id,
-        variety: seedLot.variety.name,
-        level: seedLot.level,
-        quantity: seedLot.quantity,
-        productionDate: seedLot.productionDate,
-        status: seedLot.status,
-        parentLotId: seedLot.parentLotId,
-      };
-
-      // Générer le QR Code
-      const qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), {
-        width: 300,
-        margin: 2,
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF",
-        },
-      });
-
-      return ResponseHandler.success(
-        res,
-        { qrCode: qrCodeDataUrl },
-        "QR Code généré avec succès"
-      );
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
    * POST /api/seed-lots/:id/child-lots
-   * Crée un lot enfant
+   * Créer un lot enfant
    */
   static async createChildLot(
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<Response | void> {
     try {
       const { id } = req.params;
 
-      const childLot = await SeedLotService.createChildLot(id, req.body);
+      const childLotData = {
+        ...req.body,
+        parentLotId: id,
+      };
+
+      const childLot = await SeedLotService.createChildLot(id, childLotData);
+
+      logger.audit("Child lot created", {
+        userId: req.user?.userId,
+        parentLotId: id,
+        childLotId: childLot.id,
+        quantity: childLot.quantity,
+      });
 
       return ResponseHandler.created(
         res,
@@ -212,10 +424,10 @@ export class SeedLotController {
 
   /**
    * POST /api/seed-lots/:id/transfer
-   * Transfère un lot vers un autre multiplicateur
+   * Transférer un lot
    */
   static async transferLot(
-    req: Request,
+    req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
   ): Promise<Response | void> {
@@ -230,6 +442,13 @@ export class SeedLotController {
         notes
       );
 
+      logger.audit("Lot transferred", {
+        userId: req.user?.userId,
+        sourceLotId: id,
+        targetMultiplierId,
+        quantity,
+      });
+
       return ResponseHandler.success(res, result, "Lot transféré avec succès");
     } catch (error) {
       next(error);
@@ -238,7 +457,7 @@ export class SeedLotController {
 
   /**
    * GET /api/seed-lots/:id/stats
-   * Récupère les statistiques d'un lot
+   * Récupérer les statistiques d'un lot
    */
   static async getSeedLotStats(
     req: Request,
@@ -255,6 +474,58 @@ export class SeedLotController {
         stats,
         "Statistiques récupérées avec succès"
       );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/seed-lots/:id/history
+   * Récupérer l'historique des modifications
+   */
+  static async getSeedLotHistory(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { id } = req.params;
+
+      const history = await SeedLotService.getSeedLotHistory(id);
+
+      return ResponseHandler.success(
+        res,
+        history,
+        "Historique récupéré avec succès"
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/seed-lots/:id/validate
+   * Valider un lot
+   */
+  static async validateSeedLot(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { id } = req.params;
+
+      const validation = await SeedLotService.validateSeedLot(id);
+
+      if (!validation.isValid) {
+        return ResponseHandler.badRequest(
+          res,
+          "Lot invalide",
+          validation.errors
+        );
+      }
+
+      return ResponseHandler.success(res, validation, "Lot valide");
     } catch (error) {
       next(error);
     }

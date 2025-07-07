@@ -1,20 +1,26 @@
+// backend/src/routes/seed-lots.ts
+
 import { Router } from "express";
 import { SeedLotController } from "../controllers/SeedLotController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole, authMiddleware } from "../middleware/auth";
 import { parseQueryParams } from "../middleware/queryParser";
+import { seedLotTransformation } from "../middleware/transformationMiddleware";
 import {
   createSeedLotSchema,
   updateSeedLotSchema,
   seedLotQuerySchema,
   createChildLotSchema,
   transferLotSchema,
+  bulkUpdateSchema,
 } from "../validators/seedLot";
 
 const router = Router();
 
-// Routes publiques (pas d'authentification requise pour la consultation)
-// GET /api/seed-lots - Liste des lots de semences
+// Appliquer le middleware de transformation
+router.use(seedLotTransformation);
+
+// Routes publiques (consultation)
 router.get(
   "/",
   parseQueryParams,
@@ -22,61 +28,69 @@ router.get(
   SeedLotController.getSeedLots
 );
 
-// GET /api/seed-lots/:id - Détails d'un lot
+router.get("/search", SeedLotController.searchSeedLots);
+
+router.get(
+  "/export",
+  authMiddleware,
+  requireRole("MANAGER", "ADMIN", "RESEARCHER"),
+  SeedLotController.exportSeedLots
+);
+
 router.get("/:id", SeedLotController.getSeedLotById);
-
-// GET /api/seed-lots/:id/genealogy - Arbre généalogique
 router.get("/:id/genealogy", SeedLotController.getGenealogyTree);
-
-// GET /api/seed-lots/:id/qr-code - Code QR du lot
 router.get("/:id/qr-code", SeedLotController.getQRCode);
-
-// GET /api/seed-lots/:id/stats - Statistiques du lot
 router.get("/:id/stats", SeedLotController.getSeedLotStats);
+router.get("/:id/history", SeedLotController.getSeedLotHistory);
 
-// Routes protégées (authentification requise)
-// POST /api/seed-lots - Créer un nouveau lot
+// Routes protégées (modification)
+router.use(authMiddleware); // Toutes les routes suivantes nécessitent une authentification
+
+// CRUD Operations
 router.post(
   "/",
-  authMiddleware,
   requireRole("RESEARCHER", "TECHNICIAN", "ADMIN"),
   validateRequest({ body: createSeedLotSchema }),
   SeedLotController.createSeedLot
 );
 
-// POST /api/seed-lots/:id/child-lots - Créer un lot enfant
-router.post(
-  "/:id/child-lots",
-  authMiddleware,
-  requireRole("RESEARCHER", "TECHNICIAN", "ADMIN"),
-  validateRequest({ body: createChildLotSchema }),
-  SeedLotController.createChildLot
-);
-
-// POST /api/seed-lots/:id/transfer - Transférer un lot
-router.post(
-  "/:id/transfer",
-  authMiddleware,
-  requireRole("RESEARCHER", "TECHNICIAN", "ADMIN", "MANAGER"),
-  validateRequest({ body: transferLotSchema }),
-  SeedLotController.transferLot
-);
-
-// PUT /api/seed-lots/:id - Mettre à jour un lot
 router.put(
   "/:id",
-  authMiddleware,
   requireRole("RESEARCHER", "TECHNICIAN", "ADMIN"),
   validateRequest({ body: updateSeedLotSchema }),
   SeedLotController.updateSeedLot
 );
 
-// DELETE /api/seed-lots/:id - Supprimer un lot
-router.delete(
-  "/:id",
-  authMiddleware,
-  requireRole("ADMIN"),
-  SeedLotController.deleteSeedLot
+router.delete("/:id", requireRole("ADMIN"), SeedLotController.deleteSeedLot);
+
+// Bulk operations
+router.post(
+  "/bulk-update",
+  requireRole("MANAGER", "ADMIN"),
+  validateRequest({ body: bulkUpdateSchema }),
+  SeedLotController.bulkUpdateSeedLots
+);
+
+// Child lots and transfers
+router.post(
+  "/:id/child-lots",
+  requireRole("RESEARCHER", "TECHNICIAN", "ADMIN"),
+  validateRequest({ body: createChildLotSchema }),
+  SeedLotController.createChildLot
+);
+
+router.post(
+  "/:id/transfer",
+  requireRole("RESEARCHER", "TECHNICIAN", "ADMIN", "MANAGER"),
+  validateRequest({ body: transferLotSchema }),
+  SeedLotController.transferLot
+);
+
+// Validation
+router.post(
+  "/:id/validate",
+  requireRole("INSPECTOR", "ADMIN"),
+  SeedLotController.validateSeedLot
 );
 
 export default router;
