@@ -1,9 +1,23 @@
-// frontend/src/pages/seeds/SeedLots.tsx - VERSION AVEC QR CODE
-
+// frontend/src/pages/seeds/SeedLots.tsx
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Plus, Download, Eye, Package, QrCode, Leaf } from "lucide-react";
+import {
+  Plus,
+  Download,
+  Eye,
+  Package,
+  QrCode,
+  Leaf,
+  Edit,
+  Trash2,
+  MoreVertical,
+  Filter,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+} from "lucide-react";
 import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
@@ -22,9 +36,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
-import { SearchInput } from "../../components/forms/SearchInput";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
+import { Input } from "../../components/ui/input";
+import { Checkbox } from "../../components/ui/checkbox";
+import { Separator } from "../../components/ui/separator";
 import { QRCodeModal } from "../../components/qr-code/QRCodeModal";
+import { DeleteSeedLotDialog } from "../../components/seeds/DeleteSeedLotDialog";
 import { api } from "../../services/api";
+import { seedLotService } from "../../services/seedLotService";
 import { SeedLot } from "../../types/entities";
 import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
 import {
@@ -36,6 +62,7 @@ import {
 import { useDebounce } from "../../hooks/useDebounce";
 import { usePagination } from "../../hooks/usePagination";
 import { formatDate, formatNumber } from "../../utils/formatters";
+import { toast } from "react-toastify";
 
 const SeedLots: React.FC = () => {
   const [search, setSearch] = useState("");
@@ -43,16 +70,26 @@ const SeedLots: React.FC = () => {
   const [selectedLotForQR, setSelectedLotForQR] = useState<SeedLot | null>(
     null
   );
+  const [selectedLotForDelete, setSelectedLotForDelete] =
+    useState<SeedLot | null>(null);
+  const [selectedLots, setSelectedLots] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
   const debouncedSearch = useDebounce(search, 300);
   const { pagination, actions } = usePagination({ initialPageSize: 10 });
+  const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery<ApiResponse<SeedLot[]>>({
+  // Requête principale pour récupérer les lots
+  const { data, isLoading, error, refetch } = useQuery<ApiResponse<SeedLot[]>>({
     queryKey: [
       "seedLots",
       pagination.page,
       pagination.pageSize,
       debouncedSearch,
       filters,
+      sortBy,
+      sortOrder,
     ],
     queryFn: async () => {
       const params: PaginationParams & FilterParams = {
@@ -60,11 +97,40 @@ const SeedLots: React.FC = () => {
         pageSize: pagination.pageSize,
         search: debouncedSearch || undefined,
         includeRelations: true,
+        sortBy,
+        sortOrder,
         ...filters,
       };
 
       const response = await api.get("/seed-lots", { params });
       return response.data;
+    },
+  });
+
+  // Mutation pour supprimer un lot
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await seedLotService.delete(id);
+    },
+    onSuccess: () => {
+      toast.success("Lot supprimé avec succès");
+      queryClient.invalidateQueries({ queryKey: ["seedLots"] });
+      setSelectedLotForDelete(null);
+    },
+    onError: (error: any) => {
+      const message =
+        error?.response?.data?.message || "Erreur lors de la suppression";
+      toast.error(message);
+    },
+  });
+
+  // Mutation pour export
+  const exportMutation = useMutation({
+    mutationFn: async (format: "csv" | "xlsx") => {
+      return seedLotService.export(format, filters);
+    },
+    onError: () => {
+      toast.error("Erreur lors de l'export");
     },
   });
 
@@ -90,6 +156,58 @@ const SeedLots: React.FC = () => {
     setSelectedLotForQR(lot);
   };
 
+  const handleDeleteClick = (lot: SeedLot) => {
+    setSelectedLotForDelete(lot);
+  };
+
+  const confirmDelete = () => {
+    if (selectedLotForDelete) {
+      deleteMutation.mutate(selectedLotForDelete.id);
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = data?.data?.map((lot) => lot.id) || [];
+      setSelectedLots(new Set(allIds));
+    } else {
+      setSelectedLots(new Set());
+    }
+  };
+
+  const handleSelectLot = (lotId: string, checked: boolean) => {
+    const newSelected = new Set(selectedLots);
+    if (checked) {
+      newSelected.add(lotId);
+    } else {
+      newSelected.delete(lotId);
+    }
+    setSelectedLots(newSelected);
+  };
+
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder("asc");
+    }
+  };
+
+  const handleExport = (format: "csv" | "xlsx") => {
+    exportMutation.mutate(format);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setSearch("");
+    setSortBy("createdAt");
+    setSortOrder("desc");
+    actions.firstPage();
+  };
+
+  const hasActiveFilters = Object.keys(filters).length > 0 || search !== "";
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -101,7 +219,7 @@ const SeedLots: React.FC = () => {
             <Button
               variant="outline"
               className="mt-4"
-              onClick={() => window.location.reload()}
+              onClick={() => refetch()}
             >
               Réessayer
             </Button>
@@ -124,10 +242,22 @@ const SeedLots: React.FC = () => {
           </p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Exporter
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Exporter
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport("csv")}>
+                Format CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("xlsx")}>
+                Format Excel
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button asChild>
             <Link to="/dashboard/seed-lots/create">
               <Plus className="h-4 w-4 mr-2" />
@@ -140,60 +270,108 @@ const SeedLots: React.FC = () => {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="md:col-span-2">
-              <SearchInput
-                value={search}
-                onChange={setSearch}
-                placeholder="Rechercher par code, variété, multiplicateur..."
-                className="w-full"
-              />
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="md:col-span-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher par code, variété, multiplicateur..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <Select
+                value={filters.status || "all"}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    status: value === "all" ? undefined : value,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Tous les statuts" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  {LOT_STATUSES.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={filters.level || "all"}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    level: value === "all" ? undefined : value.toUpperCase(),
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Tous les niveaux" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les niveaux</SelectItem>
+                  {SEED_LEVELS.map((level) => (
+                    <SelectItem key={level.value} value={level.value}>
+                      {level.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select
-              value={filters.status || "all"}
-              onValueChange={(value) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  status: value === "all" ? undefined : value,
-                }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Tous les statuts" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                {LOT_STATUSES.map((status) => (
-                  <SelectItem key={status.value} value={status.value}>
-                    {status.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={filters.level || "all"}
-              onValueChange={(value) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  level: value === "all" ? undefined : value.toUpperCase(),
-                }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Tous les niveaux" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les niveaux</SelectItem>
-                {SEED_LEVELS.map((level) => (
-                  <SelectItem key={level.value} value={level.value}>
-                    {level.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+            {hasActiveFilters && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Filtres actifs:{" "}
+                  {Object.keys(filters).length + (search ? 1 : 0)}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Réinitialiser
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Actions en masse */}
+      {selectedLots.size > 0 && (
+        <Card>
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm">
+                {selectedLots.size} lot(s) sélectionné(s)
+              </p>
+              <div className="flex space-x-2">
+                <Button variant="outline" size="sm">
+                  Exporter sélection
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700"
+                >
+                  Supprimer sélection
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Table */}
       <Card>
@@ -209,11 +387,50 @@ const SeedLots: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Code du lot</TableHead>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={
+                          data.data.length > 0 &&
+                          selectedLots.size === data.data.length
+                        }
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="-ml-3 h-8"
+                        onClick={() => handleSort("id")}
+                      >
+                        Code du lot
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
                     <TableHead>Variété</TableHead>
                     <TableHead>Niveau</TableHead>
-                    <TableHead>Quantité</TableHead>
-                    <TableHead>Production</TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="-ml-3 h-8"
+                        onClick={() => handleSort("quantity")}
+                      >
+                        Quantité
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="-ml-3 h-8"
+                        onClick={() => handleSort("productionDate")}
+                      >
+                        Production
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -221,6 +438,14 @@ const SeedLots: React.FC = () => {
                 <TableBody>
                   {data.data.map((lot) => (
                     <TableRow key={lot.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedLots.has(lot.id)}
+                          onCheckedChange={(checked) =>
+                            handleSelectLot(lot.id, checked as boolean)
+                          }
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">
                         <div className="flex items-center space-x-2">
                           <QrCode className="h-4 w-4 text-muted-foreground" />
@@ -282,11 +507,47 @@ const SeedLots: React.FC = () => {
                           >
                             <QrCode className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link to={`/dashboard/seed-lots/${lot.id}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem asChild>
+                                <Link to={`/dashboard/seed-lots/${lot.id}`}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Voir détails
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  to={`/dashboard/seed-lots/${lot.id}/edit`}
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Modifier
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  to={`/dashboard/seed-lots/${lot.id}/transfer`}
+                                >
+                                  <Package className="h-4 w-4 mr-2" />
+                                  Transférer
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() => handleDeleteClick(lot)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Supprimer
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -301,15 +562,47 @@ const SeedLots: React.FC = () => {
                     Page {data.meta.page} sur {data.meta.totalPages} • Total:{" "}
                     {data.meta.totalCount} lot(s)
                   </p>
-                  <div className="flex space-x-2">
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={actions.firstPage}
+                      disabled={!data.meta.hasPreviousPage}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <ChevronLeft className="h-4 w-4 -ml-2" />
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={actions.previousPage}
                       disabled={!data.meta.hasPreviousPage}
                     >
+                      <ChevronLeft className="h-4 w-4" />
                       Précédent
                     </Button>
+                    <div className="flex items-center space-x-1">
+                      {Array.from(
+                        { length: Math.min(5, data.meta.totalPages) },
+                        (_, i) => {
+                          const pageNumber = i + 1;
+                          return (
+                            <Button
+                              key={pageNumber}
+                              variant={
+                                pageNumber === data.meta.page
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="sm"
+                              onClick={() => actions.setPage(pageNumber)}
+                            >
+                              {pageNumber}
+                            </Button>
+                          );
+                        }
+                      )}
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"
@@ -317,6 +610,16 @@ const SeedLots: React.FC = () => {
                       disabled={!data.meta.hasNextPage}
                     >
                       Suivant
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => actions.lastPage(data.meta.totalPages)}
+                      disabled={!data.meta.hasNextPage}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="h-4 w-4 -ml-2" />
                     </Button>
                   </div>
                 </div>
@@ -407,12 +710,22 @@ const SeedLots: React.FC = () => {
         </Card>
       </div>
 
-      {/* QR Code Modal */}
+      {/* Modals */}
       {selectedLotForQR && (
         <QRCodeModal
           isOpen={!!selectedLotForQR}
           onClose={() => setSelectedLotForQR(null)}
           seedLot={selectedLotForQR}
+        />
+      )}
+
+      {selectedLotForDelete && (
+        <DeleteSeedLotDialog
+          isOpen={!!selectedLotForDelete}
+          onClose={() => setSelectedLotForDelete(null)}
+          onConfirm={confirmDelete}
+          seedLotId={selectedLotForDelete.id}
+          isDeleting={deleteMutation.isPending}
         />
       )}
     </div>

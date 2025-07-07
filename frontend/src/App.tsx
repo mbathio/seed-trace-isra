@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import EditSeedLot from "./pages/seeds/EditSeedLot";
 
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -104,6 +105,7 @@ function App() {
               <Route path="seed-lots" element={<SeedLotsPage />} />
               <Route path="seed-lots/create" element={<CreateSeedLotPage />} />
               <Route path="seed-lots/:id" element={<SeedLotDetailsPage />} />
+              <Route path="seed-lots/:id/edit" element={<EditSeedLot />} />
 
               {/* Routes des variétés */}
               <Route path="varieties" element={<VarietiesPage />} />
