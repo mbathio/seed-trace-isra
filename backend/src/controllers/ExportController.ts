@@ -1,16 +1,14 @@
-// backend/src/controllers/ExportController.ts - CONTRÔLEUR D'EXPORT CORRIGÉ
+// backend/src/controllers/ExportController.ts
 import { Request, Response, NextFunction } from "express";
 import { ExportService } from "../services/ExportService";
-import { SeedLotService } from "../services/SeedLotService";
-import { QualityControlService } from "../services/QualityControlService";
 import { ResponseHandler } from "../utils/response";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { logger } from "../utils/logger";
 
 export class ExportController {
   /**
-   * Obtenir les formats d'export disponibles
    * GET /api/export/formats
+   * Récupère les formats d'export disponibles
    */
   static async getAvailableFormats(
     req: Request,
@@ -18,13 +16,7 @@ export class ExportController {
     next: NextFunction
   ): Promise<Response | void> {
     try {
-      const formats = {
-        seedLots: ["csv", "xlsx", "json"],
-        qualityReport: ["html", "pdf", "json", "xlsx"],
-        productionStats: ["xlsx", "csv", "json"],
-        inventory: ["csv", "xlsx", "pdf"],
-      };
-
+      const formats = ExportService.getAvailableFormats();
       return ResponseHandler.success(
         res,
         formats,
@@ -36,8 +28,8 @@ export class ExportController {
   }
 
   /**
-   * Export des lots de semences
-   * GET /api/export/seed-lots?format=csv&level=G1&status=certified
+   * GET /api/export/seed-lots
+   * Exporte les lots de semences selon les filtres et le format
    */
   static async exportSeedLots(
     req: AuthenticatedRequest,
@@ -47,85 +39,55 @@ export class ExportController {
     try {
       const { format = "csv", ...filters } = req.query;
 
-      // Validation du format
-      const validFormats = ["csv", "xlsx", "json"];
-      if (!validFormats.includes(format as string)) {
-        return ResponseHandler.error(
-          res,
-          "Format non supporté. Utilisez csv, xlsx ou json",
-          400
-        );
-      }
-
-      logger.info(`Export des lots de semences demandé`, {
+      logger.info("Export des lots de semences", {
         format,
         filters,
         userId: req.user?.userId,
       });
 
-      // Récupérer les données des lots
-      const seedLotsData = await SeedLotService.getSeedLots({
-        ...filters,
-        pageSize: 1000, // Limiter pour éviter la surcharge
-      });
+      const exportData = await ExportService.exportSeedLots(
+        filters,
+        format as string
+      );
 
-      if (!seedLotsData.data || seedLotsData.data.length === 0) {
-        return ResponseHandler.error(res, "Aucun lot de semences trouvé", 404);
-      }
-
-      // Utiliser le service d'export approprié selon le format
-      let exportResult;
+      // Définir les headers selon le format
       switch (format) {
         case "csv":
-          exportResult = await ExportService.exportSeedLotsToCSV(
-            seedLotsData.data
-          );
-          res.setHeader("Content-Type", "text/csv");
+          res.setHeader("Content-Type", "text/csv; charset=utf-8");
           res.setHeader(
             "Content-Disposition",
-            'attachment; filename="lots_semences.csv"'
+            `attachment; filename="lots-semences-${Date.now()}.csv"`
           );
           break;
-
         case "xlsx":
-          exportResult = await ExportService.exportSeedLotsToExcel(
-            seedLotsData.data
-          );
           res.setHeader(
             "Content-Type",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           );
           res.setHeader(
             "Content-Disposition",
-            'attachment; filename="lots_semences.xlsx"'
+            `attachment; filename="lots-semences-${Date.now()}.xlsx"`
           );
           break;
-
         case "json":
-          return ResponseHandler.success(
-            res,
-            seedLotsData.data,
-            "Export JSON des lots de semences"
+          res.setHeader("Content-Type", "application/json");
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="lots-semences-${Date.now()}.json"`
           );
-
-        default:
-          return ResponseHandler.error(res, "Format non supporté", 400);
+          break;
       }
 
-      // Envoyer le fichier
-      return res.send(exportResult);
+      return res.send(exportData);
     } catch (error) {
-      logger.error("Erreur lors de l'export des lots de semences:", {
-        error: error instanceof Error ? error.message : error,
-        userId: req.user?.userId,
-      });
+      logger.error("Erreur lors de l'export des lots:", error);
       next(error);
     }
   }
 
   /**
-   * Export du rapport de qualité
-   * GET /api/export/quality-report?format=html&startDate=2024-01-01
+   * GET /api/export/quality-report
+   * Génère un rapport de contrôle qualité
    */
   static async exportQualityReport(
     req: AuthenticatedRequest,
@@ -135,168 +97,54 @@ export class ExportController {
     try {
       const { format = "html", ...filters } = req.query;
 
-      // Validation du format
-      const validFormats = ["html", "pdf", "json", "xlsx"];
-      if (!validFormats.includes(format as string)) {
-        return ResponseHandler.error(
-          res,
-          "Format non supporté. Utilisez html, pdf, json ou xlsx",
-          400
-        );
-      }
-
-      logger.info(`Export du rapport de qualité demandé`, {
+      logger.info("Export du rapport qualité", {
         format,
         filters,
         userId: req.user?.userId,
       });
 
-      // Récupérer les données du rapport de qualité
-      const reportData = await QualityControlService.getQualityControls({
-        ...filters,
-        pageSize: 1000, // Limiter pour éviter la surcharge
-      });
+      const reportData = await ExportService.exportQualityReport(
+        filters,
+        format as string
+      );
 
-      // ✅ CORRIGÉ: Utiliser reportData.data au lieu de reportData.controls
-      if (!reportData.data || reportData.data.length === 0) {
-        return ResponseHandler.error(res, "Aucun contrôle qualité trouvé", 404);
-      }
-
-      // Restructurer les données pour l'export
-      const exportData = {
-        statistics: {
-          totalControls: reportData.total,
-          passedControls: reportData.data.filter(
-            (qc: any) => qc.result === "PASS"
-          ).length,
-          failedControls: reportData.data.filter(
-            (qc: any) => qc.result === "FAIL"
-          ).length,
-        },
-        summary: {
-          passRate:
-            reportData.total > 0
-              ? (reportData.data.filter((qc: any) => qc.result === "PASS")
-                  .length /
-                  reportData.total) *
-                100
-              : 0,
-          averageGerminationRate:
-            reportData.data.length > 0
-              ? reportData.data.reduce(
-                  (sum: number, qc: any) => sum + qc.germinationRate,
-                  0
-                ) / reportData.data.length
-              : 0,
-          averageVarietyPurity:
-            reportData.data.length > 0
-              ? reportData.data.reduce(
-                  (sum: number, qc: any) => sum + qc.varietyPurity,
-                  0
-                ) / reportData.data.length
-              : 0,
-        },
-        qualityControls: reportData.data,
-      };
-
-      // Générer l'export selon le format
+      // Définir les headers selon le format
       switch (format) {
         case "html":
-          const htmlReport = ExportService.generateReportHTML(exportData);
           res.setHeader("Content-Type", "text/html; charset=utf-8");
-          res.setHeader(
-            "Content-Disposition",
-            `attachment; filename="${ExportService.generateFilename(
-              "rapport_qualite",
-              "html"
-            )}"`
-          );
-          return res.send(htmlReport);
-
+          break;
         case "pdf":
-          const pdfReport = await ExportService.exportQualityReportToPDF(
-            exportData
-          );
           res.setHeader("Content-Type", "application/pdf");
           res.setHeader(
             "Content-Disposition",
-            `attachment; filename="${ExportService.generateFilename(
-              "rapport_qualite",
-              "pdf"
-            )}"`
+            `attachment; filename="rapport-qualite-${Date.now()}.pdf"`
           );
-          return res.send(pdfReport);
-
+          break;
         case "json":
-          const jsonReport = await ExportService.exportQualityReportToJSON(
-            exportData
-          );
-          return ResponseHandler.success(
-            res,
-            JSON.parse(jsonReport),
-            "Export JSON du rapport de qualité"
-          );
-
+          res.setHeader("Content-Type", "application/json");
+          break;
         case "xlsx":
-          // Transformer les données pour Excel
-          const excelData = reportData.data.map((qc: any) => [
-            qc.lotId,
-            qc.seedLot?.variety?.name || "N/A",
-            new Date(qc.controlDate).toLocaleDateString("fr-FR"),
-            qc.result === "PASS" ? "RÉUSSI" : "ÉCHEC",
-            qc.germinationRate,
-            qc.varietyPurity,
-            qc.moistureContent || "N/A",
-            qc.seedHealth || "N/A",
-            qc.inspector?.name || "N/A",
-            qc.observations || "",
-          ]);
-
-          // Ajouter les headers
-          excelData.unshift([
-            "ID Lot",
-            "Variété",
-            "Date de contrôle",
-            "Résultat",
-            "Taux de germination (%)",
-            "Pureté variétale (%)",
-            "Teneur en humidité (%)",
-            "Santé des semences (%)",
-            "Inspecteur",
-            "Observations",
-          ]);
-
-          const excelReport = await ExportService.exportSeedLotsToExcel(
-            excelData
-          );
           res.setHeader(
             "Content-Type",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           );
           res.setHeader(
             "Content-Disposition",
-            `attachment; filename="${ExportService.generateFilename(
-              "rapport_qualite",
-              "xlsx"
-            )}"`
+            `attachment; filename="rapport-qualite-${Date.now()}.xlsx"`
           );
-          return res.send(excelReport);
-
-        default:
-          return ResponseHandler.error(res, "Format non supporté", 400);
+          break;
       }
+
+      return res.send(reportData);
     } catch (error) {
-      logger.error("Erreur lors de l'export du rapport de qualité:", {
-        error: error instanceof Error ? error.message : error,
-        userId: req.user?.userId,
-      });
+      logger.error("Erreur lors de l'export du rapport qualité:", error);
       next(error);
     }
   }
 
   /**
-   * Export des statistiques de production
-   * GET /api/export/production-stats?format=xlsx&year=2024
+   * GET /api/export/production-stats
+   * Exporte les statistiques de production
    */
   static async exportProductionStats(
     req: AuthenticatedRequest,
@@ -304,36 +152,299 @@ export class ExportController {
     next: NextFunction
   ): Promise<Response | void> {
     try {
-      const { format = "xlsx", ...filters } = req.query;
+      const { format = "xlsx", year, ...filters } = req.query;
 
-      // Validation du format
-      const validFormats = ["xlsx", "csv", "json"];
-      if (!validFormats.includes(format as string)) {
-        return ResponseHandler.error(
-          res,
-          "Format non supporté. Utilisez xlsx, csv ou json",
-          400
-        );
-      }
-
-      logger.info(`Export des statistiques de production demandé`, {
+      logger.info("Export des statistiques de production", {
         format,
+        year,
         filters,
         userId: req.user?.userId,
       });
 
-      // TODO: Implémenter la récupération des statistiques de production
-      // Pour l'instant, retourner une erreur 501 (Non implémenté)
-      return ResponseHandler.error(
-        res,
-        "Fonctionnalité d'export des statistiques de production en cours de développement",
-        501
+      const statsData = await ExportService.exportProductionStats(
+        {
+          year: year ? parseInt(year as string) : new Date().getFullYear(),
+          ...filters,
+        },
+        format as string
       );
+
+      // Définir les headers selon le format
+      switch (format) {
+        case "xlsx":
+          res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          );
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="stats-production-${
+              year || new Date().getFullYear()
+            }.xlsx"`
+          );
+          break;
+        case "csv":
+          res.setHeader("Content-Type", "text/csv; charset=utf-8");
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="stats-production-${
+              year || new Date().getFullYear()
+            }.csv"`
+          );
+          break;
+        case "json":
+          res.setHeader("Content-Type", "application/json");
+          break;
+      }
+
+      return res.send(statsData);
     } catch (error) {
-      logger.error("Erreur lors de l'export des statistiques de production:", {
-        error: error instanceof Error ? error.message : error,
+      logger.error("Erreur lors de l'export des statistiques:", error);
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/export/custom
+   * Export personnalisé avec paramètres avancés
+   */
+  static async customExport(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { entityType, format, fields, filters, includeRelations } =
+        req.body;
+
+      logger.info("Export personnalisé", {
+        entityType,
+        format,
+        fieldsCount: fields?.length,
         userId: req.user?.userId,
       });
+
+      const exportData = await ExportService.customExport({
+        entityType,
+        format,
+        fields,
+        filters,
+        includeRelations,
+      });
+
+      // Définir le content-type approprié
+      const contentTypeMap: Record<string, string> = {
+        csv: "text/csv; charset=utf-8",
+        xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        json: "application/json",
+        xml: "application/xml",
+      };
+
+      res.setHeader(
+        "Content-Type",
+        contentTypeMap[format] || "application/octet-stream"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="export-${entityType}-${Date.now()}.${format}"`
+      );
+
+      return res.send(exportData);
+    } catch (error) {
+      logger.error("Erreur lors de l'export personnalisé:", error);
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/export/templates/:type
+   * Télécharge un modèle d'import
+   */
+  static async downloadTemplate(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { type } = req.params;
+      const { format = "csv" } = req.query;
+
+      logger.info("Téléchargement de modèle", { type, format });
+
+      const template = await ExportService.generateImportTemplate(
+        type,
+        format as string
+      );
+
+      const formatExtension = format === "xlsx" ? "xlsx" : "csv";
+      const contentType =
+        format === "xlsx"
+          ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          : "text/csv; charset=utf-8";
+
+      res.setHeader("Content-Type", contentType);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="modele-${type}.${formatExtension}"`
+      );
+
+      return res.send(template);
+    } catch (error) {
+      logger.error("Erreur lors du téléchargement du modèle:", error);
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/export/genealogy/:lotId
+   * Exporte l'arbre généalogique d'un lot
+   */
+  static async exportGenealogy(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { lotId } = req.params;
+      const { format = "json" } = req.query;
+
+      logger.info("Export de l'arbre généalogique", { lotId, format });
+
+      const genealogyData = await ExportService.exportGenealogy(
+        lotId,
+        format as string
+      );
+
+      switch (format) {
+        case "json":
+          res.setHeader("Content-Type", "application/json");
+          break;
+        case "pdf":
+          res.setHeader("Content-Type", "application/pdf");
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="genealogie-${lotId}.pdf"`
+          );
+          break;
+        case "dot":
+          res.setHeader("Content-Type", "text/plain");
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="genealogie-${lotId}.dot"`
+          );
+          break;
+      }
+
+      return res.send(genealogyData);
+    } catch (error) {
+      logger.error("Erreur lors de l'export de la généalogie:", error);
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/export/bulk
+   * Export en masse de plusieurs entités
+   */
+  static async bulkExport(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { exports } = req.body;
+
+      logger.info("Export en masse", {
+        exportsCount: exports?.length,
+        userId: req.user?.userId,
+      });
+
+      const zipData = await ExportService.bulkExport(exports);
+
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="export-bulk-${Date.now()}.zip"`
+      );
+
+      return res.send(zipData);
+    } catch (error) {
+      logger.error("Erreur lors de l'export en masse:", error);
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/export/certificates/:lotId
+   * Génère un certificat pour un lot
+   */
+  static async generateCertificate(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { lotId } = req.params;
+      const { format = "pdf", language = "fr" } = req.query;
+
+      logger.info("Génération de certificat", { lotId, format, language });
+
+      const certificate = await ExportService.generateCertificate(lotId, {
+        format: format as string,
+        language: language as string,
+      });
+
+      if (format === "pdf") {
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="certificat-${lotId}.pdf"`
+        );
+      } else {
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+      }
+
+      return res.send(certificate);
+    } catch (error) {
+      logger.error("Erreur lors de la génération du certificat:", error);
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/export/qr-labels/:lotId
+   * Génère des étiquettes QR pour un lot
+   */
+  static async generateQRLabels(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { lotId } = req.params;
+      const { quantity = 1, format = "pdf" } = req.query;
+
+      logger.info("Génération d'étiquettes QR", { lotId, quantity, format });
+
+      const labels = await ExportService.generateQRLabels(
+        lotId,
+        parseInt(quantity as string),
+        format as string
+      );
+
+      if (format === "pdf") {
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="etiquettes-qr-${lotId}.pdf"`
+        );
+      } else {
+        res.setHeader("Content-Type", "image/png");
+      }
+
+      return res.send(labels);
+    } catch (error) {
+      logger.error("Erreur lors de la génération des étiquettes QR:", error);
       next(error);
     }
   }

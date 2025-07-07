@@ -1,268 +1,941 @@
-// backend/src/services/ExportService.ts - VERSION COMPLÈTE CORRIGÉE
-// Note: Version sans dépendances externes pour éviter les erreurs
+// backend/src/services/ExportService.ts
+import { prisma } from "../config/database";
+import { logger } from "../utils/logger";
+import { SimpleExportService } from "./SimpleExportService";
+import { GenealogyService } from "./GenealogyService";
+import { QualityControlService } from "./QualityControlService";
+import QRCode from "qrcode";
+import archiver from "archiver";
+import { Readable } from "stream";
 
 export class ExportService {
-  // ✅ Export des lots de semences vers CSV
-  static async exportSeedLotsToCSV(lots: any[]): Promise<string> {
+  /**
+   * Retourne les formats d'export disponibles
+   */
+  static getAvailableFormats() {
+    return {
+      seedLots: ["csv", "xlsx", "json"],
+      qualityReport: ["html", "pdf", "json", "xlsx"],
+      productionStats: ["xlsx", "csv", "json"],
+      genealogy: ["json", "pdf", "dot"],
+      certificates: ["pdf", "html"],
+      general: ["csv", "xlsx", "json", "xml"],
+    };
+  }
+
+  /**
+   * Export des lots de semences
+   */
+  static async exportSeedLots(filters: any, format: string): Promise<any> {
+    try {
+      // Récupérer les lots selon les filtres
+      const where: any = { isActive: true };
+
+      if (filters.level) where.level = filters.level;
+      if (filters.status) where.status = filters.status;
+      if (filters.varietyId) where.varietyId = parseInt(filters.varietyId);
+      if (filters.multiplierId)
+        where.multiplierId = parseInt(filters.multiplierId);
+
+      if (filters.startDate || filters.endDate) {
+        where.productionDate = {};
+        if (filters.startDate)
+          where.productionDate.gte = new Date(filters.startDate);
+        if (filters.endDate)
+          where.productionDate.lte = new Date(filters.endDate);
+      }
+
+      const seedLots = await prisma.seedLot.findMany({
+        where,
+        include: {
+          variety: true,
+          multiplier: true,
+          parcel: true,
+          qualityControls: {
+            orderBy: { controlDate: "desc" },
+            take: 1,
+          },
+        },
+        orderBy: { productionDate: "desc" },
+      });
+
+      // Formater selon le format demandé
+      switch (format) {
+        case "csv":
+          return this.exportSeedLotsToCSV(seedLots);
+        case "xlsx":
+          return this.exportSeedLotsToExcel(seedLots);
+        case "json":
+          return JSON.stringify(seedLots, null, 2);
+        default:
+          throw new Error(`Format non supporté: ${format}`);
+      }
+    } catch (error) {
+      logger.error("Erreur export seed lots:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Export du rapport de contrôle qualité
+   */
+  static async exportQualityReport(filters: any, format: string): Promise<any> {
+    try {
+      const report = await QualityControlService.generateQualityReport(filters);
+
+      switch (format) {
+        case "html":
+          return SimpleExportService.generateReportHTML(report);
+        case "json":
+          return SimpleExportService.exportQualityReportToJSON(report);
+        case "xlsx":
+          return this.exportQualityReportToExcel(report);
+        case "pdf":
+          // TODO: Implémenter la génération PDF
+          throw new Error("Export PDF non encore implémenté");
+        default:
+          throw new Error(`Format non supporté: ${format}`);
+      }
+    } catch (error) {
+      logger.error("Erreur export quality report:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Export des statistiques de production
+   */
+  static async exportProductionStats(
+    filters: any,
+    format: string
+  ): Promise<any> {
+    try {
+      const stats = await this.generateProductionStats(filters);
+
+      switch (format) {
+        case "xlsx":
+          return this.exportProductionStatsToExcel(stats);
+        case "csv":
+          return this.exportProductionStatsToCSV(stats);
+        case "json":
+          return JSON.stringify(stats, null, 2);
+        default:
+          throw new Error(`Format non supporté: ${format}`);
+      }
+    } catch (error) {
+      logger.error("Erreur export production stats:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Export personnalisé
+   */
+  static async customExport(params: {
+    entityType: string;
+    format: string;
+    fields?: string[];
+    filters?: any;
+    includeRelations?: boolean;
+  }): Promise<any> {
+    try {
+      const { entityType, format, fields, filters, includeRelations } = params;
+
+      // Mapping des entités
+      const entityMap: Record<string, any> = {
+        seedLots: prisma.seedLot,
+        varieties: prisma.variety,
+        multipliers: prisma.multiplier,
+        parcels: prisma.parcel,
+        productions: prisma.production,
+        qualityControls: prisma.qualityControl,
+      };
+
+      const model = entityMap[entityType];
+      if (!model) {
+        throw new Error(`Type d'entité non supporté: ${entityType}`);
+      }
+
+      // Construire la requête
+      const query: any = { where: filters || {} };
+
+      // Sélectionner uniquement les champs demandés
+      if (fields && fields.length > 0) {
+        query.select = fields.reduce(
+          (acc, field) => ({ ...acc, [field]: true }),
+          {}
+        );
+      }
+
+      // Inclure les relations si demandé
+      if (includeRelations) {
+        query.include = this.getDefaultIncludes(entityType);
+      }
+
+      const data = await model.findMany(query);
+
+      // Formater selon le format demandé
+      switch (format) {
+        case "csv":
+          return this.dataToCSV(data, fields);
+        case "xlsx":
+          return this.dataToExcel(data, entityType);
+        case "json":
+          return JSON.stringify(data, null, 2);
+        case "xml":
+          return this.dataToXML(data, entityType);
+        default:
+          throw new Error(`Format non supporté: ${format}`);
+      }
+    } catch (error) {
+      logger.error("Erreur custom export:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Génère un modèle d'import
+   */
+  static async generateImportTemplate(
+    type: string,
+    format: string
+  ): Promise<any> {
+    const templates: Record<string, any> = {
+      seedLots: {
+        headers: [
+          "varietyCode",
+          "level",
+          "quantity",
+          "productionDate",
+          "expiryDate",
+          "multiplierEmail",
+          "parcelName",
+          "parentLotId",
+          "notes",
+        ],
+        sample: {
+          varietyCode: "SAHEL-108",
+          level: "G1",
+          quantity: 500,
+          productionDate: "2024-01-15",
+          expiryDate: "2026-01-15",
+          multiplierEmail: "station.fanaye@isra.sn",
+          parcelName: "Bande 1",
+          parentLotId: "SL-GO-2024-001",
+          notes: "Production hivernage 2024",
+        },
+      },
+      varieties: {
+        headers: [
+          "code",
+          "name",
+          "cropType",
+          "description",
+          "maturityDays",
+          "yieldPotential",
+          "resistances",
+          "origin",
+          "releaseYear",
+        ],
+        sample: {
+          code: "ISRIZ-20",
+          name: "ISRIZ 20",
+          cropType: "RICE",
+          description: "Variété améliorée de riz",
+          maturityDays: 120,
+          yieldPotential: 8.5,
+          resistances: "Blast,Pyriculariose",
+          origin: "ISRA",
+          releaseYear: 2024,
+        },
+      },
+      multipliers: {
+        headers: [
+          "name",
+          "address",
+          "latitude",
+          "longitude",
+          "yearsExperience",
+          "certificationLevel",
+          "specialization",
+          "phone",
+          "email",
+        ],
+        sample: {
+          name: "Coopérative Agricole Fanaye",
+          address: "Fanaye, Saint-Louis, Sénégal",
+          latitude: 16.5667,
+          longitude: -15.1333,
+          yearsExperience: 10,
+          certificationLevel: "INTERMEDIATE",
+          specialization: "RICE,WHEAT",
+          phone: "771234567",
+          email: "coop.fanaye@email.sn",
+        },
+      },
+    };
+
+    const template = templates[type];
+    if (!template) {
+      throw new Error(`Type de modèle non supporté: ${type}`);
+    }
+
+    if (format === "csv") {
+      const rows = [
+        template.headers.join(","),
+        Object.values(template.sample).join(","),
+      ];
+      return rows.join("\n");
+    } else {
+      // Format Excel
+      return this.createExcelTemplate(template);
+    }
+  }
+
+  /**
+   * Export de l'arbre généalogique
+   */
+  static async exportGenealogy(lotId: string, format: string): Promise<any> {
+    try {
+      return await GenealogyService.exportGenealogy(
+        lotId,
+        format as "json" | "csv" | "dot"
+      );
+    } catch (error) {
+      logger.error("Erreur export genealogy:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Export en masse
+   */
+  static async bulkExport(
+    exports: Array<{
+      type: string;
+      format: string;
+      filters?: any;
+    }>
+  ): Promise<Buffer> {
+    try {
+      // Créer une archive ZIP
+      const archive = archiver("zip", { zlib: { level: 9 } });
+      const chunks: Buffer[] = [];
+
+      archive.on("data", (chunk) => chunks.push(chunk));
+
+      // Traiter chaque export
+      for (const [index, exportConfig] of exports.entries()) {
+        const { type, format, filters } = exportConfig;
+        let data: any;
+        let filename: string;
+
+        switch (type) {
+          case "seedLots":
+            data = await this.exportSeedLots(filters || {}, format);
+            filename = `lots-semences-${index + 1}.${format}`;
+            break;
+          case "qualityReport":
+            data = await this.exportQualityReport(filters || {}, format);
+            filename = `rapport-qualite-${index + 1}.${format}`;
+            break;
+          case "productionStats":
+            data = await this.exportProductionStats(filters || {}, format);
+            filename = `stats-production-${index + 1}.${format}`;
+            break;
+          default:
+            continue;
+        }
+
+        // Ajouter à l'archive
+        archive.append(data, { name: filename });
+      }
+
+      await archive.finalize();
+
+      return Buffer.concat(chunks);
+    } catch (error) {
+      logger.error("Erreur bulk export:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Génère un certificat pour un lot
+   */
+  static async generateCertificate(
+    lotId: string,
+    options: {
+      format: string;
+      language: string;
+    }
+  ): Promise<any> {
+    try {
+      const seedLot = await prisma.seedLot.findUnique({
+        where: { id: lotId },
+        include: {
+          variety: true,
+          multiplier: true,
+          parcel: true,
+          qualityControls: {
+            where: { result: "PASS" },
+            orderBy: { controlDate: "desc" },
+            take: 1,
+          },
+        },
+      });
+
+      if (!seedLot) {
+        throw new Error("Lot non trouvé");
+      }
+
+      if (!seedLot.qualityControls.length) {
+        throw new Error("Aucun contrôle qualité réussi pour ce lot");
+      }
+
+      const certificate = {
+        certificateNumber: `CERT-${lotId}-${Date.now()}`,
+        issuedDate: new Date(),
+        lot: {
+          id: seedLot.id,
+          variety: seedLot.variety.name,
+          level: seedLot.level,
+          quantity: seedLot.quantity,
+          productionDate: seedLot.productionDate,
+        },
+        multiplier: seedLot.multiplier,
+        qualityControl: seedLot.qualityControls[0],
+        issuer: {
+          name: "Institut Sénégalais de Recherches Agricoles",
+          acronym: "ISRA",
+          address: "Dakar, Sénégal",
+        },
+      };
+
+      if (options.format === "html") {
+        return this.generateCertificateHTML(certificate, options.language);
+      } else {
+        // TODO: Implémenter la génération PDF
+        throw new Error("Export PDF non encore implémenté");
+      }
+    } catch (error) {
+      logger.error("Erreur génération certificat:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Génère des étiquettes QR
+   */
+  static async generateQRLabels(
+    lotId: string,
+    quantity: number,
+    format: string
+  ): Promise<any> {
+    try {
+      const seedLot = await prisma.seedLot.findUnique({
+        where: { id: lotId },
+        include: {
+          variety: true,
+          multiplier: true,
+        },
+      });
+
+      if (!seedLot) {
+        throw new Error("Lot non trouvé");
+      }
+
+      const qrData = {
+        id: seedLot.id,
+        variety: seedLot.variety.code,
+        level: seedLot.level,
+        quantity: seedLot.quantity,
+        productionDate: seedLot.productionDate,
+        multiplier: seedLot.multiplier?.name,
+      };
+
+      const qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), {
+        width: 200,
+        margin: 2,
+      });
+
+      if (format === "png") {
+        // Retourner l'image PNG directement
+        const base64Data = qrCodeDataUrl.replace(
+          /^data:image\/png;base64,/,
+          ""
+        );
+        return Buffer.from(base64Data, "base64");
+      } else {
+        // TODO: Générer PDF avec plusieurs étiquettes
+        throw new Error("Export PDF d'étiquettes non encore implémenté");
+      }
+    } catch (error) {
+      logger.error("Erreur génération étiquettes QR:", error);
+      throw error;
+    }
+  }
+
+  // === Méthodes utilitaires privées ===
+
+  private static exportSeedLotsToCSV(seedLots: any[]): string {
     const headers = [
       "ID",
       "Variété",
+      "Code Variété",
       "Niveau",
       "Quantité (kg)",
-      "Date de production",
+      "Date Production",
+      "Date Expiration",
       "Statut",
       "Multiplicateur",
+      "Parcelle",
+      "Germination (%)",
+      "Pureté (%)",
       "Notes",
     ];
 
-    const csvRows = [
-      headers.join(","),
-      ...lots.map((lot) =>
-        [
-          lot.id,
-          lot.variety?.name || "N/A",
-          lot.level,
-          lot.quantity,
-          lot.productionDate,
-          lot.status,
-          lot.multiplier?.name || "N/A",
-          `"${(lot.notes || "").replace(/"/g, '""')}"`,
-        ].join(",")
+    const rows = seedLots.map((lot) => {
+      const lastQC = lot.qualityControls[0];
+      return [
+        lot.id,
+        lot.variety.name,
+        lot.variety.code,
+        lot.level,
+        lot.quantity,
+        new Date(lot.productionDate).toLocaleDateString("fr-FR"),
+        lot.expiryDate
+          ? new Date(lot.expiryDate).toLocaleDateString("fr-FR")
+          : "",
+        lot.status,
+        lot.multiplier?.name || "",
+        lot.parcel?.name || "",
+        lastQC?.germinationRate || "",
+        lastQC?.varietyPurity || "",
+        `"${(lot.notes || "").replace(/"/g, '""')}"`,
+      ].join(",");
+    });
+
+    return [headers.join(","), ...rows].join("\n");
+  }
+
+  private static async exportSeedLotsToExcel(seedLots: any[]): Promise<Buffer> {
+    // Utiliser SimpleExportService pour l'instant
+    const csv = this.exportSeedLotsToCSV(seedLots);
+    return Buffer.from(csv, "utf-8");
+  }
+
+  private static async generateProductionStats(filters: any): Promise<any> {
+    const { year, multiplierId, varietyId, status } = filters;
+
+    const where: any = {};
+    if (year) {
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31);
+      where.startDate = { gte: startDate, lte: endDate };
+    }
+    if (multiplierId) where.multiplierId = parseInt(multiplierId);
+    if (status) where.status = status;
+
+    const productions = await prisma.production.findMany({
+      where,
+      include: {
+        seedLot: {
+          include: { variety: true },
+        },
+        multiplier: true,
+        parcel: true,
+      },
+    });
+
+    // Calculer les statistiques
+    const stats = {
+      totalProductions: productions.length,
+      byStatus: this.groupByField(productions, "status"),
+      byVariety: this.groupProductionsByVariety(productions),
+      byMultiplier: this.groupByMultiplier(productions),
+      byMonth: this.groupByMonth(productions),
+      totalYield: productions.reduce((sum, p) => sum + (p.actualYield || 0), 0),
+    };
+
+    return { productions, stats };
+  }
+
+  private static exportProductionStatsToCSV(data: any): string {
+    const { productions, stats } = data;
+
+    // Section statistiques
+    const statsSection = [
+      "STATISTIQUES DE PRODUCTION",
+      "",
+      `Total productions: ${stats.totalProductions}`,
+      `Rendement total: ${stats.totalYield} kg`,
+      "",
+      "PAR STATUT:",
+      ...Object.entries(stats.byStatus).map(
+        ([status, count]) => `${status}: ${count}`
       ),
+      "",
     ];
 
-    return csvRows.join("\n");
+    // Section détails
+    const headers = [
+      "ID Production",
+      "Lot",
+      "Variété",
+      "Multiplicateur",
+      "Parcelle",
+      "Date Début",
+      "Date Fin",
+      "Statut",
+      "Rendement (kg)",
+    ];
+
+    const rows = productions.map((prod: any) =>
+      [
+        prod.id,
+        prod.seedLot.id,
+        prod.seedLot.variety.name,
+        prod.multiplier.name,
+        prod.parcel.name || "",
+        new Date(prod.startDate).toLocaleDateString("fr-FR"),
+        prod.endDate ? new Date(prod.endDate).toLocaleDateString("fr-FR") : "",
+        prod.status,
+        prod.actualYield || "",
+      ].join(",")
+    );
+
+    return [...statsSection, "", headers.join(","), ...rows].join("\n");
   }
 
-  // ✅ Export des lots de semences vers Excel (format simple)
-  static async exportSeedLotsToExcel(lots: any[]): Promise<Buffer> {
-    // Version simplifiée qui retourne un CSV comme Excel
-    const csv = await this.exportSeedLotsToCSV(lots);
-    return Buffer.from(csv, "utf8");
+  private static async exportProductionStatsToExcel(
+    data: any
+  ): Promise<Buffer> {
+    // Utiliser CSV pour l'instant
+    const csv = this.exportProductionStatsToCSV(data);
+    return Buffer.from(csv, "utf-8");
   }
 
-  // ✅ Export du rapport qualité en JSON
-  static async exportQualityReportToJSON(data: any): Promise<string> {
-    const report = {
-      titre: "Rapport de contrôle qualité",
-      dateGeneration: new Date().toISOString(),
-      statistiques: data.statistics || {},
-      resume: data.summary || {},
-      controles: data.qualityControls || [],
+  private static async exportQualityReportToExcel(
+    report: any
+  ): Promise<Buffer> {
+    // Utiliser JSON pour l'instant
+    return Buffer.from(JSON.stringify(report, null, 2), "utf-8");
+  }
+
+  private static dataToCSV(data: any[], fields?: string[]): string {
+    if (!data.length) return "";
+
+    const headers = fields || Object.keys(data[0]);
+    const rows = data.map((item) =>
+      headers
+        .map((field) => {
+          const value = item[field];
+          if (typeof value === "string" && value.includes(",")) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value || "";
+        })
+        .join(",")
+    );
+
+    return [headers.join(","), ...rows].join("\n");
+  }
+
+  private static async dataToExcel(
+    data: any[],
+    entityType: string
+  ): Promise<Buffer> {
+    // Utiliser CSV pour l'instant
+    const csv = this.dataToCSV(data);
+    return Buffer.from(csv, "utf-8");
+  }
+
+  private static dataToXML(data: any[], entityType: string): string {
+    const xml = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      `<${entityType}>`,
+      ...data.map((item) => this.objectToXML(item, "item")),
+      `</${entityType}>`,
+    ];
+    return xml.join("\n");
+  }
+
+  private static objectToXML(obj: any, tagName: string): string {
+    const content = Object.entries(obj)
+      .map(([key, value]) => {
+        if (value === null || value === undefined) return "";
+        if (typeof value === "object") {
+          return this.objectToXML(value, key);
+        }
+        return `<${key}>${value}</${key}>`;
+      })
+      .join("\n  ");
+
+    return `<${tagName}>\n  ${content}\n</${tagName}>`;
+  }
+
+  private static getDefaultIncludes(entityType: string): any {
+    const includes: Record<string, any> = {
+      seedLots: {
+        variety: true,
+        multiplier: true,
+        parcel: true,
+        qualityControls: { take: 1, orderBy: { controlDate: "desc" } },
+      },
+      varieties: {
+        _count: { select: { seedLots: true } },
+      },
+      multipliers: {
+        _count: { select: { seedLots: true, productions: true } },
+      },
+      parcels: {
+        multiplier: true,
+        _count: { select: { seedLots: true, productions: true } },
+      },
+      productions: {
+        seedLot: { include: { variety: true } },
+        multiplier: true,
+        parcel: true,
+      },
+      qualityControls: {
+        seedLot: { include: { variety: true } },
+        inspector: true,
+      },
     };
 
-    return JSON.stringify(report, null, 2);
+    return includes[entityType] || {};
   }
 
-  // ✅ Export du rapport qualité en PDF (format HTML pour l'instant)
-  static async exportQualityReportToPDF(data: any): Promise<Buffer> {
-    const html = this.generateReportHTML(data);
-    return Buffer.from(html, "utf8");
+  private static async createExcelTemplate(template: any): Promise<Buffer> {
+    // Pour l'instant, retourner un CSV
+    const rows = [
+      template.headers.join(","),
+      Object.values(template.sample).join(","),
+    ];
+    return Buffer.from(rows.join("\n"), "utf-8");
   }
 
-  // ✅ Générer un nom de fichier avec timestamp
-  static generateFilename(prefix: string, extension: string): string {
-    const timestamp = new Date()
-      .toISOString()
-      .replace(/[:.]/g, "-")
-      .slice(0, -5);
-    return `${prefix}_${timestamp}.${extension}`;
-  }
-
-  // ✅ Obtenir le type MIME selon l'extension
-  static getMimeType(extension: string): string {
-    const mimeTypes: Record<string, string> = {
-      csv: "text/csv; charset=utf-8",
-      json: "application/json",
-      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      pdf: "application/pdf",
-      html: "text/html; charset=utf-8",
+  private static generateCertificateHTML(
+    certificate: any,
+    language: string
+  ): string {
+    const translations: Record<string, any> = {
+      fr: {
+        title: "CERTIFICAT DE QUALITÉ DES SEMENCES",
+        certNumber: "Numéro de certificat",
+        issuedDate: "Date d'émission",
+        variety: "Variété",
+        level: "Niveau",
+        quantity: "Quantité",
+        productionDate: "Date de production",
+        multiplier: "Multiplicateur",
+        germination: "Taux de germination",
+        purity: "Pureté variétale",
+        moisture: "Taux d'humidité",
+        health: "Santé des graines",
+        certifies:
+          "certifie que le lot de semences répond aux normes de qualité requises.",
+      },
+      en: {
+        title: "SEED QUALITY CERTIFICATE",
+        certNumber: "Certificate Number",
+        issuedDate: "Issue Date",
+        variety: "Variety",
+        level: "Level",
+        quantity: "Quantity",
+        productionDate: "Production Date",
+        multiplier: "Multiplier",
+        germination: "Germination Rate",
+        purity: "Varietal Purity",
+        moisture: "Moisture Content",
+        health: "Seed Health",
+        certifies:
+          "certifies that the seed lot meets the required quality standards.",
+      },
     };
-    return mimeTypes[extension] || "application/octet-stream";
-  }
 
-  // ✅ Générer un rapport HTML
-  static generateReportHTML(data: any): string {
-    const stats = data.statistics || {};
-    const summary = data.summary || {};
-    const controls = data.qualityControls || [];
+    const t = translations[language] || translations.fr;
+    const qc = certificate.qualityControl;
 
     return `
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="${language}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rapport de Contrôle Qualité - ISRA</title>
+    <title>${t.title}</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            margin: 20px; 
-            color: #333;
-        }
-        .header { 
-            text-align: center; 
-            color: #2c5530; 
-            margin-bottom: 30px;
-            border-bottom: 2px solid #2c5530;
-            padding-bottom: 20px;
-        }
-        .stats { 
-            background: #f5f5f5; 
-            padding: 20px; 
-            margin: 20px 0; 
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-        }
-        .stat-item { 
-            text-align: center;
-            margin: 10px 20px;
-            min-width: 150px;
-        }
-        .stat-value { 
-            font-size: 36px; 
-            font-weight: bold; 
-            color: #2c5530;
-            display: block;
-            margin-bottom: 5px;
-        }
-        .stat-label { 
-            font-size: 14px; 
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-top: 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        th, td { 
-            border: 1px solid #ddd; 
-            padding: 12px; 
-            text-align: left; 
-        }
-        th { 
-            background-color: #2c5530; 
-            color: white;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 12px;
-            letter-spacing: 0.5px;
-        }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        tr:hover {
-            background-color: #f5f5f5;
-        }
-        .pass { 
-            color: #28a745; 
-            font-weight: bold; 
-        }
-        .fail { 
-            color: #dc3545; 
-            font-weight: bold; 
-        }
-        .footer {
-            margin-top: 40px;
-            text-align: center;
-            font-size: 12px;
-            color: #666;
-            border-top: 1px solid #ddd;
-            padding-top: 20px;
-        }
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .logo { width: 100px; height: 100px; }
+        h1 { color: #2c5530; margin: 20px 0; }
+        .certificate-info { margin: 20px 0; }
+        .info-row { margin: 10px 0; display: flex; justify-content: space-between; }
+        .label { font-weight: bold; }
+        .section { margin: 30px 0; padding: 20px; background: #f5f5f5; }
+        .signature { margin-top: 60px; text-align: right; }
+        .footer { margin-top: 40px; text-align: center; font-size: 12px; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🌾 RAPPORT DE CONTRÔLE QUALITÉ</h1>
-        <h2>Institut Sénégalais de Recherches Agricoles (ISRA)</h2>
-        <p>Station de Fanaye - Saint-Louis</p>
-        <p><strong>Date de génération :</strong> ${new Date().toLocaleDateString(
-          "fr-FR",
-          {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }
-        )}</p>
+        <h1>${t.title}</h1>
+        <h2>${certificate.issuer.name}</h2>
+        <p>${certificate.issuer.acronym}</p>
     </div>
 
-    <div class="stats">
-        <div class="stat-item">
-            <span class="stat-value">${stats.totalControls || 0}</span>
-            <span class="stat-label">Contrôles Total</span>
+    <div class="certificate-info">
+        <div class="info-row">
+            <span class="label">${t.certNumber}:</span>
+            <span>${certificate.certificateNumber}</span>
         </div>
-        <div class="stat-item">
-            <span class="stat-value">${(summary.passRate || 0).toFixed(
-              1
-            )}%</span>
-            <span class="stat-label">Taux de Réussite</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-value">${(
-              summary.averageGerminationRate || 0
-            ).toFixed(1)}%</span>
-            <span class="stat-label">Germination Moyenne</span>
-        </div>
-        <div class="stat-item">
-            <span class="stat-value">${(
-              summary.averageVarietyPurity || 0
-            ).toFixed(1)}%</span>
-            <span class="stat-label">Pureté Moyenne</span>
+        <div class="info-row">
+            <span class="label">${t.issuedDate}:</span>
+            <span>${new Date(certificate.issuedDate).toLocaleDateString(
+              language
+            )}</span>
         </div>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Lot ID</th>
-                <th>Variété</th>
-                <th>Date Contrôle</th>
-                <th>Résultat</th>
-                <th>Germination (%)</th>
-                <th>Pureté (%)</th>
-                <th>Humidité (%)</th>
-                <th>Inspecteur</th>
-            </tr>
-        </thead>
-        <tbody>
-            ${controls
-              .map(
-                (qc: any) => `
-                <tr>
-                    <td>${qc.lotId}</td>
-                    <td>${qc.seedLot?.variety?.name || "N/A"}</td>
-                    <td>${new Date(qc.controlDate).toLocaleDateString(
-                      "fr-FR"
-                    )}</td>
-                    <td class="${qc.result.toLowerCase()}">${
-                  qc.result === "PASS" ? "✓ RÉUSSI" : "✗ ÉCHEC"
-                }</td>
-                    <td>${qc.germinationRate.toFixed(1)}</td>
-                    <td>${qc.varietyPurity.toFixed(1)}</td>
-                    <td>${
-                      qc.moistureContent ? qc.moistureContent.toFixed(1) : "N/A"
-                    }</td>
-                    <td>${qc.inspector?.name || "N/A"}</td>
-                </tr>
-            `
-              )
-              .join("")}
-        </tbody>
-    </table>
+    <div class="section">
+        <h3>Information du Lot</h3>
+        <div class="info-row">
+            <span class="label">ID:</span>
+            <span>${certificate.lot.id}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">${t.variety}:</span>
+            <span>${certificate.lot.variety}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">${t.level}:</span>
+            <span>${certificate.lot.level}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">${t.quantity}:</span>
+            <span>${certificate.lot.quantity} kg</span>
+        </div>
+        <div class="info-row">
+            <span class="label">${t.productionDate}:</span>
+            <span>${new Date(certificate.lot.productionDate).toLocaleDateString(
+              language
+            )}</span>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>${t.multiplier}</h3>
+        <p>${certificate.multiplier.name}</p>
+        <p>${certificate.multiplier.address}</p>
+    </div>
+
+    <div class="section">
+        <h3>Résultats du Contrôle Qualité</h3>
+        <div class="info-row">
+            <span class="label">${t.germination}:</span>
+            <span>${qc.germinationRate}%</span>
+        </div>
+        <div class="info-row">
+            <span class="label">${t.purity}:</span>
+            <span>${qc.varietyPurity}%</span>
+        </div>
+        ${
+          qc.moistureContent
+            ? `
+        <div class="info-row">
+            <span class="label">${t.moisture}:</span>
+            <span>${qc.moistureContent}%</span>
+        </div>`
+            : ""
+        }
+        ${
+          qc.seedHealth
+            ? `
+        <div class="info-row">
+            <span class="label">${t.health}:</span>
+            <span>${qc.seedHealth}%</span>
+        </div>`
+            : ""
+        }
+    </div>
+
+    <p style="margin: 40px 0;">
+        ${certificate.issuer.name} ${t.certifies}
+    </p>
+
+    <div class="signature">
+        <p>_______________________</p>
+        <p>Signature autorisée</p>
+    </div>
 
     <div class="footer">
-        <p>© ${new Date().getFullYear()} ISRA - Institut Sénégalais de Recherches Agricoles</p>
-        <p>Ce rapport est généré automatiquement par le système de traçabilité des semences</p>
+        <p>${certificate.issuer.address}</p>
     </div>
 </body>
 </html>
     `;
+  }
+
+  private static groupByField(
+    items: any[],
+    field: string
+  ): Record<string, number> {
+    return items.reduce((acc, item) => {
+      const value = item[field];
+      acc[value] = (acc[value] || 0) + 1;
+      return acc;
+    }, {});
+  }
+
+  private static groupProductionsByVariety(
+    productions: any[]
+  ): Record<string, any> {
+    const groups: Record<string, any> = {};
+
+    productions.forEach((prod) => {
+      const varietyName = prod.seedLot.variety.name;
+      if (!groups[varietyName]) {
+        groups[varietyName] = {
+          count: 0,
+          totalYield: 0,
+        };
+      }
+      groups[varietyName].count++;
+      groups[varietyName].totalYield += prod.actualYield || 0;
+    });
+
+    return groups;
+  }
+
+  private static groupByMultiplier(productions: any[]): Record<string, any> {
+    const groups: Record<string, any> = {};
+
+    productions.forEach((prod) => {
+      const multiplierName = prod.multiplier.name;
+      if (!groups[multiplierName]) {
+        groups[multiplierName] = {
+          count: 0,
+          totalYield: 0,
+        };
+      }
+      groups[multiplierName].count++;
+      groups[multiplierName].totalYield += prod.actualYield || 0;
+    });
+
+    return groups;
+  }
+
+  private static groupByMonth(productions: any[]): Record<string, number> {
+    const groups: Record<string, number> = {};
+
+    productions.forEach((prod) => {
+      const date = new Date(prod.startDate);
+      const monthKey = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}`;
+      groups[monthKey] = (groups[monthKey] || 0) + 1;
+    });
+
+    return groups;
   }
 }
