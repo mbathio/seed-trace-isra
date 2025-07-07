@@ -51,7 +51,9 @@ const EditSeedLot: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Récupération du lot existant
-  const { data: seedLotData, isLoading: seedLotLoading } = useQuery<ApiResponse<SeedLot>>({
+  const { data: seedLotData, isLoading: seedLotLoading } = useQuery<
+    ApiResponse<SeedLot>
+  >({
     queryKey: ["seed-lot", id],
     queryFn: async () => {
       if (!id) throw new Error("ID manquant");
@@ -63,7 +65,7 @@ const EditSeedLot: React.FC = () => {
   const seedLot = seedLotData?.data;
 
   // Récupération des variétés
-  const { data: varietiesResponse, isLoading: varietiesLoading } = useQuery
+  const { data: varietiesData, isLoading: varietiesLoading } = useQuery<
     ApiResponse<Variety[]>
   >({
     queryKey: ["varieties-for-seed-lot"],
@@ -75,10 +77,10 @@ const EditSeedLot: React.FC = () => {
     },
   });
 
-  const varieties = varietiesResponse?.data || [];
+  const varieties = varietiesData?.data || [];
 
   // Récupération des multiplicateurs
-  const { data: multipliersResponse, isLoading: multipliersLoading } = useQuery
+  const { data: multipliersData, isLoading: multipliersLoading } = useQuery<
     ApiResponse<Multiplier[]>
   >({
     queryKey: ["multipliers-for-seed-lot"],
@@ -90,7 +92,7 @@ const EditSeedLot: React.FC = () => {
     },
   });
 
-  const multipliers = multipliersResponse?.data || [];
+  const multipliers = multipliersData?.data || [];
 
   const {
     control,
@@ -131,7 +133,8 @@ const EditSeedLot: React.FC = () => {
     },
     onError: (error: any) => {
       const errorMessage =
-        error?.response?.data?.message || "Erreur lors de la mise à jour du lot";
+        error?.response?.data?.message ||
+        "Erreur lors de la mise à jour du lot";
       toast.error(errorMessage);
     },
   });
@@ -160,9 +163,7 @@ const EditSeedLot: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Alert variant="destructive">
-          <AlertDescription>
-            Lot de semences non trouvé
-          </AlertDescription>
+          <AlertDescription>Lot de semences non trouvé</AlertDescription>
         </Alert>
       </div>
     );
@@ -305,7 +306,9 @@ const EditSeedLot: React.FC = () => {
                   )}
                 />
                 {errors.status && (
-                  <p className="text-sm text-red-500">{errors.status.message}</p>
+                  <p className="text-sm text-red-500">
+                    {errors.status.message}
+                  </p>
                 )}
               </div>
 
@@ -404,11 +407,7 @@ const EditSeedLot: React.FC = () => {
                   name="parentLotId"
                   control={control}
                   render={({ field }) => (
-                    <Input 
-                      placeholder="ID du lot parent" 
-                      {...field}
-                      disabled 
-                    />
+                    <Input placeholder="ID du lot parent" {...field} disabled />
                   )}
                 />
                 <p className="text-sm text-muted-foreground">
