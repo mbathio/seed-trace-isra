@@ -90,4 +90,92 @@ export class NotificationService {
     // TODO: Implémenter l'envoi d'emails, webhooks, etc.
     // Pour l'instant, on log seulement
   }
+
+  static async notifyLotCreatedFromParent(
+    lot: any,
+    parentLotId: string
+  ): Promise<void> {
+    const message = `
+    🌱 NOUVEAU LOT CRÉÉ À PARTIR D'UN LOT PARENT
+    
+    Lot parent : ${parentLotId}
+    Nouveau lot : ${lot.id}
+    Variété : ${lot.variety?.name || "N/A"}
+    Quantité : ${lot.quantity} kg
+    Niveau : ${lot.level}
+  `;
+
+    await this.send({
+      type: "lot_created_from_parent",
+      title: "Nouveau lot créé",
+      message,
+      recipients: [], // À implémenter selon votre logique
+      priority: "medium",
+    });
+  }
+
+  static async notifyLotRejected(lot: any): Promise<void> {
+    const message = `
+    ❌ LOT REJETÉ
+    
+    Lot : ${lot.id}
+    Variété : ${lot.variety?.name || "N/A"}
+    Multiplicateur : ${lot.multiplier?.name || "N/A"}
+    
+    Action requise : Vérifier le lot et prendre les mesures nécessaires.
+  `;
+
+    await this.send({
+      type: "lot_rejected",
+      title: "Lot rejeté",
+      message,
+      recipients: [], // À implémenter
+      priority: "high",
+    });
+  }
+
+  static async notifyLotCertified(lot: any): Promise<void> {
+    const message = `
+    ✅ LOT CERTIFIÉ
+    
+    Lot : ${lot.id}
+    Variété : ${lot.variety?.name || "N/A"}
+    Multiplicateur : ${lot.multiplier?.name || "N/A"}
+    Quantité : ${lot.quantity} kg
+    
+    Le lot est maintenant certifié et prêt pour la distribution.
+  `;
+
+    await this.send({
+      type: "lot_certified",
+      title: "Lot certifié",
+      message,
+      recipients: [], // À implémenter
+      priority: "medium",
+    });
+  }
+
+  static async notifyLotExpiringSoon(
+    lot: any,
+    daysUntilExpiry: number
+  ): Promise<void> {
+    const message = `
+    ⏰ LOT EXPIRE BIENTÔT
+    
+    Lot : ${lot.id}
+    Variété : ${lot.variety?.name || "N/A"}
+    Expire dans : ${daysUntilExpiry} jours
+    Date d'expiration : ${lot.expiryDate}
+    
+    Action requise : Planifier l'utilisation ou le renouvellement.
+  `;
+
+    await this.send({
+      type: "lot_expiring_soon",
+      title: "Lot expire bientôt",
+      message,
+      recipients: [], // À implémenter
+      priority: "high",
+    });
+  }
 }

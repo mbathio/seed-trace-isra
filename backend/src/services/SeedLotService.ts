@@ -781,16 +781,31 @@ export class SeedLotService {
         throw new Error("Maximum 100 lots peuvent être mis à jour en une fois");
       }
 
+      // Préparer les données de mise à jour
+      const dataToUpdate: any = {
+        updatedAt: new Date(),
+      };
+
+      // Ajouter seulement les champs définis
+      if (updateData.quantity !== undefined)
+        dataToUpdate.quantity = updateData.quantity;
+      if (updateData.status !== undefined)
+        dataToUpdate.status = updateData.status;
+      if (updateData.notes !== undefined) dataToUpdate.notes = updateData.notes;
+      if (updateData.expiryDate !== undefined)
+        dataToUpdate.expiryDate = updateData.expiryDate
+          ? new Date(updateData.expiryDate)
+          : null;
+      if (updateData.batchNumber !== undefined)
+        dataToUpdate.batchNumber = updateData.batchNumber;
+
       // Effectuer la mise à jour
       const result = await prisma.seedLot.updateMany({
         where: {
           id: { in: ids },
           isActive: true,
         },
-        data: {
-          ...updateData,
-          updatedAt: new Date(),
-        },
+        data: dataToUpdate, // Utiliser dataToUpdate au lieu de destructurer
       });
 
       // Invalider le cache
@@ -807,6 +822,282 @@ export class SeedLotService {
       };
     } catch (error) {
       logger.error("Error in bulk update", { error, ids });
+      throw error;
+    }
+  }
+
+  static async getGenealogyTree(
+    lotId: string,
+    maxDepth: number = 10
+  ): Promise<any> {
+    try {
+      const buildTree = async (
+        currentId: string,
+        depth: number = 0
+      ): Promise<any> => {
+        if (depth > maxDepth) return null;
+
+        const lot = await prisma.seedLot.findUnique({
+          where: { id: currentId },
+          include: {
+            variety: true,
+            multiplier: true,
+            childLots: {
+              include: { variety: true },
+            },
+          },
+        });
+
+        if (!lot) return null;
+
+        const children = await Promise.all(
+          lot.childLots.map((child) => buildTree(child.id, depth + 1))
+        );
+
+        return {
+          ...lot,
+          children: children.filter(Boolean),
+          _depth: depth,
+        };
+      };
+
+      return await buildTree(lotId);
+    } catch (error) {
+      logger.error("Error getting genealogy tree", error);
+      throw error;
+    }
+  }
+
+  static async createChildLot(parentId: string, data: any): Promise<any> {
+    try {
+      const parentLot = await prisma.seedLot.findUnique({
+        where: { id: parentId },
+        include: { variety: true },
+      });
+
+      if (!parentLot) {
+        throw new Error("Lot parent non trouvé");
+      }
+
+      if (data.quantity > parentLot.quantity) {
+        throw new Error("Quantité insuffisante dans le lot parent");
+      }
+
+      const childLot = await prisma.$transaction(async (tx) => {
+        // Créer le lot enfant
+        const newLot = await tx.seedLot.create({
+          data: {
+            ...data,
+            parentLotId: parentId,
+            varietyId: parentLot.varietyId,
+            id: await generateLotId(data.level, parentLot.variety.code),
+          },
+          include: { variety: true, multiplier: true },
+        });
+
+        // Déduire la quantité du parent
+        await tx.seedLot.update({
+          where: { id: parentId },
+          data: { quantity: { decrement: data.quantity } },
+        });
+
+        return newLot;
+      });
+
+      return childLot;
+    } catch (error) {
+      logger.error("Error creating child lot", error);
+      throw error;
+    }
+  }
+
+  static async transferLot(
+    lotId: string,
+    targetMultiplierId: number,
+    quantity: number,
+    notes?: string
+  ): Promise<any> {
+    try {
+      const sourceLot = await prisma.seedLot.findUnique({
+        where: { id: lotId },
+      });
+
+      if (!sourceLot) {
+        throw new Error("Lot source non trouvé");
+      }
+
+      if (quantity > sourceLot.quantity) {
+        throw new Error("Quantité insuffisante");
+      }
+
+      const result = await prisma.$transaction(async (tx) => {
+        // Créer un nouveau lot pour le destinataire
+        const transferredLot = await tx.seedLot.create({
+          data: {
+            varietyId: sourceLot.varietyId,
+            level: sourceLot.level,
+            quantity,
+            productionDate: sourceLot.productionDate,
+            expiryDate: sourceLot.expiryDate,
+            multiplierId: targetMultiplierId,
+            parentLotId: lotId,
+            notes: notes || `Transféré depuis ${lotId}`,
+            status: sourceLot.status,
+            id: await generateLotId(sourceLot.level, sourceLot.variety.code),
+          },
+        });
+
+        // Réduire la quantité du lot source
+        await tx.seedLot.update({
+          where: { id: lotId },
+          data: { quantity: { decrement: quantity } },
+        });
+
+        return { sourceLot: lotId, transferredLot, quantity };
+      });
+
+      return result;
+    } catch (error) {
+      logger.error("Error transferring lot", error);
+      throw error;
+    }
+  }
+
+  static async getSeedLotStats(lotId: string): Promise<any> {
+    try {
+      const lot = await prisma.seedLot.findUnique({
+        where: { id: lotId },
+        include: {
+          childLots: true,
+          qualityControls: true,
+          productions: true,
+          _count: {
+            select: {
+              childLots: true,
+              qualityControls: true,
+              productions: true,
+            },
+          },
+        },
+      });
+
+      if (!lot) {
+        throw new Error("Lot non trouvé");
+      }
+
+      const stats = {
+        totalChildLots: lot._count.childLots,
+        totalQualityControls: lot._count.qualityControls,
+        totalProductions: lot._count.productions,
+        quantityInChildren: lot.childLots.reduce(
+          (sum, child) => sum + child.quantity,
+          0
+        ),
+        remainingQuantity: lot.quantity,
+        qualityStatus:
+          lot.qualityControls.length > 0
+            ? lot.qualityControls[lot.qualityControls.length - 1].result
+            : "Non testé",
+      };
+
+      return stats;
+    } catch (error) {
+      logger.error("Error getting seed lot stats", error);
+      throw error;
+    }
+  }
+
+  static async getSeedLotHistory(lotId: string): Promise<any[]> {
+    try {
+      // Pour l'instant, retourner un historique basique
+      // Dans une vraie implémentation, vous devriez avoir une table d'audit
+      const lot = await prisma.seedLot.findUnique({
+        where: { id: lotId },
+        include: {
+          qualityControls: {
+            orderBy: { controlDate: "desc" },
+          },
+          productions: {
+            orderBy: { startDate: "desc" },
+          },
+        },
+      });
+
+      if (!lot) {
+        throw new Error("Lot non trouvé");
+      }
+
+      const history = [
+        {
+          date: lot.createdAt,
+          action: "Création du lot",
+          details: { quantity: lot.quantity, status: lot.status },
+        },
+        ...lot.qualityControls.map((qc) => ({
+          date: qc.controlDate,
+          action: "Contrôle qualité",
+          details: { result: qc.result, germination: qc.germinationRate },
+        })),
+        ...lot.productions.map((prod) => ({
+          date: prod.startDate,
+          action: "Début de production",
+          details: { status: prod.status },
+        })),
+      ];
+
+      return history.sort((a, b) => b.date.getTime() - a.date.getTime());
+    } catch (error) {
+      logger.error("Error getting seed lot history", error);
+      throw error;
+    }
+  }
+
+  static async validateSeedLot(lotId: string): Promise<any> {
+    try {
+      const lot = await prisma.seedLot.findUnique({
+        where: { id: lotId },
+        include: {
+          variety: true,
+          qualityControls: {
+            orderBy: { controlDate: "desc" },
+            take: 1,
+          },
+        },
+      });
+
+      if (!lot) {
+        throw new Error("Lot non trouvé");
+      }
+
+      const errors: string[] = [];
+
+      // Validations
+      if (lot.quantity <= 0) {
+        errors.push("La quantité doit être positive");
+      }
+
+      if (lot.expiryDate && new Date() > lot.expiryDate) {
+        errors.push("Le lot est expiré");
+      }
+
+      if (lot.status === "CERTIFIED" && lot.qualityControls.length === 0) {
+        errors.push("Un lot certifié doit avoir au moins un contrôle qualité");
+      }
+
+      if (
+        lot.qualityControls.length > 0 &&
+        lot.qualityControls[0].result === "FAIL"
+      ) {
+        errors.push("Le dernier contrôle qualité a échoué");
+      }
+
+      return {
+        isValid: errors.length === 0,
+        errors,
+        lot,
+      };
+    } catch (error) {
+      logger.error("Error validating seed lot", error);
       throw error;
     }
   }

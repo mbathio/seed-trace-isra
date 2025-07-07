@@ -295,3 +295,15 @@ logger.info("Logger initialisé", {
   logLevel: logger.level,
   logsDirectory: logsDir,
 });
+
+// Extension du logger principal avec la méthode audit
+logger.audit = function (message: string, meta?: any) {
+  auditLogger.info(message, meta);
+};
+
+// Déclaration TypeScript pour la méthode audit
+declare module "winston" {
+  interface Logger {
+    audit(message: string, meta?: any): void;
+  }
+}
