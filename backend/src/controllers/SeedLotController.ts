@@ -28,7 +28,7 @@ export class SeedLotController {
       // Log d'audit - Utiliser LoggerUtils au lieu de logger.audit
       LoggerUtils.audit("Seed lot created", req.user?.userId, {
         seedLotId: seedLot.id,
-        variety: seedLot.variety.name,
+variety: seedLot.variety?.name || 'N/A',
         level: seedLot.level,
         quantity: seedLot.quantity,
       });

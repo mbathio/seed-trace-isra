@@ -12,6 +12,8 @@ import { CacheService } from "./CacheService";
 import { NotificationService } from "./NotificationService";
 import { ValidationService } from "./ValidationService";
 import { GenealogyService } from "./GenealogyService";
+import { SeedLevel, LotStatus } from "@prisma/client";
+import DataTransformer from "../utils/transformers";
 
 const prisma = new PrismaClient();
 
@@ -88,10 +90,11 @@ export class SeedLotService {
 
       // 2. Vérifier l'existence de la variété
       const variety = await prisma.variety.findUnique({
-        where: { id: data.varietyId, isActive: true },
+        where: { id: data.varietyId },
+        select: { id: true, code: true, cropType: true, isActive: true },
       });
 
-      if (!variety) {
+      if (!variety || !variety.isActive) {
         throw new Error("Variété non trouvée ou inactive");
       }
 
@@ -133,19 +136,26 @@ export class SeedLotService {
             variety.cropType
           );
 
-      // 6. Créer le lot dans une transaction
+      // 6. Transformer les valeurs UI vers DB
+      // IMPORTANT: Transformer le niveau et le statut vers les valeurs DB
+      const dbLevel = data.level as SeedLevel; // Les niveaux sont identiques UI/DB
+      const dbStatus = data.status
+        ? (DataTransformer.transformLotStatusUIToDB(data.status) as LotStatus)
+        : LotStatus.PENDING;
+
+      // 7. Créer le lot dans une transaction
       const result = await prisma.$transaction(
         async (tx: Prisma.TransactionClient) => {
-          // Créer le nouveau lot
+          // Créer le nouveau lot avec les valeurs transformées
           const seedLot = await tx.seedLot.create({
             data: {
               id: lotId,
               variety: { connect: { id: data.varietyId } },
-              level: data.level,
+              level: dbLevel, // Utiliser la valeur DB
               quantity: data.quantity,
               productionDate: new Date(data.productionDate),
               expiryDate,
-              status: data.status || "PENDING",
+              status: dbStatus, // Utiliser la valeur DB transformée
               multiplier: data.multiplierId
                 ? { connect: { id: data.multiplierId } }
                 : undefined,
@@ -182,20 +192,23 @@ export class SeedLotService {
         }
       );
 
-      // 7. Invalider le cache
+      // 8. Transformer le résultat pour le frontend
+      const transformedResult = DataTransformer.transformSeedLot(result);
+
+      // 9. Invalider le cache
       await CacheService.invalidate("seedlots:*");
       await CacheService.invalidate("stats:*");
 
-      // 8. Notifications
+      // 10. Notifications
       if (data.parentLotId) {
         await NotificationService.notifyLotCreatedFromParent(
-          result,
+          transformedResult,
           data.parentLotId
         );
       }
 
-      logger.info(`Seed lot created successfully: ${result.id}`);
-      return result;
+      logger.info(`Seed lot created successfully: ${transformedResult.id}`);
+      return transformedResult;
     } catch (error) {
       logger.error("Error creating seed lot", { error, data });
       throw error;
