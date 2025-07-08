@@ -1,6 +1,6 @@
 // backend/src/services/SeedLotService.ts - VERSION CORRIGÉE COMPLÈTE
 
-import { PrismaClient, Prisma, SeedLevel, LotStatus } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import {
   generateLotId,
   getNextLevel,
@@ -141,11 +141,11 @@ export class SeedLotService {
             data: {
               id: lotId,
               variety: { connect: { id: data.varietyId } },
-              level: data.level as SeedLevel,
+              level: data.level,
               quantity: data.quantity,
               productionDate: new Date(data.productionDate),
               expiryDate,
-              status: (data.status || "PENDING") as LotStatus,
+              status: data.status || "PENDING",
               multiplier: data.multiplierId
                 ? { connect: { id: data.multiplierId } }
                 : undefined,
@@ -215,7 +215,7 @@ export class SeedLotService {
       const skip = (page - 1) * pageSize;
 
       // 2. Construction des conditions WHERE
-      const where: Prisma.SeedLotWhereInput = {
+      const where: any = {
         isActive: true,
       };
 
@@ -243,10 +243,10 @@ export class SeedLotService {
 
       // Filtres spécifiques
       if (filters.level) {
-        where.level = filters.level as SeedLevel;
+        where.level = filters.level;
       }
       if (filters.status) {
-        where.status = filters.status as LotStatus;
+        where.status = filters.status;
       }
       if (filters.varietyId) {
         where.varietyId = filters.varietyId;
@@ -523,7 +523,7 @@ export class SeedLotService {
       }
 
       // 3. Construire l'objet de mise à jour
-      const updateData: Prisma.SeedLotUpdateInput = {
+      const updateData: any = {
         updatedAt: new Date(),
       };
 
@@ -533,7 +533,7 @@ export class SeedLotService {
         updateData.batchNumber = data.batchNumber;
 
       if (data.status !== undefined) {
-        updateData.status = data.status as LotStatus;
+        updateData.status = data.status;
 
         // Si le lot est certifié, vérifier qu'il a passé au moins un contrôle qualité
         if (data.status === "CERTIFIED") {
@@ -707,7 +707,7 @@ export class SeedLotService {
     includeInactive?: boolean;
   }) {
     try {
-      const where: Prisma.SeedLotWhereInput = {
+      const where: any = {
         isActive: searchCriteria.includeInactive ? undefined : true,
       };
 
@@ -797,7 +797,7 @@ export class SeedLotService {
       }
 
       // Préparer les données de mise à jour
-      const dataToUpdate: Prisma.SeedLotUpdateManyMutationInput = {
+      const dataToUpdate: any = {
         updatedAt: new Date(),
       };
 
@@ -805,7 +805,7 @@ export class SeedLotService {
       if (updateData.quantity !== undefined)
         dataToUpdate.quantity = updateData.quantity;
       if (updateData.status !== undefined)
-        dataToUpdate.status = updateData.status as LotStatus;
+        dataToUpdate.status = updateData.status;
       if (updateData.notes !== undefined) dataToUpdate.notes = updateData.notes;
       if (updateData.expiryDate !== undefined)
         dataToUpdate.expiryDate = updateData.expiryDate
@@ -1132,10 +1132,8 @@ export class SeedLotService {
   }
 
   // Méthodes privées d'aide
-  private static buildWhereClause(
-    filters: SeedLotFilters
-  ): Prisma.SeedLotWhereInput {
-    const where: Prisma.SeedLotWhereInput = { isActive: true };
+  private static buildWhereClause(filters: SeedLotFilters): any {
+    const where: any = { isActive: true };
 
     if (filters.search) {
       where.OR = [
@@ -1149,8 +1147,8 @@ export class SeedLotService {
       ];
     }
 
-    if (filters.level) where.level = filters.level as SeedLevel;
-    if (filters.status) where.status = filters.status as LotStatus;
+    if (filters.level) where.level = filters.level;
+    if (filters.status) where.status = filters.status;
     if (filters.varietyId) where.varietyId = filters.varietyId;
     if (filters.multiplierId) where.multiplierId = filters.multiplierId;
 

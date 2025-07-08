@@ -20,6 +20,12 @@
     "security:audit": "npm audit --audit-level=moderate",
     "security:fix": "npm audit fix"
   },
+  "prisma": {
+    "seed": {
+      "command": "ts-node prisma/seed.ts",
+      "args": []
+    }
+  },
   "dependencies": {
     "@prisma/client": "^6.11.1",
     "archiver": "^7.0.1",
