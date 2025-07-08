@@ -2,6 +2,7 @@
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { PaginationQuery } from "../types/api";
+import { Prisma } from "@prisma/client";
 
 export class ReportService {
   static async getReports(
@@ -151,30 +152,32 @@ export class ReportService {
       const stats = {
         totalProductions: productions.length,
         totalPlannedQuantity: productions.reduce(
-          (sum, p) => sum + (p.plannedQuantity || 0),
+          (sum: number, p: any) => sum + (p.plannedQuantity || 0),
           0
         ),
         totalActualYield: productions.reduce(
-          (sum, p) => sum + (p.actualYield || 0),
+          (sum: number, p: any) => sum + (p.actualYield || 0),
           0
         ),
         completedProductions: productions.filter(
-          (p) => p.status === "COMPLETED"
+          (p: any) => p.status === "COMPLETED"
         ).length,
         inProgressProductions: productions.filter(
-          (p) => p.status === "IN_PROGRESS"
+          (p: any) => p.status === "IN_PROGRESS"
         ).length,
         averageYield: 0,
       };
 
       const completedWithYield = productions.filter(
-        (p) => p.status === "COMPLETED" && p.actualYield
+        (p: any) => p.status === "COMPLETED" && p.actualYield
       );
 
       if (completedWithYield.length > 0) {
         stats.averageYield =
-          completedWithYield.reduce((sum, p) => sum + (p.actualYield || 0), 0) /
-          completedWithYield.length;
+          completedWithYield.reduce(
+            (sum: number, p: any) => sum + (p.actualYield || 0),
+            0
+          ) / completedWithYield.length;
       }
 
       return {
@@ -239,10 +242,12 @@ export class ReportService {
       // Calculer les statistiques
       const stats = {
         totalControls: qualityControls.length,
-        passedControls: qualityControls.filter((qc) => qc.result === "PASS")
-          .length,
-        failedControls: qualityControls.filter((qc) => qc.result === "FAIL")
-          .length,
+        passedControls: qualityControls.filter(
+          (qc: any) => qc.result === "PASS"
+        ).length,
+        failedControls: qualityControls.filter(
+          (qc: any) => qc.result === "FAIL"
+        ).length,
         averageGerminationRate: 0,
         averageVarietyPurity: 0,
         averageMoistureContent: 0,
@@ -251,27 +256,35 @@ export class ReportService {
 
       if (qualityControls.length > 0) {
         stats.averageGerminationRate =
-          qualityControls.reduce((sum, qc) => sum + qc.germinationRate, 0) /
-          qualityControls.length;
+          qualityControls.reduce(
+            (sum: number, qc: any) => sum + qc.germinationRate,
+            0
+          ) / qualityControls.length;
 
         stats.averageVarietyPurity =
-          qualityControls.reduce((sum, qc) => sum + qc.varietyPurity, 0) /
-          qualityControls.length;
+          qualityControls.reduce(
+            (sum: number, qc: any) => sum + qc.varietyPurity,
+            0
+          ) / qualityControls.length;
 
-        const withMoisture = qualityControls.filter((qc) => qc.moistureContent);
+        const withMoisture = qualityControls.filter(
+          (qc: any) => qc.moistureContent
+        );
         if (withMoisture.length > 0) {
           stats.averageMoistureContent =
             withMoisture.reduce(
-              (sum, qc) => sum + (qc.moistureContent || 0),
+              (sum: number, qc: any) => sum + (qc.moistureContent || 0),
               0
             ) / withMoisture.length;
         }
 
-        const withHealth = qualityControls.filter((qc) => qc.seedHealth);
+        const withHealth = qualityControls.filter((qc: any) => qc.seedHealth);
         if (withHealth.length > 0) {
           stats.averageSeedHealth =
-            withHealth.reduce((sum, qc) => sum + (qc.seedHealth || 0), 0) /
-            withHealth.length;
+            withHealth.reduce(
+              (sum: number, qc: any) => sum + (qc.seedHealth || 0),
+              0
+            ) / withHealth.length;
         }
       }
 
@@ -331,7 +344,7 @@ export class ReportService {
       });
 
       // Calculer les statistiques par niveau
-      const statsByLevel = seedLots.reduce((acc: any, lot) => {
+      const statsByLevel = seedLots.reduce((acc: any, lot: any) => {
         if (!acc[lot.level]) {
           acc[lot.level] = {
             count: 0,
@@ -353,7 +366,7 @@ export class ReportService {
       }, {});
 
       // Statistiques par variété
-      const statsByVariety = seedLots.reduce((acc: any, lot) => {
+      const statsByVariety = seedLots.reduce((acc: any, lot: any) => {
         const varietyName = lot.variety.name;
         if (!acc[varietyName]) {
           acc[varietyName] = {
@@ -381,16 +394,20 @@ export class ReportService {
         seedLots,
         statistics: {
           totalLots: seedLots.length,
-          totalQuantity: seedLots.reduce((sum, lot) => sum + lot.quantity, 0),
+          totalQuantity: seedLots.reduce(
+            (sum: number, lot: any) => sum + lot.quantity,
+            0
+          ),
           byLevel: statsByLevel,
           byVariety: statsByVariety,
           byStatus: {
-            certified: seedLots.filter((lot) => lot.status === "CERTIFIED")
+            certified: seedLots.filter((lot: any) => lot.status === "CERTIFIED")
               .length,
-            pending: seedLots.filter((lot) => lot.status === "PENDING").length,
-            rejected: seedLots.filter((lot) => lot.status === "REJECTED")
+            pending: seedLots.filter((lot: any) => lot.status === "PENDING")
               .length,
-            in_stock: seedLots.filter((lot) => lot.status === "IN_STOCK")
+            rejected: seedLots.filter((lot: any) => lot.status === "REJECTED")
+              .length,
+            in_stock: seedLots.filter((lot: any) => lot.status === "IN_STOCK")
               .length,
           },
         },
@@ -460,17 +477,17 @@ export class ReportService {
       });
 
       // Calculer les performances pour chaque multiplicateur
-      const performanceData = multipliers.map((multiplier) => {
+      const performanceData = multipliers.map((multiplier: any) => {
         const completedProductions = multiplier.productions.filter(
-          (p) => p.status === "COMPLETED"
+          (p: any) => p.status === "COMPLETED"
         );
 
         const qualityControls = multiplier.seedLots.flatMap(
-          (lot) => lot.qualityControls
+          (lot: any) => lot.qualityControls
         );
 
         const passedControls = qualityControls.filter(
-          (qc) => qc.result === "PASS"
+          (qc: any) => qc.result === "PASS"
         );
 
         return {
@@ -485,7 +502,7 @@ export class ReportService {
             completedProductions: completedProductions.length,
             totalContracts: multiplier.contracts.length,
             activeContracts: multiplier.contracts.filter(
-              (c) => c.status === "ACTIVE"
+              (c: any) => c.status === "ACTIVE"
             ).length,
             totalSeedLots: multiplier.seedLots.length,
             qualityPassRate:
@@ -495,7 +512,7 @@ export class ReportService {
             averageYield:
               completedProductions.length > 0
                 ? completedProductions.reduce(
-                    (sum, p) => sum + (p.actualYield || 0),
+                    (sum: number, p: any) => sum + (p.actualYield || 0),
                     0
                   ) / completedProductions.length
                 : 0,
@@ -510,7 +527,7 @@ export class ReportService {
       });
 
       // Trier par score de performance (combinaison de plusieurs métriques)
-      performanceData.sort((a, b) => {
+      performanceData.sort((a: any, b: any) => {
         const scoreA =
           (a.performance.qualityPassRate + a.performance.completionRate) / 2;
         const scoreB =
@@ -525,14 +542,14 @@ export class ReportService {
           averageQualityPassRate:
             performanceData.length > 0
               ? performanceData.reduce(
-                  (sum, m) => sum + m.performance.qualityPassRate,
+                  (sum: number, m: any) => sum + m.performance.qualityPassRate,
                   0
                 ) / performanceData.length
               : 0,
           averageCompletionRate:
             performanceData.length > 0
               ? performanceData.reduce(
-                  (sum, m) => sum + m.performance.completionRate,
+                  (sum: number, m: any) => sum + m.performance.completionRate,
                   0
                 ) / performanceData.length
               : 0,

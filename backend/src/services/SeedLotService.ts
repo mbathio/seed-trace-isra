@@ -134,51 +134,53 @@ export class SeedLotService {
           );
 
       // 6. Créer le lot dans une transaction
-      const result = await prisma.$transaction(async (tx) => {
-        // Créer le nouveau lot
-        const seedLot = await tx.seedLot.create({
-          data: {
-            id: lotId,
-            variety: { connect: { id: data.varietyId } },
-            level: data.level as SeedLevel,
-            quantity: data.quantity,
-            productionDate: new Date(data.productionDate),
-            expiryDate,
-            status: (data.status || "PENDING") as LotStatus,
-            multiplier: data.multiplierId
-              ? { connect: { id: data.multiplierId } }
-              : undefined,
-            parcel: data.parcelId
-              ? { connect: { id: data.parcelId } }
-              : undefined,
-            parentLot: data.parentLotId
-              ? { connect: { id: data.parentLotId } }
-              : undefined,
-            notes: data.notes,
-            batchNumber: data.batchNumber || `${variety.code}-${Date.now()}`,
-          },
-          include: {
-            variety: true,
-            multiplier: true,
-            parcel: true,
-            parentLot: true,
-          },
-        });
-
-        // Mettre à jour la quantité du lot parent si applicable
-        if (data.parentLotId) {
-          await tx.seedLot.update({
-            where: { id: data.parentLotId },
+      const result = await prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          // Créer le nouveau lot
+          const seedLot = await tx.seedLot.create({
             data: {
-              quantity: {
-                decrement: data.quantity,
-              },
+              id: lotId,
+              variety: { connect: { id: data.varietyId } },
+              level: data.level as SeedLevel,
+              quantity: data.quantity,
+              productionDate: new Date(data.productionDate),
+              expiryDate,
+              status: (data.status || "PENDING") as LotStatus,
+              multiplier: data.multiplierId
+                ? { connect: { id: data.multiplierId } }
+                : undefined,
+              parcel: data.parcelId
+                ? { connect: { id: data.parcelId } }
+                : undefined,
+              parentLot: data.parentLotId
+                ? { connect: { id: data.parentLotId } }
+                : undefined,
+              notes: data.notes,
+              batchNumber: data.batchNumber || `${variety.code}-${Date.now()}`,
+            },
+            include: {
+              variety: true,
+              multiplier: true,
+              parcel: true,
+              parentLot: true,
             },
           });
-        }
 
-        return seedLot;
-      });
+          // Mettre à jour la quantité du lot parent si applicable
+          if (data.parentLotId) {
+            await tx.seedLot.update({
+              where: { id: data.parentLotId },
+              data: {
+                quantity: {
+                  decrement: data.quantity,
+                },
+              },
+            });
+          }
+
+          return seedLot;
+        }
+      );
 
       // 7. Invalider le cache
       await CacheService.invalidate("seedlots:*");
@@ -660,22 +662,24 @@ export class SeedLotService {
         );
       }
 
-      const result = await prisma.$transaction(async (tx) => {
-        if (hardDelete) {
-          // Supprimer d'abord les relations
-          await tx.qualityControl.deleteMany({ where: { lotId: id } });
-          await tx.production.deleteMany({ where: { lotId: id } });
+      const result = await prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          if (hardDelete) {
+            // Supprimer d'abord les relations
+            await tx.qualityControl.deleteMany({ where: { lotId: id } });
+            await tx.production.deleteMany({ where: { lotId: id } });
 
-          // Puis supprimer le lot
-          return await tx.seedLot.delete({ where: { id } });
-        } else {
-          // Soft delete
-          return await tx.seedLot.update({
-            where: { id },
-            data: { isActive: false },
-          });
+            // Puis supprimer le lot
+            return await tx.seedLot.delete({ where: { id } });
+          } else {
+            // Soft delete
+            return await tx.seedLot.update({
+              where: { id },
+              data: { isActive: false },
+            });
+          }
         }
-      });
+      );
 
       // 4. Invalider le cache
       await CacheService.invalidate(`seedlot:${id}:*`);
@@ -865,26 +869,28 @@ export class SeedLotService {
         throw new Error("Quantité insuffisante dans le lot parent");
       }
 
-      const childLot = await prisma.$transaction(async (tx) => {
-        // Créer le lot enfant
-        const newLot = await tx.seedLot.create({
-          data: {
-            ...data,
-            parentLotId: parentId,
-            varietyId: parentLot.varietyId,
-            id: await generateLotId(data.level, parentLot.variety.code),
-          },
-          include: { variety: true, multiplier: true },
-        });
+      const childLot = await prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          // Créer le lot enfant
+          const newLot = await tx.seedLot.create({
+            data: {
+              ...data,
+              parentLotId: parentId,
+              varietyId: parentLot.varietyId,
+              id: await generateLotId(data.level, parentLot.variety.code),
+            },
+            include: { variety: true, multiplier: true },
+          });
 
-        // Déduire la quantité du parent
-        await tx.seedLot.update({
-          where: { id: parentId },
-          data: { quantity: { decrement: data.quantity } },
-        });
+          // Déduire la quantité du parent
+          await tx.seedLot.update({
+            where: { id: parentId },
+            data: { quantity: { decrement: data.quantity } },
+          });
 
-        return newLot;
-      });
+          return newLot;
+        }
+      );
 
       return childLot;
     } catch (error) {
@@ -913,31 +919,33 @@ export class SeedLotService {
         throw new Error("Quantité insuffisante");
       }
 
-      const result = await prisma.$transaction(async (tx) => {
-        // Créer un nouveau lot pour le destinataire
-        const transferredLot = await tx.seedLot.create({
-          data: {
-            varietyId: sourceLot.varietyId,
-            level: sourceLot.level,
-            quantity,
-            productionDate: sourceLot.productionDate,
-            expiryDate: sourceLot.expiryDate,
-            multiplierId: targetMultiplierId,
-            parentLotId: lotId,
-            notes: notes || `Transféré depuis ${lotId}`,
-            status: sourceLot.status,
-            id: await generateLotId(sourceLot.level, sourceLot.variety.code),
-          },
-        });
+      const result = await prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          // Créer un nouveau lot pour le destinataire
+          const transferredLot = await tx.seedLot.create({
+            data: {
+              varietyId: sourceLot.varietyId,
+              level: sourceLot.level,
+              quantity,
+              productionDate: sourceLot.productionDate,
+              expiryDate: sourceLot.expiryDate,
+              multiplierId: targetMultiplierId,
+              parentLotId: lotId,
+              notes: notes || `Transféré depuis ${lotId}`,
+              status: sourceLot.status,
+              id: await generateLotId(sourceLot.level, sourceLot.variety.code),
+            },
+          });
 
-        // Réduire la quantité du lot source
-        await tx.seedLot.update({
-          where: { id: lotId },
-          data: { quantity: { decrement: quantity } },
-        });
+          // Réduire la quantité du lot source
+          await tx.seedLot.update({
+            where: { id: lotId },
+            data: { quantity: { decrement: quantity } },
+          });
 
-        return { sourceLot: lotId, transferredLot, quantity };
-      });
+          return { sourceLot: lotId, transferredLot, quantity };
+        }
+      );
 
       return result;
     } catch (error) {
@@ -973,7 +981,7 @@ export class SeedLotService {
         totalQualityControls: lot._count.qualityControls,
         totalProductions: lot._count.productions,
         quantityInChildren: lot.childLots.reduce(
-          (sum, child) => sum + child.quantity,
+          (sum: number, child: any) => sum + child.quantity,
           0
         ),
         remainingQuantity: lot.quantity,
@@ -1016,12 +1024,12 @@ export class SeedLotService {
           action: "Création du lot",
           details: { quantity: lot.quantity, status: lot.status },
         },
-        ...lot.qualityControls.map((qc) => ({
+        ...lot.qualityControls.map((qc: any) => ({
           date: qc.controlDate,
           action: "Contrôle qualité",
           details: { result: qc.result, germination: qc.germinationRate },
         })),
-        ...lot.productions.map((prod) => ({
+        ...lot.productions.map((prod: any) => ({
           date: prod.startDate,
           action: "Début de production",
           details: { status: prod.status },

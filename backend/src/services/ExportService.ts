@@ -555,7 +555,10 @@ export class ExportService {
       byVariety: this.groupProductionsByVariety(productions),
       byMultiplier: this.groupByMultiplier(productions),
       byMonth: this.groupByMonth(productions),
-      totalYield: productions.reduce((sum, p) => sum + (p.actualYield || 0), 0),
+      totalYield: productions.reduce(
+        (sum: number, p: any) => sum + (p.actualYield || 0),
+        0
+      ),
     };
 
     return { productions, stats };
