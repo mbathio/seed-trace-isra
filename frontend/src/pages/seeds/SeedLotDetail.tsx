@@ -25,7 +25,6 @@ import {
   CheckCircle,
   XCircle,
   Printer,
-  Share2,
   FileText,
   Activity,
 } from "lucide-react";
@@ -73,7 +72,7 @@ import { QRCodeModal } from "../../components/qr-code/QRCodeModal";
 import { DeleteSeedLotDialog } from "../../components/seeds/DeleteSeedLotDialog";
 import { seedLotService } from "../../services/seedLotService";
 import { SeedLot, QualityControl, Production } from "../../types/entities";
-import { formatDate, formatNumber, formatDateTime } from "../../utils/formatters";
+import { formatDate, formatNumber } from "../../utils/formatters";
 import {
   LOT_STATUSES,
   getStatusConfig,
@@ -82,6 +81,18 @@ import {
 } from "../../constants";
 import { toast } from "react-toastify";
 import { cn } from "../../lib/utils";
+
+// Fonction utilitaire pour formater la date et l'heure
+const formatDateTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleString("fr-FR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 const SeedLotDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -140,7 +151,8 @@ const SeedLotDetail: React.FC = () => {
       navigate("/dashboard/seed-lots");
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || "Erreur lors de la suppression";
+      const message =
+        error?.response?.data?.message || "Erreur lors de la suppression";
       toast.error(message);
     },
   });
@@ -156,7 +168,9 @@ const SeedLotDetail: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["seed-lot", id] });
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || "Erreur lors de la mise à jour du statut";
+      const message =
+        error?.response?.data?.message ||
+        "Erreur lors de la mise à jour du statut";
       toast.error(message);
     },
   });
@@ -228,11 +242,23 @@ const SeedLotDetail: React.FC = () => {
     if (daysUntilExpiry < 0) {
       return { color: "text-red-600", icon: XCircle, text: "Expiré" };
     } else if (daysUntilExpiry <= 30) {
-      return { color: "text-orange-600", icon: AlertTriangle, text: `Expire dans ${daysUntilExpiry} jours` };
+      return {
+        color: "text-orange-600",
+        icon: AlertTriangle,
+        text: `Expire dans ${daysUntilExpiry} jours`,
+      };
     } else if (daysUntilExpiry <= 90) {
-      return { color: "text-yellow-600", icon: Clock, text: `Expire dans ${daysUntilExpiry} jours` };
+      return {
+        color: "text-yellow-600",
+        icon: Clock,
+        text: `Expire dans ${daysUntilExpiry} jours`,
+      };
     } else {
-      return { color: "text-green-600", icon: CheckCircle, text: `Valide (${daysUntilExpiry} jours)` };
+      return {
+        color: "text-green-600",
+        icon: CheckCircle,
+        text: `Valide (${daysUntilExpiry} jours)`,
+      };
     }
   };
 
@@ -272,7 +298,8 @@ const SeedLotDetail: React.FC = () => {
   const daysUntilExpiry = calculateDaysUntilExpiry(seedLot.expiryDate);
   const expiryStatus = getExpiryStatus(daysUntilExpiry);
   const availableQuantity = seedLot.availableQuantity || seedLot.quantity;
-  const quantityUsedPercentage = ((seedLot.quantity - availableQuantity) / seedLot.quantity) * 100;
+  const quantityUsedPercentage =
+    ((seedLot.quantity - availableQuantity) / seedLot.quantity) * 100;
 
   return (
     <div className="space-y-6">
@@ -296,7 +323,9 @@ const SeedLotDetail: React.FC = () => {
               {getLevelBadge(seedLot.level)}
               {getStatusBadge(seedLot.status)}
               <span className="text-muted-foreground">•</span>
-              <span className="font-medium">{formatNumber(seedLot.quantity)} kg</span>
+              <span className="font-medium">
+                {formatNumber(seedLot.quantity)} kg
+              </span>
               {seedLot.batchNumber && (
                 <>
                   <span className="text-muted-foreground">•</span>
@@ -308,12 +337,16 @@ const SeedLotDetail: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => setShowQRModal(true)}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowQRModal(true)}
+                >
                   <QrCode className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -340,7 +373,7 @@ const SeedLotDetail: React.FC = () => {
             <Download className="h-4 w-4 mr-2" />
             Certificat
           </Button>
-          
+
           {/* Menu d'actions */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -352,58 +385,57 @@ const SeedLotDetail: React.FC = () => {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Actions sur le lot</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              
+
               <DropdownMenuItem asChild>
                 <Link to={`/dashboard/seed-lots/${id}/edit`}>
                   <Edit className="h-4 w-4 mr-2" />
                   Modifier
                 </Link>
               </DropdownMenuItem>
-              
+
               <DropdownMenuItem asChild>
                 <Link to={`/dashboard/seed-lots/${id}/transfer`}>
                   <ArrowRight className="h-4 w-4 mr-2" />
                   Transférer
                 </Link>
               </DropdownMenuItem>
-              
+
               <DropdownMenuItem asChild>
                 <Link to={`/dashboard/seed-lots/create?parentId=${id}`}>
                   <Plus className="h-4 w-4 mr-2" />
                   Créer lot enfant
                 </Link>
               </DropdownMenuItem>
-              
+
               <DropdownMenuItem asChild>
                 <Link to={`/dashboard/quality-controls/create?lotId=${id}`}>
                   <FlaskConical className="h-4 w-4 mr-2" />
                   Nouveau contrôle qualité
                 </Link>
               </DropdownMenuItem>
-              
+
               <DropdownMenuSeparator />
-              
+
               <DropdownMenuLabel>Changer le statut</DropdownMenuLabel>
-              {LOT_STATUSES.filter(s => s.value !== seedLot.status).map(status => (
-                <DropdownMenuItem
-                  key={status.value}
-                  onClick={() => handleStatusChange(status.value)}
-                >
-                  <Badge
-                    variant="outline"
-                    className={cn("mr-2", status.color)}
+              {LOT_STATUSES.filter((s) => s.value !== seedLot.status).map(
+                (status) => (
+                  <DropdownMenuItem
+                    key={status.value}
+                    onClick={() => handleStatusChange(status.value)}
                   >
-                    {status.label}
-                  </Badge>
-                </DropdownMenuItem>
-              ))}
-              
+                    <Badge
+                      variant="outline"
+                      className={cn("mr-2", status.color)}
+                    >
+                      {status.label}
+                    </Badge>
+                  </DropdownMenuItem>
+                )
+              )}
+
               <DropdownMenuSeparator />
-              
-              <DropdownMenuItem
-                className="text-red-600"
-                onClick={handleDelete}
-              >
+
+              <DropdownMenuItem className="text-red-600" onClick={handleDelete}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Supprimer
               </DropdownMenuItem>
@@ -413,19 +445,27 @@ const SeedLotDetail: React.FC = () => {
       </div>
 
       {/* Alertes */}
-      {expiryStatus && (expiryStatus.color === "text-red-600" || expiryStatus.color === "text-orange-600") && (
-        <Alert variant={expiryStatus.color === "text-red-600" ? "destructive" : "default"}>
-          <expiryStatus.icon className="h-4 w-4" />
-          <AlertTitle>
-            {expiryStatus.color === "text-red-600" ? "Lot expiré" : "Attention"}
-          </AlertTitle>
-          <AlertDescription>
-            {expiryStatus.text}
-            {expiryStatus.color === "text-orange-600" && 
-              " - Pensez à planifier le renouvellement de ce lot."}
-          </AlertDescription>
-        </Alert>
-      )}
+      {expiryStatus &&
+        (expiryStatus.color === "text-red-600" ||
+          expiryStatus.color === "text-orange-600") && (
+          <Alert
+            variant={
+              expiryStatus.color === "text-red-600" ? "destructive" : "default"
+            }
+          >
+            <expiryStatus.icon className="h-4 w-4" />
+            <AlertTitle>
+              {expiryStatus.color === "text-red-600"
+                ? "Lot expiré"
+                : "Attention"}
+            </AlertTitle>
+            <AlertDescription>
+              {expiryStatus.text}
+              {expiryStatus.color === "text-orange-600" &&
+                " - Pensez à planifier le renouvellement de ce lot."}
+            </AlertDescription>
+          </Alert>
+        )}
 
       {/* Cartes de statistiques */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -438,7 +478,9 @@ const SeedLotDetail: React.FC = () => {
                 </p>
                 <p className="text-2xl font-bold">
                   {formatNumber(seedLot.quantity)}
-                  <span className="text-sm font-normal text-muted-foreground ml-1">kg</span>
+                  <span className="text-sm font-normal text-muted-foreground ml-1">
+                    kg
+                  </span>
                 </p>
               </div>
               <Package className="h-8 w-8 text-green-600 opacity-20" />
@@ -455,9 +497,14 @@ const SeedLotDetail: React.FC = () => {
                 </p>
                 <p className="text-2xl font-bold">
                   {formatNumber(availableQuantity)}
-                  <span className="text-sm font-normal text-muted-foreground ml-1">kg</span>
+                  <span className="text-sm font-normal text-muted-foreground ml-1">
+                    kg
+                  </span>
                 </p>
-                <Progress value={100 - quantityUsedPercentage} className="h-1 mt-2" />
+                <Progress
+                  value={100 - quantityUsedPercentage}
+                  className="h-1 mt-2"
+                />
               </div>
               <Package className="h-8 w-8 text-blue-600 opacity-20" />
             </div>
@@ -475,7 +522,12 @@ const SeedLotDetail: React.FC = () => {
                   {formatDate(seedLot.productionDate)}
                 </p>
                 {expiryStatus && (
-                  <div className={cn("flex items-center gap-1 mt-1", expiryStatus.color)}>
+                  <div
+                    className={cn(
+                      "flex items-center gap-1 mt-1",
+                      expiryStatus.color
+                    )}
+                  >
                     <expiryStatus.icon className="h-3 w-3" />
                     <span className="text-xs">{expiryStatus.text}</span>
                   </div>
@@ -509,7 +561,11 @@ const SeedLotDetail: React.FC = () => {
       </div>
 
       {/* Tabs avec contenu détaillé */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-4"
+      >
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="details">Informations</TabsTrigger>
           <TabsTrigger value="genealogy">Généalogie</TabsTrigger>
@@ -586,7 +642,9 @@ const SeedLotDetail: React.FC = () => {
                       <label className="text-sm font-medium text-muted-foreground">
                         Notes
                       </label>
-                      <p className="mt-1 text-sm whitespace-pre-wrap">{seedLot.notes}</p>
+                      <p className="mt-1 text-sm whitespace-pre-wrap">
+                        {seedLot.notes}
+                      </p>
                     </div>
                   </>
                 )}
@@ -632,7 +690,9 @@ const SeedLotDetail: React.FC = () => {
                       <div className="flex items-center space-x-2">
                         <User className="h-4 w-4 text-blue-600" />
                         <div>
-                          <p className="font-medium">{seedLot.multiplier.name}</p>
+                          <p className="font-medium">
+                            {seedLot.multiplier.name}
+                          </p>
                           {seedLot.multiplier.address && (
                             <p className="text-sm text-muted-foreground">
                               {seedLot.multiplier.address}
@@ -641,7 +701,9 @@ const SeedLotDetail: React.FC = () => {
                         </div>
                       </div>
                       <Button asChild variant="ghost" size="sm">
-                        <Link to={`/dashboard/multipliers/${seedLot.multiplier.id}`}>
+                        <Link
+                          to={`/dashboard/multipliers/${seedLot.multiplier.id}`}
+                        >
                           <Eye className="h-4 w-4" />
                         </Link>
                       </Button>
@@ -659,7 +721,8 @@ const SeedLotDetail: React.FC = () => {
                         <MapPin className="h-4 w-4 text-purple-600" />
                         <div>
                           <p className="font-medium">
-                            {seedLot.parcel.name || `Parcelle ${seedLot.parcel.code}`}
+                            {seedLot.parcel.name ||
+                              `Parcelle ${seedLot.parcel.code}`}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             {seedLot.parcel.area} ha
@@ -703,24 +766,34 @@ const SeedLotDetail: React.FC = () => {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold">{stats.totalChildLots || 0}</p>
-                    <p className="text-sm text-muted-foreground">Lots dérivés</p>
+                    <p className="text-2xl font-bold">
+                      {stats.totalChildLots || 0}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Lots dérivés
+                    </p>
                   </div>
                   <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold">{stats.totalProductions || 0}</p>
+                    <p className="text-2xl font-bold">
+                      {stats.totalProductions || 0}
+                    </p>
                     <p className="text-sm text-muted-foreground">Productions</p>
                   </div>
                   <div className="text-center p-4 bg-muted rounded-lg">
                     <p className="text-2xl font-bold">
                       {formatNumber(stats.quantityInChildren || 0)} kg
                     </p>
-                    <p className="text-sm text-muted-foreground">Dans les lots enfants</p>
+                    <p className="text-sm text-muted-foreground">
+                      Dans les lots enfants
+                    </p>
                   </div>
                   <div className="text-center p-4 bg-muted rounded-lg">
                     <p className="text-2xl font-bold text-green-600">
                       {stats.qualityStatus || "Non testé"}
                     </p>
-                    <p className="text-sm text-muted-foreground">Dernier contrôle</p>
+                    <p className="text-sm text-muted-foreground">
+                      Dernier contrôle
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -773,13 +846,16 @@ const SeedLotDetail: React.FC = () => {
                                   {seedLot.parentLot.variety?.name}
                                 </span>
                                 <span className="text-sm text-muted-foreground">
-                                  • {formatNumber(seedLot.parentLot.quantity)} kg
+                                  • {formatNumber(seedLot.parentLot.quantity)}{" "}
+                                  kg
                                 </span>
                               </div>
                             </div>
                           </div>
                           <Button asChild variant="ghost" size="sm">
-                            <Link to={`/dashboard/seed-lots/${seedLot.parentLot.id}`}>
+                            <Link
+                              to={`/dashboard/seed-lots/${seedLot.parentLot.id}`}
+                            >
                               Voir détails
                               <Eye className="h-4 w-4 ml-2" />
                             </Link>
@@ -799,7 +875,9 @@ const SeedLotDetail: React.FC = () => {
                       <div className="flex items-center space-x-3">
                         <Package className="h-5 w-5 text-green-600" />
                         <div>
-                          <p className="font-mono font-medium text-lg">{seedLot.id}</p>
+                          <p className="font-mono font-medium text-lg">
+                            {seedLot.id}
+                          </p>
                           <div className="flex items-center gap-2 mt-1">
                             {getLevelBadge(seedLot.level)}
                             {getStatusBadge(seedLot.status)}
@@ -833,7 +911,10 @@ const SeedLotDetail: React.FC = () => {
                                     {childLot.id}
                                   </p>
                                   <div className="flex items-center gap-2 mt-1">
-                                    <Badge variant="outline" className="text-xs">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
                                       {childLot.level}
                                     </Badge>
                                     <span className="text-sm text-muted-foreground">
@@ -849,7 +930,9 @@ const SeedLotDetail: React.FC = () => {
                                 </div>
                               </div>
                               <Button asChild variant="ghost" size="sm">
-                                <Link to={`/dashboard/seed-lots/${childLot.id}`}>
+                                <Link
+                                  to={`/dashboard/seed-lots/${childLot.id}`}
+                                >
                                   <Eye className="h-4 w-4" />
                                 </Link>
                               </Button>
@@ -860,17 +943,18 @@ const SeedLotDetail: React.FC = () => {
                     </div>
                   )}
 
-                  {!seedLot.parentLot && (!seedLot.childLots || seedLot.childLots.length === 0) && (
-                    <div className="text-center py-12">
-                      <GitBranch className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">
-                        Aucune relation généalogique
-                      </h3>
-                      <p className="text-muted-foreground">
-                        Ce lot n'a pas de parent ni d'enfants enregistrés.
-                      </p>
-                    </div>
-                  )}
+                  {!seedLot.parentLot &&
+                    (!seedLot.childLots || seedLot.childLots.length === 0) && (
+                      <div className="text-center py-12">
+                        <GitBranch className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">
+                          Aucune relation généalogique
+                        </h3>
+                        <p className="text-muted-foreground">
+                          Ce lot n'a pas de parent ni d'enfants enregistrés.
+                        </p>
+                      </div>
+                    )}
                 </div>
               ) : (
                 <div className="text-center py-8">
@@ -921,71 +1005,89 @@ const SeedLotDetail: React.FC = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {seedLot.qualityControls.map((control: QualityControl) => (
-                        <TableRow key={control.id}>
-                          <TableCell>{formatDate(control.controlDate)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{control.germinationRate}%</span>
-                              {control.germinationRate >= 90 && (
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                              )}
-                              {control.germinationRate < 80 && (
-                                <AlertTriangle className="h-4 w-4 text-orange-500" />
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{control.varietyPurity}%</span>
-                              {control.varietyPurity >= 95 && (
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {control.moistureContent ? `${control.moistureContent}%` : "-"}
-                          </TableCell>
-                          <TableCell>
-                            {control.seedHealth ? `${control.seedHealth}%` : "-"}
-                          </TableCell>
-                          <TableCell>
-                            {getTestResultBadge(control.result)}
-                          </TableCell>
-                          <TableCell>
-                            {control.inspector?.name || "Non spécifié"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
-                                  <Link to={`/dashboard/quality-controls/${control.id}`}>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    Voir détails
-                                  </Link>
-                                </DropdownMenuItem>
-                                {control.certificateUrl && (
-                                  <DropdownMenuItem asChild>
-                                    
-                                      href={control.certificateUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      <FileText className="h-4 w-4 mr-2" />
-                                      Certificat
-                                    </a>
-                                  </DropdownMenuItem>
+                      {seedLot.qualityControls.map(
+                        (control: QualityControl) => (
+                          <TableRow key={control.id}>
+                            <TableCell>
+                              {formatDate(control.controlDate)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {control.germinationRate}%
+                                </span>
+                                {control.germinationRate >= 90 && (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
                                 )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                                {control.germinationRate < 80 && (
+                                  <AlertTriangle className="h-4 w-4 text-orange-500" />
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {control.varietyPurity}%
+                                </span>
+                                {control.varietyPurity >= 95 && (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {control.moistureContent
+                                ? `${control.moistureContent}%`
+                                : "-"}
+                            </TableCell>
+                            <TableCell>
+                              {control.seedHealth
+                                ? `${control.seedHealth}%`
+                                : "-"}
+                            </TableCell>
+                            <TableCell>
+                              {getTestResultBadge(control.result)}
+                            </TableCell>
+                            <TableCell>
+                              {control.inspector?.name || "Non spécifié"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem asChild>
+                                    <Link
+                                      to={`/dashboard/quality-controls/${control.id}`}
+                                    >
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      Voir détails
+                                    </Link>
+                                  </DropdownMenuItem>
+                                  {control.certificateUrl && (
+                                    <DropdownMenuItem asChild>
+                                      <a
+                                        href={control.certificateUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        <FileText className="h-4 w-4 mr-2" />
+                                        Certificat
+                                      </a>
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      )}
                     </TableBody>
                   </Table>
 
@@ -995,22 +1097,34 @@ const SeedLotDetail: React.FC = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
                         <p className="text-muted-foreground">Total</p>
-                        <p className="font-semibold">{seedLot.qualityControls.length}</p>
+                        <p className="font-semibold">
+                          {seedLot.qualityControls.length}
+                        </p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Réussis</p>
                         <p className="font-semibold text-green-600">
-                          {seedLot.qualityControls.filter(qc => qc.result === "pass").length}
+                          {
+                            seedLot.qualityControls.filter(
+                              (qc) => qc.result === "pass"
+                            ).length
+                          }
                         </p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Échoués</p>
                         <p className="font-semibold text-red-600">
-                          {seedLot.qualityControls.filter(qc => qc.result === "fail").length}
+                          {
+                            seedLot.qualityControls.filter(
+                              (qc) => qc.result === "fail"
+                            ).length
+                          }
                         </p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Dernier contrôle</p>
+                        <p className="text-muted-foreground">
+                          Dernier contrôle
+                        </p>
                         <p className="font-semibold">
                           {formatDate(seedLot.qualityControls[0].controlDate)}
                         </p>
@@ -1089,7 +1203,8 @@ const SeedLotDetail: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {production.parcel?.name || `Parcelle ${production.parcel?.code}`}
+                          {production.parcel?.name ||
+                            `Parcelle ${production.parcel?.code}`}
                         </TableCell>
                         <TableCell>{production.multiplier?.name}</TableCell>
                         <TableCell>
@@ -1120,7 +1235,9 @@ const SeedLotDetail: React.FC = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <Button asChild variant="ghost" size="sm">
-                            <Link to={`/dashboard/productions/${production.id}`}>
+                            <Link
+                              to={`/dashboard/productions/${production.id}`}
+                            >
                               <Eye className="h-4 w-4" />
                             </Link>
                           </Button>

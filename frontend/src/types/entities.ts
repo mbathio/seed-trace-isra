@@ -65,6 +65,7 @@ export interface SeedLot {
   batchNumber?: string;
   parentLotId?: string;
   parentLot?: SeedLot;
+  productions?: Production[]; // Ajouter cette ligne
   childLots?: SeedLot[];
   notes?: string;
   qrCode?: string;

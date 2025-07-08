@@ -46,13 +46,12 @@ import {
 } from "../../components/ui/dropdown-menu";
 import { Input } from "../../components/ui/input";
 import { Checkbox } from "../../components/ui/checkbox";
-import { Separator } from "../../components/ui/separator";
 import { QRCodeModal } from "../../components/qr-code/QRCodeModal";
 import { DeleteSeedLotDialog } from "../../components/seeds/DeleteSeedLotDialog";
 import { api } from "../../services/api";
 import { seedLotService } from "../../services/seedLotService";
 import { SeedLot } from "../../types/entities";
-import { ApiResponse, PaginationParams, FilterParams } from "../../types/api";
+import { ApiResponse, PaginationParams, SeedLotFilters } from "../../types/api";
 import {
   SEED_LEVELS,
   LOT_STATUSES,
@@ -64,9 +63,25 @@ import { usePagination } from "../../hooks/usePagination";
 import { formatDate, formatNumber } from "../../utils/formatters";
 import { toast } from "react-toastify";
 
+// Types pour les filtres
+type SeedLevel = "GO" | "G1" | "G2" | "G3" | "G4" | "R1" | "R2";
+type SeedLotStatus =
+  | "pending"
+  | "certified"
+  | "rejected"
+  | "in-stock"
+  | "active"
+  | "distributed"
+  | "sold";
+
+interface FilterParamsExtended extends Partial<SeedLotFilters> {
+  level?: SeedLevel;
+  status?: SeedLotStatus;
+}
+
 const SeedLots: React.FC = () => {
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<FilterParams>({});
+  const [filters, setFilters] = useState<FilterParamsExtended>({});
   const [selectedLotForQR, setSelectedLotForQR] = useState<SeedLot | null>(
     null
   );
@@ -92,7 +107,7 @@ const SeedLots: React.FC = () => {
       sortOrder,
     ],
     queryFn: async () => {
-      const params: PaginationParams & FilterParams = {
+      const params: PaginationParams & FilterParamsExtended = {
         page: pagination.page,
         pageSize: pagination.pageSize,
         search: debouncedSearch || undefined,
@@ -127,7 +142,7 @@ const SeedLots: React.FC = () => {
   // Mutation pour export
   const exportMutation = useMutation({
     mutationFn: async (format: "csv" | "xlsx") => {
-      return seedLotService.export(format, filters);
+      return seedLotService.export(format, filters as Partial<SeedLotFilters>);
     },
     onError: () => {
       toast.error("Erreur lors de l'export");
@@ -288,7 +303,8 @@ const SeedLots: React.FC = () => {
                 onValueChange={(value) =>
                   setFilters((prev) => ({
                     ...prev,
-                    status: value === "all" ? undefined : value,
+                    status:
+                      value === "all" ? undefined : (value as SeedLotStatus),
                   }))
                 }
               >
@@ -309,7 +325,10 @@ const SeedLots: React.FC = () => {
                 onValueChange={(value) =>
                   setFilters((prev) => ({
                     ...prev,
-                    level: value === "all" ? undefined : value.toUpperCase(),
+                    level:
+                      value === "all"
+                        ? undefined
+                        : (value.toUpperCase() as SeedLevel),
                   }))
                 }
               >
@@ -559,15 +578,15 @@ const SeedLots: React.FC = () => {
               {data.meta && data.meta.totalPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-4 border-t">
                   <p className="text-sm text-muted-foreground">
-                    Page {data.meta.page} sur {data.meta.totalPages} • Total:{" "}
-                    {data.meta.totalCount} lot(s)
+                    Page {data.meta?.page || 1} sur {data.meta?.totalPages || 1}{" "}
+                    • Total: {data.meta?.totalCount || 0} lot(s)
                   </p>
                   <div className="flex items-center space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={actions.firstPage}
-                      disabled={!data.meta.hasPreviousPage}
+                      disabled={!data.meta?.hasPreviousPage}
                     >
                       <ChevronLeft className="h-4 w-4" />
                       <ChevronLeft className="h-4 w-4 -ml-2" />
@@ -576,7 +595,7 @@ const SeedLots: React.FC = () => {
                       variant="outline"
                       size="sm"
                       onClick={actions.previousPage}
-                      disabled={!data.meta.hasPreviousPage}
+                      disabled={!data.meta?.hasPreviousPage}
                     >
                       <ChevronLeft className="h-4 w-4" />
                       Précédent
@@ -590,7 +609,7 @@ const SeedLots: React.FC = () => {
                             <Button
                               key={pageNumber}
                               variant={
-                                pageNumber === data.meta.page
+                                pageNumber === data.meta?.page
                                   ? "default"
                                   : "outline"
                               }
@@ -607,7 +626,7 @@ const SeedLots: React.FC = () => {
                       variant="outline"
                       size="sm"
                       onClick={actions.nextPage}
-                      disabled={!data.meta.hasNextPage}
+                      disabled={!data.meta?.hasNextPage}
                     >
                       Suivant
                       <ChevronRight className="h-4 w-4" />
@@ -615,8 +634,10 @@ const SeedLots: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => actions.lastPage(data.meta.totalPages)}
-                      disabled={!data.meta.hasNextPage}
+                      onClick={() =>
+                        actions.lastPage(data.meta?.totalPages || 1)
+                      }
+                      disabled={!data.meta?.hasNextPage}
                     >
                       <ChevronRight className="h-4 w-4" />
                       <ChevronRight className="h-4 w-4 -ml-2" />

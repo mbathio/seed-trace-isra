@@ -42,7 +42,9 @@ const TransferSeedLot: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Récupération du lot
-  const { data: seedLotData, isLoading: seedLotLoading } = useQuery<ApiResponse<SeedLot>>({
+  const { data: seedLotData, isLoading: seedLotLoading } = useQuery<
+    ApiResponse<SeedLot>
+  >({
     queryKey: ["seed-lot", id],
     queryFn: async () => {
       if (!id) throw new Error("ID manquant");
@@ -54,7 +56,7 @@ const TransferSeedLot: React.FC = () => {
   const seedLot = seedLotData?.data;
 
   // Récupération des multiplicateurs
-  const { data: multipliersResponse, isLoading: multipliersLoading } = useQuery
+  const { data: multipliersResponse, isLoading: multipliersLoading } = useQuery<
     ApiResponse<Multiplier[]>
   >({
     queryKey: ["multipliers-for-transfer"],
@@ -171,8 +173,12 @@ const TransferSeedLot: React.FC = () => {
               <p className="font-medium">{seedLot.level}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Quantité disponible</p>
-              <p className="font-medium">{formatNumber(availableQuantity)} kg</p>
+              <p className="text-sm text-muted-foreground">
+                Quantité disponible
+              </p>
+              <p className="font-medium">
+                {formatNumber(availableQuantity)} kg
+              </p>
             </div>
           </div>
         </CardContent>
@@ -206,8 +212,11 @@ const TransferSeedLot: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {multipliers
-                        .filter(m => m.id !== seedLot.multiplier?.id)
-                        .map((multiplier) => (
+                        .filter(
+                          (m: Multiplier) => m.id !== seedLot.multiplier?.id
+                        )
+
+                        .map((multiplier: Multiplier) => (
                           <SelectItem
                             key={multiplier.id}
                             value={multiplier.id.toString()}
@@ -239,7 +248,9 @@ const TransferSeedLot: React.FC = () => {
                   },
                   max: {
                     value: availableQuantity,
-                    message: `Quantité maximum ${formatNumber(availableQuantity)} kg`,
+                    message: `Quantité maximum ${formatNumber(
+                      availableQuantity
+                    )} kg`,
                   },
                 }}
                 render={({ field }) => (
@@ -255,7 +266,9 @@ const TransferSeedLot: React.FC = () => {
                 )}
               />
               {errors.quantity && (
-                <p className="text-sm text-red-500">{errors.quantity.message}</p>
+                <p className="text-sm text-red-500">
+                  {errors.quantity.message}
+                </p>
               )}
               {watchedQuantity > 0 && (
                 <p className="text-sm text-muted-foreground">
@@ -293,7 +306,11 @@ const TransferSeedLot: React.FC = () => {
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting || !watchedQuantity || watchedQuantity > availableQuantity}
+            disabled={
+              isSubmitting ||
+              !watchedQuantity ||
+              watchedQuantity > availableQuantity
+            }
           >
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <ArrowRight className="mr-2 h-4 w-4" />
