@@ -10,48 +10,44 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
-import { AlertTriangle } from "lucide-react";
+import { SeedLot } from "../../types/entities";
 
-interface DeleteSeedLotDialogProps {
+export interface DeleteSeedLotDialogProps {
+  seedLot?: SeedLot;
+  seedLotId?: string; // Pour la compatibilité
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  seedLotId: string;
-  isDeleting?: boolean;
 }
 
 export const DeleteSeedLotDialog: React.FC<DeleteSeedLotDialogProps> = ({
+  seedLot,
+  seedLotId,
   isOpen,
   onClose,
   onConfirm,
-  seedLotId,
-  isDeleting = false,
 }) => {
+  const lotIdentifier = seedLot?.id || seedLotId || "ce lot";
+  const lotNumber = seedLot?.id || seedLotId || "";
+
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center">
-            <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
-            Confirmer la suppression
-          </AlertDialogTitle>
+          <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
           <AlertDialogDescription>
             Êtes-vous sûr de vouloir supprimer le lot{" "}
-            <strong>{seedLotId}</strong> ?
-            <br />
-            <br />
-            Cette action est irréversible. Le lot sera définitivement supprimé
-            ainsi que toutes les données associées.
+            <strong>{lotNumber}</strong> ? Cette action est irréversible et
+            supprimera toutes les données associées.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+          <AlertDialogCancel onClick={onClose}>Annuler</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            disabled={isDeleting}
             className="bg-red-600 hover:bg-red-700"
           >
-            {isDeleting ? "Suppression..." : "Supprimer"}
+            Supprimer
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

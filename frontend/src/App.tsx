@@ -1,14 +1,13 @@
+// frontend/src/App.tsx
 import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
+  createBrowserRouter,
+  RouterProvider,
   Navigate,
 } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import EditSeedLot from "./pages/seeds/EditSeedLot";
 
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -27,6 +26,8 @@ import LandingPage from "./pages/LandingPage";
 import SeedLotsPage from "./pages/seeds/SeedLots";
 import SeedLotDetailsPage from "./pages/seeds/SeedLotDetail";
 import CreateSeedLotPage from "./pages/seeds/CreateSeedLot";
+import EditSeedLot from "./pages/seeds/EditSeedLot";
+import TransferSeedLot from "./pages/seeds/TransferSeedLot";
 
 // Routes des variétés
 import VarietiesPage from "./pages/varieties/Varieties";
@@ -52,12 +53,12 @@ import CreateProductionPage from "./pages/productions/CreateProduction";
 import ParcelsPage from "./pages/parcels/Parcels";
 import ParcelDetailsPage from "./pages/parcels/ParcelDetail";
 import CreateParcelPage from "./pages/parcels/CreateParcel";
+import EditParcel from "./pages/parcels/EditParcel";
 
 // Autres pages
 import GenealogyPage from "./pages/genealogy/Genealogy";
 import ReportsPage from "./pages/reports/Reports";
 import UsersPage from "./pages/users/Users";
-import EditParcel from "./pages/parcels/EditParcel";
 
 // Configuration React Query
 const queryClient = new QueryClient({
@@ -74,181 +75,253 @@ const queryClient = new QueryClient({
   },
 });
 
+// Définition du router avec les future flags
+const router = createBrowserRouter(
+  [
+    {
+      path: "/",
+      element: <LandingPage />,
+    },
+    {
+      path: "/auth",
+      element: <AuthLayout />,
+      children: [
+        {
+          path: "login",
+          element: <LoginPage />,
+        },
+        {
+          path: "register",
+          element: <RegisterPage />,
+        },
+      ],
+    },
+    {
+      path: "/dashboard",
+      element: (
+        <ProtectedRoute>
+          <DashboardLayout />
+        </ProtectedRoute>
+      ),
+      children: [
+        {
+          index: true,
+          element: <DashboardPage />,
+        },
+        // Routes des semences
+        {
+          path: "seed-lots",
+          children: [
+            {
+              index: true,
+              element: <SeedLotsPage />,
+            },
+            {
+              path: "new",
+              element: <CreateSeedLotPage />,
+            },
+            {
+              path: "create",
+              element: <Navigate to="/dashboard/seed-lots/new" replace />,
+            },
+            {
+              path: ":id",
+              element: <SeedLotDetailsPage />,
+            },
+            {
+              path: ":id/edit",
+              element: <EditSeedLot />,
+            },
+            {
+              path: ":id/transfer",
+              element: <TransferSeedLot />,
+            },
+          ],
+        },
+        // Routes des variétés
+        {
+          path: "varieties",
+          children: [
+            {
+              index: true,
+              element: <VarietiesPage />,
+            },
+            {
+              path: "new",
+              element: <CreateVarietyPage />,
+            },
+            {
+              path: ":id",
+              element: <VarietyDetailsPage />,
+            },
+          ],
+        },
+        // Routes des multiplicateurs
+        {
+          path: "multipliers",
+          children: [
+            {
+              index: true,
+              element: <MultipliersPage />,
+            },
+            {
+              path: "new",
+              element: <CreateMultiplierPage />,
+            },
+            {
+              path: ":id",
+              element: <MultiplierDetailsPage />,
+            },
+          ],
+        },
+        // Routes des contrôles qualité
+        {
+          path: "quality-controls",
+          children: [
+            {
+              index: true,
+              element: <QualityControlsPage />,
+            },
+            {
+              path: "new",
+              element: <CreateQualityControlPage />,
+            },
+            {
+              path: ":id",
+              element: <QualityControlDetailsPage />,
+            },
+          ],
+        },
+        // Routes des productions
+        {
+          path: "productions",
+          children: [
+            {
+              index: true,
+              element: <ProductionsPage />,
+            },
+            {
+              path: "new",
+              element: <CreateProductionPage />,
+            },
+            {
+              path: ":id",
+              element: <ProductionDetailsPage />,
+            },
+          ],
+        },
+        // Routes des parcelles
+        {
+          path: "parcels",
+          children: [
+            {
+              index: true,
+              element: <ParcelsPage />,
+            },
+            {
+              path: "new",
+              element: <CreateParcelPage />,
+            },
+            {
+              path: ":id",
+              element: <ParcelDetailsPage />,
+            },
+            {
+              path: ":id/edit",
+              element: <EditParcel />,
+            },
+          ],
+        },
+        // Routes de généalogie
+        {
+          path: "genealogy",
+          children: [
+            {
+              index: true,
+              element: <GenealogyPage />,
+            },
+            {
+              path: ":lotId",
+              element: <GenealogyPage />,
+            },
+          ],
+        },
+        // Routes des rapports
+        {
+          path: "reports",
+          element: <ReportsPage />,
+        },
+        // Routes d'administration
+        {
+          path: "users",
+          element: (
+            <ProtectedRoute requiredRole="ADMIN">
+              <UsersPage />
+            </ProtectedRoute>
+          ),
+        },
+      ],
+    },
+    // Redirections pour compatibilité avec les anciennes routes
+    {
+      path: "/seeds/*",
+      element: <Navigate to="/dashboard/seed-lots" replace />,
+    },
+    {
+      path: "/varieties/*",
+      element: <Navigate to="/dashboard/varieties" replace />,
+    },
+    {
+      path: "/multipliers/*",
+      element: <Navigate to="/dashboard/multipliers" replace />,
+    },
+    {
+      path: "/quality/*",
+      element: <Navigate to="/dashboard/quality-controls" replace />,
+    },
+    {
+      path: "/parcels/*",
+      element: <Navigate to="/dashboard/parcels" replace />,
+    },
+    {
+      path: "/productions/*",
+      element: <Navigate to="/dashboard/productions" replace />,
+    },
+    {
+      path: "/genealogy/*",
+      element: <Navigate to="/dashboard/genealogy" replace />,
+    },
+    {
+      path: "/reports/*",
+      element: <Navigate to="/dashboard/reports" replace />,
+    },
+    {
+      path: "/users/*",
+      element: <Navigate to="/dashboard/users" replace />,
+    },
+    // Route par défaut
+    {
+      path: "*",
+      element: <Navigate to="/" replace />,
+    },
+  ],
+  {
+    // Activer les future flags pour éviter les avertissements
+    future: {
+      v7_relativeSplatPath: true,
+      v7_fetcherPersist: true,
+      v7_normalizeFormMethod: true,
+      v7_partialHydration: true,
+      v7_skipActionErrorRevalidation: true,
+    },
+  }
+);
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
-          <Routes>
-            {/* Page d'accueil publique */}
-            <Route path="/" element={<LandingPage />} />
-
-            {/* Routes d'authentification */}
-            <Route path="/auth" element={<AuthLayout />}>
-              <Route path="login" element={<LoginPage />} />
-              <Route path="register" element={<RegisterPage />} />
-            </Route>
-
-            {/* Routes protégées avec layout dashboard */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout />
-                </ProtectedRoute>
-              }
-            >
-              {/* Dashboard principal */}
-              <Route index element={<DashboardPage />} />
-
-              {/* Routes des semences */}
-              <Route path="seed-lots" element={<SeedLotsPage />} />
-              <Route path="seed-lots/create" element={<CreateSeedLotPage />} />
-              <Route path="seed-lots/:id" element={<SeedLotDetailsPage />} />
-              <Route path="seed-lots/:id/edit" element={<EditSeedLot />} />
-
-              {/* Routes des variétés */}
-              <Route path="varieties" element={<VarietiesPage />} />
-              <Route path="varieties/create" element={<CreateVarietyPage />} />
-              <Route path="varieties/:id" element={<VarietyDetailsPage />} />
-
-              {/* Routes des multiplicateurs */}
-              <Route path="multipliers" element={<MultipliersPage />} />
-              <Route
-                path="multipliers/create"
-                element={<CreateMultiplierPage />}
-              />
-              <Route
-                path="multipliers/:id"
-                element={<MultiplierDetailsPage />}
-              />
-
-              {/* Routes des parcelles */}
-              <Route path="parcels" element={<ParcelsPage />} />
-              <Route path="parcels/create" element={<CreateParcelPage />} />
-              <Route path="parcels/:id" element={<ParcelDetailsPage />} />
-              <Route path="parcels/:id/edit" element={<EditParcel />} />
-              {/* Routes des productions */}
-              <Route path="productions" element={<ProductionsPage />} />
-              <Route
-                path="productions/create"
-                element={<CreateProductionPage />}
-              />
-              <Route
-                path="productions/:id"
-                element={<ProductionDetailsPage />}
-              />
-
-              {/* Routes des contrôles qualité */}
-              <Route
-                path="quality-controls"
-                element={<QualityControlsPage />}
-              />
-              <Route
-                path="quality-controls/create"
-                element={<CreateQualityControlPage />}
-              />
-              <Route
-                path="quality-controls/:id"
-                element={<QualityControlDetailsPage />}
-              />
-
-              {/* Route de généalogie */}
-              <Route path="genealogy" element={<GenealogyPage />} />
-              <Route path="genealogy/:lotId" element={<GenealogyPage />} />
-
-              {/* Routes des rapports */}
-              <Route path="reports" element={<ReportsPage />} />
-
-              {/* Routes d'administration */}
-              <Route
-                path="users"
-                element={
-                  <ProtectedRoute requiredRole="ADMIN">
-                    <UsersPage />
-                  </ProtectedRoute>
-                }
-              />
-            </Route>
-
-            {/* Redirections pour compatibilité */}
-            <Route
-              path="/seeds"
-              element={<Navigate to="/dashboard/seed-lots" replace />}
-            />
-            <Route
-              path="/seeds/*"
-              element={<Navigate to="/dashboard/seed-lots" replace />}
-            />
-            <Route
-              path="/quality"
-              element={<Navigate to="/dashboard/quality-controls" replace />}
-            />
-            <Route
-              path="/quality/*"
-              element={<Navigate to="/dashboard/quality-controls" replace />}
-            />
-            <Route
-              path="/varieties"
-              element={<Navigate to="/dashboard/varieties" replace />}
-            />
-            <Route
-              path="/varieties/*"
-              element={<Navigate to="/dashboard/varieties" replace />}
-            />
-            <Route
-              path="/multipliers"
-              element={<Navigate to="/dashboard/multipliers" replace />}
-            />
-            <Route
-              path="/multipliers/*"
-              element={<Navigate to="/dashboard/multipliers" replace />}
-            />
-            <Route
-              path="/parcels"
-              element={<Navigate to="/dashboard/parcels" replace />}
-            />
-            <Route
-              path="/parcels/*"
-              element={<Navigate to="/dashboard/parcels" replace />}
-            />
-            <Route
-              path="/productions"
-              element={<Navigate to="/dashboard/productions" replace />}
-            />
-            <Route
-              path="/productions/*"
-              element={<Navigate to="/dashboard/productions" replace />}
-            />
-            <Route
-              path="/genealogy"
-              element={<Navigate to="/dashboard/genealogy" replace />}
-            />
-            <Route
-              path="/genealogy/*"
-              element={<Navigate to="/dashboard/genealogy" replace />}
-            />
-            <Route
-              path="/reports"
-              element={<Navigate to="/dashboard/reports" replace />}
-            />
-            <Route
-              path="/reports/*"
-              element={<Navigate to="/dashboard/reports" replace />}
-            />
-            <Route
-              path="/users"
-              element={<Navigate to="/dashboard/users" replace />}
-            />
-            <Route
-              path="/users/*"
-              element={<Navigate to="/dashboard/users" replace />}
-            />
-
-            {/* Route par défaut */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Router>
+        <RouterProvider router={router} />
 
         {/* Toast notifications */}
         <ToastContainer
