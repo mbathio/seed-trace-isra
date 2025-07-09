@@ -1,9 +1,10 @@
-// frontend/src/services/seedLotService.ts - VERSION COMPLÈTE ET CORRIGÉE
+// frontend/src/services/seedLotService.ts - VERSION AVEC GESTION DES PARAMÈTRES CORRIGÉE
 
 import { api } from "./api";
 import { SeedLot } from "../types/entities";
 import { ApiResponse, PaginationParams, SeedLotFilters } from "../types/api";
 import { DataTransformer } from "../utils/transformers";
+import { toast } from "react-toastify";
 
 // Interface pour les données de création d'un lot
 export interface CreateSeedLotData {
@@ -64,6 +65,48 @@ export interface GenealogyNode {
   isCurrentLot: boolean;
 }
 
+// Fonction utilitaire pour nettoyer les paramètres
+const cleanParams = (params: any): any => {
+  if (!params) return {};
+
+  const cleaned: any = {};
+
+  Object.entries(params).forEach(([key, value]) => {
+    // Ne pas inclure les valeurs undefined, null ou chaînes vides
+    if (value !== undefined && value !== null && value !== "") {
+      // Gérer les cas spéciaux
+      if (key === "page" || key === "pageSize") {
+        // S'assurer que les valeurs de pagination sont des nombres valides
+        const numValue = Number(value);
+        if (!isNaN(numValue) && numValue > 0) {
+          cleaned[key] = numValue;
+        }
+      } else if (key === "includeRelations") {
+        // S'assurer que c'est un booléen
+        cleaned[key] = Boolean(value);
+      } else if (key === "sortOrder" && (value === "asc" || value === "desc")) {
+        // Valider l'ordre de tri
+        cleaned[key] = value;
+      } else if (key === "level" && typeof value === "string") {
+        // S'assurer que le niveau est en majuscules
+        cleaned[key] = value.toUpperCase();
+      } else if (key === "status" && value === "all") {
+        // Ne pas envoyer le statut si c'est "all"
+        // On ne fait rien, donc on ne l'ajoute pas aux params nettoyés
+      } else {
+        // Pour tous les autres paramètres
+        cleaned[key] = value;
+      }
+    }
+  });
+
+  // Ajouter des valeurs par défaut si nécessaire
+  if (!cleaned.page) cleaned.page = 1;
+  if (!cleaned.pageSize) cleaned.pageSize = 10;
+
+  return cleaned;
+};
+
 // Service principal pour les lots de semences
 export const seedLotService = {
   /**
@@ -73,22 +116,39 @@ export const seedLotService = {
     params?: Partial<SeedLotFilters> & PaginationParams
   ): Promise<ApiResponse<SeedLot[]>> {
     try {
-      // Nettoyer les paramètres
-      const cleanParams: any = {};
+      // Nettoyer et valider les paramètres
+      const validParams = cleanParams(params);
 
-      if (params) {
-        Object.entries(params).forEach(([key, value]) => {
-          // Ne pas inclure les valeurs undefined ou null
-          if (value !== undefined && value !== null && value !== "") {
-            cleanParams[key] = value;
-          }
-        });
+      console.log("Fetching seed lots with params:", validParams);
+
+      const response = await api.get<ApiResponse<SeedLot[]>>("/seed-lots", {
+        params: validParams,
+      });
+
+      // Transformer les données si nécessaire
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        response.data.data = response.data.data.map((lot) =>
+          DataTransformer.transformSeedLotFromAPI(lot)
+        );
       }
 
-      const response = await api.get("/seed-lots", { params: cleanParams });
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching seed lots:", error);
+
+      // Gestion spécifique de l'erreur 422
+      if (error.response?.status === 422) {
+        const validationErrors = error.response.data?.errors || [];
+        const errorMessage =
+          validationErrors.length > 0
+            ? `Erreur de validation: ${validationErrors
+                .map((e: any) => e.message)
+                .join(", ")}`
+            : "Paramètres de requête invalides";
+
+        toast.error(errorMessage);
+      }
+
       throw error;
     }
   },
@@ -107,7 +167,7 @@ export const seedLotService = {
       });
 
       // Transformer les données si nécessaire
-      if (response.data.data) {
+      if (response.data?.data) {
         response.data.data = DataTransformer.transformSeedLotFromAPI(
           response.data.data
         );
@@ -125,10 +185,39 @@ export const seedLotService = {
    */
   async create(data: CreateSeedLotData): Promise<ApiResponse<SeedLot>> {
     try {
-      const response = await api.post<ApiResponse<SeedLot>>("/seed-lots", data);
+      // Nettoyer les données avant envoi
+      const cleanedData = {
+        ...data,
+        level: data.level.toUpperCase() as any, // S'assurer que le niveau est en majuscules
+      };
+
+      const response = await api.post<ApiResponse<SeedLot>>(
+        "/seed-lots",
+        cleanedData
+      );
+
+      if (response.data?.data) {
+        response.data.data = DataTransformer.transformSeedLotFromAPI(
+          response.data.data
+        );
+      }
+
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating seed lot:", error);
+
+      if (error.response?.status === 422) {
+        const validationErrors = error.response.data?.errors || [];
+        const errorMessage =
+          validationErrors.length > 0
+            ? validationErrors
+                .map((e: any) => `${e.field}: ${e.message}`)
+                .join("\n")
+            : "Erreur de validation des données";
+
+        toast.error(errorMessage);
+      }
+
       throw error;
     }
   },
@@ -145,9 +234,29 @@ export const seedLotService = {
         `/seed-lots/${id}`,
         data
       );
+
+      if (response.data?.data) {
+        response.data.data = DataTransformer.transformSeedLotFromAPI(
+          response.data.data
+        );
+      }
+
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating seed lot:", error);
+
+      if (error.response?.status === 422) {
+        const validationErrors = error.response.data?.errors || [];
+        const errorMessage =
+          validationErrors.length > 0
+            ? validationErrors
+                .map((e: any) => `${e.field}: ${e.message}`)
+                .join("\n")
+            : "Erreur de validation des données";
+
+        toast.error(errorMessage);
+      }
+
       throw error;
     }
   },
@@ -206,6 +315,13 @@ export const seedLotService = {
         `/seed-lots/${parentId}/child-lots`,
         data
       );
+
+      if (response.data?.data) {
+        response.data.data = DataTransformer.transformSeedLotFromAPI(
+          response.data.data
+        );
+      }
+
       return response.data;
     } catch (error) {
       console.error("Error creating child lot:", error);
@@ -225,6 +341,13 @@ export const seedLotService = {
         `/seed-lots/${id}/transfer`,
         data
       );
+
+      if (response.data?.data) {
+        response.data.data = DataTransformer.transformSeedLotFromAPI(
+          response.data.data
+        );
+      }
+
       return response.data;
     } catch (error) {
       console.error("Error transferring lot:", error);
@@ -254,9 +377,10 @@ export const seedLotService = {
     params?: Partial<SeedLotFilters>
   ): Promise<ApiResponse<any>> {
     try {
+      const validParams = cleanParams(params);
       const response = await api.get<ApiResponse<any>>(
         `/seed-lots/statistics`,
-        { params }
+        { params: validParams }
       );
       return response.data;
     } catch (error) {
@@ -274,6 +398,13 @@ export const seedLotService = {
         `/seed-lots/expiring`,
         { params: { days } }
       );
+
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        response.data.data = response.data.data.map((lot) =>
+          DataTransformer.transformSeedLotFromAPI(lot)
+        );
+      }
+
       return response.data;
     } catch (error) {
       console.error("Error fetching expiring lots:", error);
@@ -289,15 +420,18 @@ export const seedLotService = {
     params?: Partial<SeedLotFilters>
   ): Promise<ApiResponse<SeedLot[]>> {
     try {
+      const validParams = cleanParams({ ...params, q: query });
       const response = await api.get<ApiResponse<SeedLot[]>>(
         `/seed-lots/search`,
-        {
-          params: {
-            q: query,
-            ...params,
-          },
-        }
+        { params: validParams }
       );
+
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        response.data.data = response.data.data.map((lot) =>
+          DataTransformer.transformSeedLotFromAPI(lot)
+        );
+      }
+
       return response.data;
     } catch (error) {
       console.error("Error searching seed lots:", error);
@@ -313,11 +447,9 @@ export const seedLotService = {
     filters?: Partial<SeedLotFilters>
   ): Promise<Blob> {
     try {
+      const validParams = cleanParams({ ...filters, format });
       const response = await api.get(`/seed-lots/export`, {
-        params: {
-          format,
-          ...filters,
-        },
+        params: validParams,
         responseType: "blob",
       });
 
@@ -327,7 +459,7 @@ export const seedLotService = {
       link.href = url;
       link.setAttribute(
         "download",
-        `seed-lots-export-${new Date().toISOString()}.${format}`
+        `seed-lots-export-${new Date().toISOString().split("T")[0]}.${format}`
       );
       document.body.appendChild(link);
       link.click();
@@ -354,6 +486,13 @@ export const seedLotService = {
         `/seed-lots/${id}/status`,
         { status, notes }
       );
+
+      if (response.data?.data) {
+        response.data.data = DataTransformer.transformSeedLotFromAPI(
+          response.data.data
+        );
+      }
+
       return response.data;
     } catch (error) {
       console.error("Error updating lot status:", error);
@@ -369,6 +508,13 @@ export const seedLotService = {
       const response = await api.get<ApiResponse<SeedLot[]>>(
         `/seed-lots/variety/${varietyId}`
       );
+
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        response.data.data = response.data.data.map((lot) =>
+          DataTransformer.transformSeedLotFromAPI(lot)
+        );
+      }
+
       return response.data;
     } catch (error) {
       console.error("Error fetching lots by variety:", error);
@@ -384,6 +530,13 @@ export const seedLotService = {
       const response = await api.get<ApiResponse<SeedLot[]>>(
         `/seed-lots/multiplier/${multiplierId}`
       );
+
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        response.data.data = response.data.data.map((lot) =>
+          DataTransformer.transformSeedLotFromAPI(lot)
+        );
+      }
+
       return response.data;
     } catch (error) {
       console.error("Error fetching lots by multiplier:", error);
@@ -399,6 +552,13 @@ export const seedLotService = {
       const response = await api.get<ApiResponse<SeedLot[]>>(
         `/seed-lots/parcel/${parcelId}`
       );
+
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        response.data.data = response.data.data.map((lot) =>
+          DataTransformer.transformSeedLotFromAPI(lot)
+        );
+      }
+
       return response.data;
     } catch (error) {
       console.error("Error fetching lots by parcel:", error);
@@ -424,7 +584,7 @@ export const seedLotService = {
       link.href = url;
       link.setAttribute(
         "download",
-        `seed-lot-${type}-${id}-${new Date().toISOString()}.pdf`
+        `seed-lot-${type}-${id}-${new Date().toISOString().split("T")[0]}.pdf`
       );
       document.body.appendChild(link);
       link.click();
