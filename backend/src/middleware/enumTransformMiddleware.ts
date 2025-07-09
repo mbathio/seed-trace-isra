@@ -7,13 +7,33 @@ export const enumTransformMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
+  const systemParams = [
+    "page",
+    "pageSize",
+    "sortBy",
+    "sortOrder",
+    "search",
+    "includeRelations",
+  ];
+
   // Transformer les données de requête (UI -> DB)
   if (req.body) {
     req.body = transformRequestData(req.body);
   }
-
   if (req.query) {
-    req.query = transformRequestData(req.query as any);
+    const transformedQuery: any = {};
+
+    for (const [key, value] of Object.entries(req.query)) {
+      if (systemParams.includes(key)) {
+        // Garder les paramètres système tels quels
+        transformedQuery[key] = value;
+      } else {
+        // Transformer les autres paramètres
+        transformedQuery[key] = transformRequestData({ [key]: value })[key];
+      }
+    }
+
+    req.query = transformedQuery;
   }
 
   // Intercepter la réponse pour transformer (DB -> UI)

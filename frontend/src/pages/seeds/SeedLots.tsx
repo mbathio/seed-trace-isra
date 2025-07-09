@@ -107,15 +107,30 @@ const SeedLots: React.FC = () => {
       sortOrder,
     ],
     queryFn: async () => {
-      const params: PaginationParams & FilterParamsExtended = {
+      // Construire les paramètres proprement
+      const params: Record<string, any> = {
         page: pagination.page,
         pageSize: pagination.pageSize,
-        search: debouncedSearch || undefined,
-        includeRelations: true,
-        sortBy,
-        sortOrder,
-        ...filters,
       };
+
+      // Ajouter search seulement si non vide
+      if (debouncedSearch) {
+        params.search = debouncedSearch;
+      }
+
+      // Ajouter les filtres seulement s'ils existent
+      if (filters.status) {
+        params.status = filters.status;
+      }
+
+      if (filters.level) {
+        params.level = filters.level;
+      }
+
+      // Ajouter le tri
+      params.sortBy = sortBy;
+      params.sortOrder = sortOrder;
+      params.includeRelations = true;
 
       const response = await api.get("/seed-lots", { params });
       return response.data;

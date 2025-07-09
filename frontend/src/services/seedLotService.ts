@@ -586,7 +586,30 @@ class SeedLotService {
 }
 
 // Export de l'instance du service
-export const seedLotService = new SeedLotService();
+export const seedLotService = {
+  async getAll(
+    params?: Partial<SeedLotFilters> & PaginationParams
+  ): Promise<ApiResponse<SeedLot[]>> {
+    try {
+      // Nettoyer les paramètres
+      const cleanParams: any = {};
 
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          // Ne pas inclure les valeurs undefined ou null
+          if (value !== undefined && value !== null && value !== "") {
+            cleanParams[key] = value;
+          }
+        });
+      }
+
+      const response = await api.get("/seed-lots", { params: cleanParams });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching seed lots:", error);
+      throw error;
+    }
+  },
+};
 // Export par défaut pour compatibilité
 export default seedLotService;

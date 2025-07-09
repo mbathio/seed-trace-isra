@@ -53,6 +53,7 @@ app.use(
 app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(enumTransformMiddleware);
 
 // Logging en développement
 if (process.env.NODE_ENV === "development") {
@@ -76,7 +77,6 @@ const limiter = rateLimit({
     data: null,
   },
 });
-app.use(enumTransformMiddleware);
 
 app.use("/api/", limiter);
 
