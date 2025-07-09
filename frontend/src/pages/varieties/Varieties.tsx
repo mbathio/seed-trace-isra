@@ -10,6 +10,7 @@ import {
   Edit,
   Trash2,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 // Configuration de l'API
 const API_BASE_URL = "http://localhost:3001/api";
@@ -230,11 +231,14 @@ const Varieties: React.FC = () => {
             <Filter className="h-4 w-4" />
             Filtres
           </button>
+          <Link to={`/dashboard/varieties/${variety.id}`}>
+            <Eye className="h-4 w-4" />
 
-          <button className="btn btn-primary flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Nouvelle variété
-          </button>
+            <button className="btn btn-primary flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Nouvelle variété
+            </button>
+          </Link>
         </div>
       </div>
 

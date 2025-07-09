@@ -278,7 +278,7 @@ const VarietyDetail: React.FC = () => {
                           size="icon"
                           className="h-8 w-8"
                         >
-                          <Link to={`/dashboard/seeds/${lot.id}`}>
+                          <Link to={`/dashboard/seed-lots/${lot.id}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
                         </Button>

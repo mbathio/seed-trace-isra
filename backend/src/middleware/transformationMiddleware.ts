@@ -290,3 +290,13 @@ export const parcelTransformMiddleware = enumTransformMiddleware;
 export const productionTransformMiddleware = enumTransformMiddleware;
 export const qualityControlTransformMiddleware = enumTransformMiddleware;
 export const userTransformMiddleware = enumTransformMiddleware;
+
+// Alias pour les imports dans les routes
+export const seedLotTransformation = enumTransformMiddleware;
+export const varietyTransformation = enumTransformMiddleware;
+export const multiplierTransformation = enumTransformMiddleware;
+export const parcelTransformation = enumTransformMiddleware;
+export const productionTransformation = enumTransformMiddleware;
+export const qualityControlTransformation = enumTransformMiddleware;
+export const userTransformation = enumTransformMiddleware;
+export const fullTransformation = enumTransformMiddleware;

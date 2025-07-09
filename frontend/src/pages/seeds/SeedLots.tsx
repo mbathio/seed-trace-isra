@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/SeedLots.tsx
+// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -275,7 +275,7 @@ const SeedLots: React.FC = () => {
             )}
             Exporter
           </Button>
-          <Link to="/seeds/lots/new">
+          <Link to="/dashboard/seed-lots/create">
             <Button>
               <Plus className="w-4 h-4 mr-2" />
               Nouveau Lot
@@ -474,7 +474,7 @@ const SeedLots: React.FC = () => {
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
-                              <Link to={`/seeds/lots/${lot.id}`}>
+                              <Link to={`/dashboard/seed-lots/${lot.id}`}>
                                 <Eye className="w-4 h-4 mr-2" />
                                 Voir les détails
                               </Link>
@@ -486,13 +486,15 @@ const SeedLots: React.FC = () => {
                               Générer QR Code
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <Link to={`/seeds/lots/${lot.id}/edit`}>
+                              <Link to={`/dashboard/seed-lots/${lot.id}/edit`}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Modifier
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <Link to={`/seeds/lots/${lot.id}/transfer`}>
+                              <Link
+                                to={`/dashboard/seed-lots/${lot.id}/transfer`}
+                              >
                                 <Leaf className="w-4 h-4 mr-2" />
                                 Transférer
                               </Link>

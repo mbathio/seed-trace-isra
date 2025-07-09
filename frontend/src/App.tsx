@@ -1,343 +1,167 @@
-// frontend/src/App.tsx
-import {
-  createBrowserRouter,
-  RouterProvider,
-  Navigate,
-} from "react-router-dom";
+// frontend/src/App.tsx - Configuration des routes
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import { AuthProvider } from "./contexts/AuthContext";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
-import AuthLayout from "./layouts/AuthLayout";
+// Layout
 import DashboardLayout from "./layouts/DashboardLayout";
+import AuthLayout from "./layouts/AuthLayout";
 
-// Pages d'authentification
-import LoginPage from "./pages/auth/Login";
-import RegisterPage from "./pages/auth/Register";
+// Auth Pages
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
 
-// Pages principales
-import DashboardPage from "./pages/Dashboard";
-import LandingPage from "./pages/LandingPage";
+// Dashboard Pages
+import Dashboard from "./pages/Dashboard";
 
-// Routes des semences
-import SeedLotsPage from "./pages/seeds/SeedLots";
-import SeedLotDetailsPage from "./pages/seeds/SeedLotDetail";
-import CreateSeedLotPage from "./pages/seeds/CreateSeedLot";
+// Seed Lots Pages
+import SeedLots from "./pages/seeds/SeedLots";
+import CreateSeedLot from "./pages/seeds/CreateSeedLot";
+import SeedLotDetail from "./pages/seeds/SeedLotDetail";
 import EditSeedLot from "./pages/seeds/EditSeedLot";
 import TransferSeedLot from "./pages/seeds/TransferSeedLot";
 
-// Routes des variétés
-import VarietiesPage from "./pages/varieties/Varieties";
-import VarietyDetailsPage from "./pages/varieties/VarietyDetail";
-import CreateVarietyPage from "./pages/varieties/CreateVariety";
+// Varieties Pages
+import Varieties from "./pages/varieties/Varieties";
+import CreateVariety from "./pages/varieties/CreateVariety";
+import VarietyDetail from "./pages/varieties/VarietyDetail";
 
-// Routes des multiplicateurs
-import MultipliersPage from "./pages/multipliers/Multipliers";
-import MultiplierDetailsPage from "./pages/multipliers/MultiplierDetail";
-import CreateMultiplierPage from "./pages/multipliers/CreateMultiplier";
+// Multipliers Pages
+import Multipliers from "./pages/multipliers/Multipliers";
+import CreateMultiplier from "./pages/multipliers/CreateMultiplier";
+import MultiplierDetail from "./pages/multipliers/MultiplierDetail";
 
-// Routes des contrôles qualité
-import QualityControlsPage from "./pages/quality/QualityControls";
-import QualityControlDetailsPage from "./pages/quality/QualityControlDetail";
-import CreateQualityControlPage from "./pages/quality/CreateQualityControl";
-
-// Routes des productions
-import ProductionsPage from "./pages/productions/Productions";
-import ProductionDetailsPage from "./pages/productions/ProductionDetail";
-import CreateProductionPage from "./pages/productions/CreateProduction";
-
-// Routes des parcelles
-import ParcelsPage from "./pages/parcels/Parcels";
-import ParcelDetailsPage from "./pages/parcels/ParcelDetail";
-import CreateParcelPage from "./pages/parcels/CreateParcel";
+// Parcels Pages
+import Parcels from "./pages/parcels/Parcels";
+import CreateParcel from "./pages/parcels/CreateParcel";
+import ParcelDetail from "./pages/parcels/ParcelDetail";
 import EditParcel from "./pages/parcels/EditParcel";
 
-// Autres pages
-import GenealogyPage from "./pages/genealogy/Genealogy";
-import ReportsPage from "./pages/reports/Reports";
-import UsersPage from "./pages/users/Users";
+// Productions Pages
+import Productions from "./pages/productions/Productions";
+import CreateProduction from "./pages/productions/CreateProduction";
+import ProductionDetail from "./pages/productions/ProductionDetail";
 
-// Configuration React Query
+// Quality Controls Pages
+import QualityControls from "./pages/quality/QualityControls";
+import CreateQualityControl from "./pages/quality/CreateQualityControl";
+import QualityControlDetail from "./pages/quality/QualityControlDetail";
+
+// Other Pages
+import Genealogy from "./pages/genealogy/Genealogy";
+import Users from "./pages/users/Users";
+
+// Protected Route Component
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+
+// Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 3,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes
+      staleTime: 1000 * 60 * 5, // 5 minutes
       refetchOnWindowFocus: false,
-    },
-    mutations: {
-      retry: 1,
     },
   },
 });
 
-// Définition du router avec les future flags
-const router = createBrowserRouter(
-  [
-    {
-      path: "/",
-      element: <LandingPage />,
-    },
-    {
-      path: "/auth",
-      element: <AuthLayout />,
-      children: [
-        {
-          path: "login",
-          element: <LoginPage />,
-        },
-        {
-          path: "register",
-          element: <RegisterPage />,
-        },
-      ],
-    },
-    {
-      path: "/dashboard",
-      element: (
-        <ProtectedRoute>
-          <DashboardLayout />
-        </ProtectedRoute>
-      ),
-      children: [
-        {
-          index: true,
-          element: <DashboardPage />,
-        },
-        // Routes des semences
-        {
-          path: "seed-lots",
-          children: [
-            {
-              index: true,
-              element: <SeedLotsPage />,
-            },
-            {
-              path: "new",
-              element: <CreateSeedLotPage />,
-            },
-            {
-              path: "create",
-              element: <Navigate to="/dashboard/seed-lots/new" replace />,
-            },
-            {
-              path: ":id",
-              element: <SeedLotDetailsPage />,
-            },
-            {
-              path: ":id/edit",
-              element: <EditSeedLot />,
-            },
-            {
-              path: ":id/transfer",
-              element: <TransferSeedLot />,
-            },
-          ],
-        },
-        // Routes des variétés
-        {
-          path: "varieties",
-          children: [
-            {
-              index: true,
-              element: <VarietiesPage />,
-            },
-            {
-              path: "new",
-              element: <CreateVarietyPage />,
-            },
-            {
-              path: ":id",
-              element: <VarietyDetailsPage />,
-            },
-          ],
-        },
-        // Routes des multiplicateurs
-        {
-          path: "multipliers",
-          children: [
-            {
-              index: true,
-              element: <MultipliersPage />,
-            },
-            {
-              path: "new",
-              element: <CreateMultiplierPage />,
-            },
-            {
-              path: ":id",
-              element: <MultiplierDetailsPage />,
-            },
-          ],
-        },
-        // Routes des contrôles qualité
-        {
-          path: "quality-controls",
-          children: [
-            {
-              index: true,
-              element: <QualityControlsPage />,
-            },
-            {
-              path: "new",
-              element: <CreateQualityControlPage />,
-            },
-            {
-              path: ":id",
-              element: <QualityControlDetailsPage />,
-            },
-          ],
-        },
-        // Routes des productions
-        {
-          path: "productions",
-          children: [
-            {
-              index: true,
-              element: <ProductionsPage />,
-            },
-            {
-              path: "new",
-              element: <CreateProductionPage />,
-            },
-            {
-              path: ":id",
-              element: <ProductionDetailsPage />,
-            },
-          ],
-        },
-        // Routes des parcelles
-        {
-          path: "parcels",
-          children: [
-            {
-              index: true,
-              element: <ParcelsPage />,
-            },
-            {
-              path: "new",
-              element: <CreateParcelPage />,
-            },
-            {
-              path: ":id",
-              element: <ParcelDetailsPage />,
-            },
-            {
-              path: ":id/edit",
-              element: <EditParcel />,
-            },
-          ],
-        },
-        // Routes de généalogie
-        {
-          path: "genealogy",
-          children: [
-            {
-              index: true,
-              element: <GenealogyPage />,
-            },
-            {
-              path: ":lotId",
-              element: <GenealogyPage />,
-            },
-          ],
-        },
-        // Routes des rapports
-        {
-          path: "reports",
-          element: <ReportsPage />,
-        },
-        // Routes d'administration
-        {
-          path: "users",
-          element: (
-            <ProtectedRoute requiredRole="ADMIN">
-              <UsersPage />
-            </ProtectedRoute>
-          ),
-        },
-      ],
-    },
-    // Redirections pour compatibilité avec les anciennes routes
-    {
-      path: "/seeds/*",
-      element: <Navigate to="/dashboard/seed-lots" replace />,
-    },
-    {
-      path: "/varieties/*",
-      element: <Navigate to="/dashboard/varieties" replace />,
-    },
-    {
-      path: "/multipliers/*",
-      element: <Navigate to="/dashboard/multipliers" replace />,
-    },
-    {
-      path: "/quality/*",
-      element: <Navigate to="/dashboard/quality-controls" replace />,
-    },
-    {
-      path: "/parcels/*",
-      element: <Navigate to="/dashboard/parcels" replace />,
-    },
-    {
-      path: "/productions/*",
-      element: <Navigate to="/dashboard/productions" replace />,
-    },
-    {
-      path: "/genealogy/*",
-      element: <Navigate to="/dashboard/genealogy" replace />,
-    },
-    {
-      path: "/reports/*",
-      element: <Navigate to="/dashboard/reports" replace />,
-    },
-    {
-      path: "/users/*",
-      element: <Navigate to="/dashboard/users" replace />,
-    },
-    // Route par défaut
-    {
-      path: "*",
-      element: <Navigate to="/" replace />,
-    },
-  ],
-  {
-    // Activer les future flags pour éviter les avertissements
-    future: {
-      v7_relativeSplatPath: true,
-      v7_fetcherPersist: true,
-      v7_normalizeFormMethod: true,
-      v7_partialHydration: true,
-      v7_skipActionErrorRevalidation: true,
-    },
-  }
-);
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <RouterProvider router={router} />
+      <BrowserRouter>
+        <Routes>
+          {/* Redirect root to dashboard */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+          {/* Auth Routes */}
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Route>
+
+          {/* Protected Dashboard Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            {/* Dashboard Home */}
+            <Route index element={<Dashboard />} />
+
+            {/* Seed Lots Routes */}
+            <Route path="seed-lots">
+              <Route index element={<SeedLots />} />
+              <Route path="create" element={<CreateSeedLot />} />
+              <Route path=":id" element={<SeedLotDetail />} />
+              <Route path=":id/edit" element={<EditSeedLot />} />
+              <Route path=":id/transfer" element={<TransferSeedLot />} />
+            </Route>
+
+            {/* Varieties Routes */}
+            <Route path="varieties">
+              <Route index element={<Varieties />} />
+              <Route path="create" element={<CreateVariety />} />
+              <Route path=":id" element={<VarietyDetail />} />
+            </Route>
+
+            {/* Multipliers Routes */}
+            <Route path="multipliers">
+              <Route index element={<Multipliers />} />
+              <Route path="create" element={<CreateMultiplier />} />
+              <Route path=":id" element={<MultiplierDetail />} />
+            </Route>
+
+            {/* Parcels Routes */}
+            <Route path="parcels">
+              <Route index element={<Parcels />} />
+              <Route path="create" element={<CreateParcel />} />
+              <Route path=":id" element={<ParcelDetail />} />
+              <Route path=":id/edit" element={<EditParcel />} />
+            </Route>
+
+            {/* Productions Routes */}
+            <Route path="productions">
+              <Route index element={<Productions />} />
+              <Route path="create" element={<CreateProduction />} />
+              <Route path=":id" element={<ProductionDetail />} />
+            </Route>
+
+            {/* Quality Controls Routes */}
+            <Route path="quality-controls">
+              <Route index element={<QualityControls />} />
+              <Route path="create" element={<CreateQualityControl />} />
+              <Route path=":id" element={<QualityControlDetail />} />
+            </Route>
+
+            {/* Other Routes */}
+            <Route path="genealogy" element={<Genealogy />} />
+            <Route path="users" element={<Users />} />
+
+            {/* 404 - Redirect to dashboard */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Route>
+
+          {/* Catch all - redirect to dashboard */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
 
         {/* Toast notifications */}
         <ToastContainer
           position="top-right"
-          autoClose={5000}
+          autoClose={3000}
           hideProgressBar={false}
-          newestOnTop={false}
+          newestOnTop
           closeOnClick
           rtl={false}
           pauseOnFocusLoss
           draggable
           pauseOnHover
-          theme="light"
         />
-      </AuthProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
