@@ -1,263 +1,114 @@
-// 1. backend/src/middleware/errorHandler.ts - CORRIGÉ
+// backend/src/middleware/errorHandler.ts - CORRIGÉ
 import { Request, Response, NextFunction } from "express";
-import { Prisma } from "@prisma/client";
-import { logger } from "../utils/logger";
 import { ResponseHandler } from "../utils/response";
-
-// ✅ CORRECTION: Définir SeedLotError localement
-export class SeedLotError extends Error {
-  constructor(public code: string, message: string) {
-    super(message);
-    this.name = "SeedLotError";
-  }
-}
-
-// Interface pour les erreurs personnalisées
-interface CustomError extends Error {
-  code?: string;
-  statusCode?: number;
-  details?: any;
-}
+import { logger } from "../utils/logger";
+import { Prisma } from "@prisma/client";
 
 export function errorHandler(
-  error: CustomError,
+  error: any,
   req: Request,
   res: Response,
   next: NextFunction
 ): Response | void {
-  // Logging structuré avec plus de détails
-  const errorInfo = {
-    message: error.message,
-    stack: error.stack,
-    code: error.code,
-    url: req.url,
-    method: req.method,
-    body: req.method !== "GET" ? req.body : undefined,
-    params: req.params,
-    query: req.query,
-    userAgent: req.get("User-Agent"),
-    ip: req.ip,
-    timestamp: new Date().toISOString(),
-  };
+  // Log de l'erreur
+  logger.error("Error caught by error handler", {
+    error: {
+      name: error.name,
+      message: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+    },
+    request: {
+      method: req.method,
+      url: req.originalUrl,
+      params: req.params,
+      query: req.query,
+      body: req.body,
+      user: (req as any).user,
+    },
+  });
 
-  logger.error("Error handled:", errorInfo);
-
-  // Gestion des erreurs personnalisées de l'application
-  if (error instanceof SeedLotError) {
-    switch (error.code) {
-      case "VARIETY_NOT_FOUND":
-      case "PARENT_LOT_NOT_FOUND":
-      case "LOT_NOT_FOUND":
-      case "SOURCE_LOT_NOT_FOUND":
-        return ResponseHandler.notFound(res, error.message);
-
-      case "INVALID_HIERARCHY":
-      case "INSUFFICIENT_QUANTITY":
-      case "HAS_CHILD_LOTS":
-        return ResponseHandler.error(res, error.message, 400);
-
-      default:
-        return ResponseHandler.error(res, error.message, 400);
-    }
-  }
-
-  // Gestion des erreurs de transformation
-  if (
-    error.message.includes("transformation") ||
-    error.message.includes("enum")
-  ) {
-    return ResponseHandler.validationError(res, [
-      "Erreur de transformation des données. Vérifiez les valeurs envoyées.",
-    ]);
-  }
-
-  // Gestion améliorée des erreurs Prisma
+  // Gestion des erreurs Prisma
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     switch (error.code) {
       case "P2002":
-        // Violation de contrainte d'unicité
-        const target = (error.meta?.target as string[]) || [];
-        const field = target[0] || "champ";
-        return ResponseHandler.error(
+        return ResponseHandler.conflict(
           res,
-          `Cette valeur existe déjà pour le champ: ${field}`,
-          409,
-          [`Contrainte d'unicité violée sur: ${target.join(", ")}`]
+          "Un enregistrement avec ces données existe déjà"
         );
-
       case "P2025":
-        // Enregistrement non trouvé
-        return ResponseHandler.notFound(res, "Ressource non trouvée");
-
+        return ResponseHandler.notFound(res, "Enregistrement non trouvé");
       case "P2003":
-        // Violation de contrainte de clé étrangère
-        const foreignKey = (error.meta?.field_name as string) || "référence";
-        return ResponseHandler.error(
+        return ResponseHandler.badRequest(
           res,
-          `Référence invalide: ${foreignKey}`,
-          400,
-          ["La ressource référencée n'existe pas"]
+          "Référence à un enregistrement inexistant"
         );
-
-      case "P2014":
-        // Violation de contrainte de relation
-        return ResponseHandler.error(
-          res,
-          "Impossible de supprimer: des éléments liés existent",
-          400,
-          ["Supprimez d'abord les éléments dépendants"]
-        );
-
-      case "P2021":
-        // Table n'existe pas
-        return ResponseHandler.serverError(
-          res,
-          "Erreur de structure de base de données"
-        );
-
-      case "P2022":
-        // Colonne n'existe pas
-        return ResponseHandler.serverError(
-          res,
-          "Erreur de structure de base de données"
-        );
-
       default:
-        logger.error(`Prisma error code not handled: ${error.code}`, error);
-        return ResponseHandler.error(res, "Erreur de base de données", 500);
+        return ResponseHandler.serverError(res, "Erreur de base de données");
     }
   }
 
-  // Gestion des erreurs de validation Prisma
   if (error instanceof Prisma.PrismaClientValidationError) {
     return ResponseHandler.validationError(
       res,
-      ["Données invalides - vérifiez le format des champs"],
-      "Erreur de validation des données"
-    );
-  }
-
-  // Gestion des erreurs de connexion Prisma
-  if (error instanceof Prisma.PrismaClientInitializationError) {
-    logger.error("Database initialization error:", error);
-    return ResponseHandler.serverError(
-      res,
-      "Erreur de connexion à la base de données"
-    );
-  }
-
-  if (error instanceof Prisma.PrismaClientRustPanicError) {
-    logger.error("Database panic error:", error);
-    return ResponseHandler.serverError(
-      res,
-      "Erreur critique de base de données"
-    );
-  }
-
-  // Gestion améliorée des erreurs JWT
-  if (error.name === "JsonWebTokenError") {
-    return ResponseHandler.unauthorized(
-      res,
-      "Token d'authentification invalide"
-    );
-  }
-
-  if (error.name === "TokenExpiredError") {
-    return ResponseHandler.unauthorized(res, "Token d'authentification expiré");
-  }
-
-  if (error.name === "NotBeforeError") {
-    return ResponseHandler.unauthorized(
-      res,
-      "Token d'authentification pas encore valide"
+      ["Données invalides"],
+      "Erreur de validation"
     );
   }
 
   // Gestion des erreurs de validation Zod
   if (error.name === "ZodError") {
-    const zodError = error as any;
-    const errors = zodError.errors?.map(
+    const errors = error.errors.map(
       (err: any) => `${err.path.join(".")}: ${err.message}`
-    ) || ["Erreur de validation"];
-
-    return ResponseHandler.validationError(res, errors, "Données invalides");
-  }
-
-  // Gestion des erreurs de validation personnalisées
-  if (error.name === "ValidationError") {
-    const errors = (error as any).errors
-      ? Object.values((error as any).errors).map((err: any) => err.message)
-      : [error.message];
+    );
     return ResponseHandler.validationError(res, errors);
   }
 
-  // Gestion des erreurs de multer (upload de fichiers)
-  if (error.code === "LIMIT_FILE_SIZE") {
-    return ResponseHandler.error(res, "Fichier trop volumineux", 400, [
-      "La taille du fichier dépasse la limite autorisée",
-    ]);
+  // Gestion des erreurs JWT
+  if (error.name === "JsonWebTokenError") {
+    return ResponseHandler.unauthorized(res, "Token invalide");
   }
 
-  if (error.code === "LIMIT_FILE_COUNT") {
-    return ResponseHandler.error(res, "Trop de fichiers", 400, [
-      "Le nombre de fichiers dépasse la limite autorisée",
-    ]);
+  if (error.name === "TokenExpiredError") {
+    return ResponseHandler.unauthorized(res, "Token expiré");
   }
 
-  // Gestion des erreurs de syntaxe JSON
-  if (error instanceof SyntaxError && "body" in error) {
-    return ResponseHandler.error(res, "Format JSON invalide", 400, [
-      "Vérifiez la syntaxe de votre requête JSON",
-    ]);
+  // Gestion des erreurs multer
+  if (error.name === "MulterError") {
+    if (error.code === "LIMIT_FILE_SIZE") {
+      return ResponseHandler.badRequest(res, "Fichier trop volumineux");
+    }
+    return ResponseHandler.badRequest(
+      res,
+      "Erreur de téléchargement de fichier"
+    );
   }
 
-  // Gestion des erreurs de timeout
-  if (error.code === "ETIMEDOUT" || error.code === "ECONNRESET") {
-    return ResponseHandler.error(res, "Timeout de la requête", 408, [
-      "La requête a pris trop de temps",
-    ]);
+  // Gestion des erreurs personnalisées
+  if (error.name === "ValidationError") {
+    return ResponseHandler.validationError(
+      res,
+      [error.message],
+      "Erreur de validation"
+    );
   }
 
-  // Gestion des erreurs avec statusCode personnalisé
-  if (error.statusCode) {
-    return ResponseHandler.error(res, error.message, error.statusCode);
+  if (error.name === "UnauthorizedError") {
+    return ResponseHandler.unauthorized(res, error.message);
   }
 
-  // Gestion des erreurs par défaut avec message sécurisé
-  const isDevelopment = process.env.NODE_ENV === "development";
-  const message = isDevelopment
-    ? error.message
-    : "Une erreur interne s'est produite";
-
-  const details = isDevelopment
-    ? {
-        stack: error.stack,
-        code: error.code,
-        name: error.name,
-      }
-    : undefined;
-
-  // Log pour debug en développement
-  if (isDevelopment) {
-    console.error("Unhandled error:", error);
+  if (error.name === "ForbiddenError") {
+    return ResponseHandler.forbidden(res, error.message);
   }
+
+  if (error.name === "NotFoundError") {
+    return ResponseHandler.notFound(res, error.message);
+  }
+
+  // Erreur par défaut
+  const message =
+    process.env.NODE_ENV === "production"
+      ? "Une erreur interne s'est produite"
+      : error.message || "Une erreur interne s'est produite";
 
   return ResponseHandler.serverError(res, message);
-}
-
-// Middleware pour gérer les promesses rejetées
-export function asyncErrorHandler(
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<any>
-) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
-}
-
-// Gestionnaire d'erreurs pour les routes non trouvées
-export function notFoundHandler(req: Request, res: Response): Response {
-  return ResponseHandler.notFound(
-    res,
-    `Route non trouvée: ${req.method} ${req.originalUrl}`
-  );
 }
