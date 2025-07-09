@@ -218,10 +218,17 @@ export class SeedLotService {
   /**
    * READ - Récupérer la liste des lots avec pagination et filtres
    */
+  // backend/src/services/SeedLotService.ts - EXTRAIT CORRIGÉ
+
+  /**
+   * READ - Récupérer la liste des lots avec pagination et filtres
+   */
   static async getSeedLots(
     filters: SeedLotFilters = {}
   ): Promise<GetSeedLotsResult> {
     try {
+      logger.info("Getting seed lots with filters", { filters });
+
       // 1. Paramètres de pagination
       const page = filters.page || 1;
       const pageSize = Math.min(filters.pageSize || 10, 100);
@@ -285,20 +292,7 @@ export class SeedLotService {
       const sortOrder = filters.sortOrder || "desc";
       orderBy[sortBy] = sortOrder;
 
-      // 4. Tentative de récupération depuis le cache
-      const cacheKey = `seedlots:${JSON.stringify({
-        where,
-        skip,
-        pageSize,
-        orderBy,
-      })}`;
-      const cached = await CacheService.get(cacheKey);
-      if (cached) {
-        logger.info("Returning cached seed lots");
-        return cached as GetSeedLotsResult;
-      }
-
-      // 5. Requêtes à la base de données
+      // 4. Exécuter les requêtes
       const [seedLots, totalCount] = await Promise.all([
         prisma.seedLot.findMany({
           where,
@@ -343,6 +337,11 @@ export class SeedLotService {
         prisma.seedLot.count({ where }),
       ]);
 
+      // 5. Transformer les données pour le frontend
+      const transformedSeedLots = seedLots.map((lot) =>
+        DataTransformer.transformSeedLot(lot)
+      );
+
       // 6. Calcul des métadonnées
       const totalPages = Math.ceil(totalCount / pageSize);
       const hasNextPage = page < totalPages;
@@ -351,7 +350,7 @@ export class SeedLotService {
       const result: GetSeedLotsResult = {
         success: true,
         message: "Lots récupérés avec succès",
-        data: seedLots,
+        data: transformedSeedLots,
         meta: {
           totalCount,
           page,
@@ -362,8 +361,12 @@ export class SeedLotService {
         },
       };
 
-      // 7. Mise en cache
-      await CacheService.set(cacheKey, result, 300); // Cache 5 minutes
+      logger.info("Seed lots retrieved successfully", {
+        count: transformedSeedLots.length,
+        totalCount,
+        page,
+        totalPages,
+      });
 
       return result;
     } catch (error) {

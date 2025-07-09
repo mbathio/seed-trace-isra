@@ -28,7 +28,7 @@ export class SeedLotController {
       // Log d'audit - Utiliser LoggerUtils au lieu de logger.audit
       LoggerUtils.audit("Seed lot created", req.user?.userId, {
         seedLotId: seedLot.id,
-variety: seedLot.variety?.name || 'N/A',
+        varietyId: seedLot.varietyId,
         level: seedLot.level,
         quantity: seedLot.quantity,
       });
@@ -47,6 +47,7 @@ variety: seedLot.variety?.name || 'N/A',
    * GET /api/seed-lots
    * Récupérer la liste des lots avec pagination et filtres
    */
+
   static async getSeedLots(
     req: Request,
     res: Response,
@@ -54,10 +55,10 @@ variety: seedLot.variety?.name || 'N/A',
   ): Promise<Response | void> {
     try {
       const filters = {
-        page: req.query.page ? parseInt(req.query.page as string) : undefined,
+        page: req.query.page ? parseInt(req.query.page as string) : 1,
         pageSize: req.query.pageSize
           ? parseInt(req.query.pageSize as string)
-          : undefined,
+          : 10,
         search: req.query.search as string,
         level: req.query.level as string,
         status: req.query.status as string,
@@ -69,35 +70,15 @@ variety: seedLot.variety?.name || 'N/A',
           : undefined,
         startDate: req.query.startDate as string,
         endDate: req.query.endDate as string,
-        sortBy: req.query.sortBy as string,
-        sortOrder: req.query.sortOrder as "asc" | "desc",
+        sortBy: (req.query.sortBy as string) || "createdAt",
+        sortOrder: (req.query.sortOrder as "asc" | "desc") || "desc",
         includeRelations: req.query.includeRelations === "true",
       };
 
       const result = await SeedLotService.getSeedLots(filters);
 
-      // Correction: Accéder correctement aux propriétés du résultat
-      if (
-        result &&
-        typeof result === "object" &&
-        "data" in result &&
-        "message" in result &&
-        "meta" in result
-      ) {
-        return ResponseHandler.success(
-          res,
-          result.data,
-          result.message,
-          result.meta
-        );
-      } else {
-        // Si la structure est différente, adapter
-        return ResponseHandler.success(
-          res,
-          result,
-          "Lots récupérés avec succès"
-        );
-      }
+      // Retourner directement le résultat qui contient déjà data, message et meta
+      return res.json(result);
     } catch (error) {
       next(error);
     }

@@ -20,7 +20,7 @@ const router = Router();
 // Appliquer le middleware de transformation
 router.use(seedLotTransformation);
 
-// Routes publiques (consultation)
+// Routes publiques (consultation) - PAS D'AUTHENTIFICATION REQUISE
 router.get(
   "/",
   parseQueryParams,
@@ -30,6 +30,13 @@ router.get(
 
 router.get("/search", SeedLotController.searchSeedLots);
 
+router.get("/:id", SeedLotController.getSeedLotById);
+router.get("/:id/genealogy", SeedLotController.getGenealogyTree);
+router.get("/:id/qr-code", SeedLotController.getQRCode);
+router.get("/:id/stats", SeedLotController.getSeedLotStats);
+router.get("/:id/history", SeedLotController.getSeedLotHistory);
+
+// Routes protégées - AUTHENTIFICATION REQUISE
 router.get(
   "/export",
   authMiddleware,
@@ -37,18 +44,10 @@ router.get(
   SeedLotController.exportSeedLots
 );
 
-router.get("/:id", SeedLotController.getSeedLotById);
-router.get("/:id/genealogy", SeedLotController.getGenealogyTree);
-router.get("/:id/qr-code", SeedLotController.getQRCode);
-router.get("/:id/stats", SeedLotController.getSeedLotStats);
-router.get("/:id/history", SeedLotController.getSeedLotHistory);
-
-// Routes protégées (modification)
-router.use(authMiddleware); // Toutes les routes suivantes nécessitent une authentification
-
-// CRUD Operations
+// CRUD Operations (protégées)
 router.post(
   "/",
+  authMiddleware,
   requireRole("RESEARCHER", "TECHNICIAN", "ADMIN"),
   validateRequest({ body: createSeedLotSchema }),
   SeedLotController.createSeedLot
@@ -56,16 +55,23 @@ router.post(
 
 router.put(
   "/:id",
+  authMiddleware,
   requireRole("RESEARCHER", "TECHNICIAN", "ADMIN"),
   validateRequest({ body: updateSeedLotSchema }),
   SeedLotController.updateSeedLot
 );
 
-router.delete("/:id", requireRole("ADMIN"), SeedLotController.deleteSeedLot);
+router.delete(
+  "/:id",
+  authMiddleware,
+  requireRole("ADMIN"),
+  SeedLotController.deleteSeedLot
+);
 
 // Bulk operations
 router.post(
   "/bulk-update",
+  authMiddleware,
   requireRole("MANAGER", "ADMIN"),
   validateRequest({ body: bulkUpdateSchema }),
   SeedLotController.bulkUpdateSeedLots
@@ -74,6 +80,7 @@ router.post(
 // Child lots and transfers
 router.post(
   "/:id/child-lots",
+  authMiddleware,
   requireRole("RESEARCHER", "TECHNICIAN", "ADMIN"),
   validateRequest({ body: createChildLotSchema }),
   SeedLotController.createChildLot
@@ -81,6 +88,7 @@ router.post(
 
 router.post(
   "/:id/transfer",
+  authMiddleware,
   requireRole("RESEARCHER", "TECHNICIAN", "ADMIN", "MANAGER"),
   validateRequest({ body: transferLotSchema }),
   SeedLotController.transferLot
@@ -89,6 +97,7 @@ router.post(
 // Validation
 router.post(
   "/:id/validate",
+  authMiddleware,
   requireRole("INSPECTOR", "ADMIN"),
   SeedLotController.validateSeedLot
 );
