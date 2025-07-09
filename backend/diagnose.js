@@ -1,247 +1,212 @@
 // backend/diagnose.js - Script de diagnostic
 const fs = require("fs");
 const path = require("path");
-const net = require("net");
 const { exec } = require("child_process");
+const util = require("util");
+const execPromise = util.promisify(exec);
 
-console.log("🔍 Diagnostic du système ISRA Seed Trace\n");
+console.log("🔍 DIAGNOSTIC ISRA SEED TRACE BACKEND\n");
 
-// 1. Vérifier le fichier .env
-function checkEnvFile() {
-  console.log("📋 Vérification du fichier .env...");
-  const envPath = path.join(__dirname, ".env");
+async function diagnose() {
+  const checks = [];
 
-  if (fs.existsSync(envPath)) {
-    console.log("✅ Fichier .env trouvé");
-
-    const envContent = fs.readFileSync(envPath, "utf8");
-    const requiredVars = [
-      "NODE_ENV",
-      "PORT",
-      "DATABASE_URL",
-      "JWT_SECRET",
-      "CLIENT_URL",
-    ];
-
-    const missingVars = [];
-    requiredVars.forEach((varName) => {
-      if (!envContent.includes(varName)) {
-        missingVars.push(varName);
-      }
-    });
-
-    if (missingVars.length > 0) {
-      console.log("❌ Variables manquantes:", missingVars.join(", "));
-      return false;
-    } else {
-      console.log("✅ Toutes les variables requises sont présentes");
-      return true;
-    }
-  } else {
-    console.log("❌ Fichier .env non trouvé!");
-    console.log("💡 Créez un fichier .env à partir de .env.example");
-    return false;
-  }
-}
-
-// 2. Vérifier si le port est disponible
-function checkPort(port) {
-  return new Promise((resolve) => {
-    console.log(`\n🔌 Test du port ${port}...`);
-
-    const server = net.createServer();
-
-    server.once("error", (err) => {
-      if (err.code === "EADDRINUSE") {
-        console.log(`❌ Le port ${port} est déjà utilisé`);
-
-        // Trouver le processus qui utilise le port
-        if (process.platform === "win32") {
-          exec(`netstat -ano | findstr :${port}`, (error, stdout) => {
-            if (!error && stdout) {
-              console.log("💡 Processus utilisant le port:");
-              console.log(stdout);
-              console.log("\nPour tuer le processus: taskkill /F /PID [PID]");
-            }
-          });
-        }
-        resolve(false);
-      } else {
-        console.log("❌ Erreur lors du test du port:", err.message);
-        resolve(false);
-      }
-    });
-
-    server.once("listening", () => {
-      server.close();
-      console.log(`✅ Port ${port} disponible`);
-      resolve(true);
-    });
-
-    server.listen(port, "localhost");
-  });
-}
-
-// 3. Vérifier PostgreSQL
-function checkPostgres() {
-  console.log("\n🐘 Test de connexion PostgreSQL...");
-
-  // Essayer de se connecter avec pg
-  exec("pg_isready -h localhost -p 5432", (error, stdout, stderr) => {
-    if (error) {
-      console.log("❌ PostgreSQL ne semble pas accessible");
-      console.log("💡 Démarrez PostgreSQL:");
-      console.log("   - Windows: Services > PostgreSQL > Démarrer");
-      console.log(
-        '   - Ou: pg_ctl start -D "C:\\Program Files\\PostgreSQL\\[version]\\data"'
-      );
-    } else {
-      console.log("✅ PostgreSQL est accessible");
-      console.log(stdout);
-    }
-  });
-}
-
-// 4. Vérifier les dépendances
-function checkDependencies() {
-  console.log("\n📦 Vérification des dépendances...");
-
-  const packageJsonPath = path.join(__dirname, "package.json");
-  const nodeModulesPath = path.join(__dirname, "node_modules");
-
-  if (!fs.existsSync(packageJsonPath)) {
-    console.log("❌ package.json non trouvé!");
-    return false;
-  }
-
-  if (!fs.existsSync(nodeModulesPath)) {
-    console.log("❌ node_modules non trouvé!");
-    console.log("💡 Exécutez: npm install");
-    return false;
-  }
-
-  // Vérifier quelques modules critiques
-  const criticalModules = [
-    "@prisma/client",
-    "express",
-    "dotenv",
-    "socket.io",
-    "winston",
+  // 1. Vérifier les fichiers requis
+  console.log("📁 Vérification des fichiers...");
+  const requiredFiles = [
+    ".env",
+    "package.json",
+    "tsconfig.json",
+    "src/server.ts",
+    "src/app.ts",
+    "prisma/schema.prisma",
   ];
 
-  const missingModules = [];
-  criticalModules.forEach((module) => {
-    const modulePath = path.join(nodeModulesPath, module);
-    if (!fs.existsSync(modulePath)) {
-      missingModules.push(module);
-    }
-  });
-
-  if (missingModules.length > 0) {
-    console.log("❌ Modules manquants:", missingModules.join(", "));
-    console.log("💡 Exécutez: npm install");
-    return false;
-  } else {
-    console.log("✅ Tous les modules critiques sont installés");
-    return true;
-  }
-}
-
-// 5. Vérifier Prisma
-function checkPrisma() {
-  console.log("\n🔷 Vérification de Prisma...");
-
-  const prismaPath = path.join(__dirname, "prisma", "schema.prisma");
-  if (!fs.existsSync(prismaPath)) {
-    console.log("❌ schema.prisma non trouvé!");
-    return false;
+  for (const file of requiredFiles) {
+    const exists = fs.existsSync(path.join(__dirname, file));
+    checks.push({
+      name: `Fichier ${file}`,
+      status: exists ? "✅" : "❌",
+      issue: exists ? null : `Fichier manquant: ${file}`,
+    });
   }
 
-  console.log("✅ schema.prisma trouvé");
+  // 2. Vérifier les variables d'environnement
+  console.log("\n🔐 Vérification des variables d'environnement...");
+  require("dotenv").config();
 
-  // Vérifier si les migrations ont été appliquées
-  exec("npx prisma migrate status", (error, stdout, stderr) => {
-    if (error) {
-      console.log("⚠️  Les migrations Prisma ne semblent pas appliquées");
-      console.log("💡 Exécutez: npx prisma db push");
-    } else {
-      console.log("✅ État des migrations:");
-      console.log(stdout);
-    }
-  });
+  const requiredEnvVars = [
+    "DATABASE_URL",
+    "JWT_SECRET",
+    "JWT_REFRESH_SECRET",
+    "PORT",
+  ];
 
-  return true;
-}
+  for (const envVar of requiredEnvVars) {
+    const exists = !!process.env[envVar];
+    checks.push({
+      name: `Env ${envVar}`,
+      status: exists ? "✅" : "❌",
+      issue: exists ? null : `Variable manquante: ${envVar}`,
+    });
+  }
 
-// 6. Test de démarrage rapide
-async function quickStartTest() {
-  console.log("\n🚀 Test de démarrage rapide...");
-
+  // 3. Vérifier la connexion PostgreSQL
+  console.log("\n🐘 Vérification de PostgreSQL...");
   try {
-    // Charger dotenv
-    require("dotenv").config();
+    const { PrismaClient } = require("@prisma/client");
+    const prisma = new PrismaClient();
+    await prisma.$connect();
+    await prisma.$disconnect();
+    checks.push({
+      name: "PostgreSQL Connection",
+      status: "✅",
+      issue: null,
+    });
+  } catch (error) {
+    checks.push({
+      name: "PostgreSQL Connection",
+      status: "❌",
+      issue: `Erreur de connexion: ${error.message}`,
+    });
+  }
 
-    console.log("✅ Variables d'environnement chargées");
-    console.log(`   PORT: ${process.env.PORT || "3001"}`);
-    console.log(`   NODE_ENV: ${process.env.NODE_ENV || "development"}`);
-    console.log(`   DB_NAME: ${process.env.DB_NAME || "isra_seeds"}`);
+  // 4. Vérifier les ports
+  console.log("\n🔌 Vérification des ports...");
+  const port = process.env.PORT || 3001;
+  const net = require("net");
 
-    // Test de connexion DB simple
-    const { Client } = require("pg");
-    const connectionString = process.env.DATABASE_URL;
+  await new Promise((resolve) => {
+    const tester = net.createServer();
+    tester.once("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        checks.push({
+          name: `Port ${port}`,
+          status: "❌",
+          issue: `Port ${port} déjà utilisé`,
+        });
+      }
+      resolve();
+    });
 
-    if (!connectionString) {
-      console.log("❌ DATABASE_URL non définie!");
-      return;
+    tester.once("listening", () => {
+      tester.close();
+      checks.push({
+        name: `Port ${port}`,
+        status: "✅",
+        issue: null,
+      });
+      resolve();
+    });
+
+    tester.listen(port);
+  });
+
+  // 5. Vérifier les dépendances
+  console.log("\n📦 Vérification des dépendances...");
+  const dependencies = [
+    "@prisma/client",
+    "express",
+    "bcryptjs",
+    "jsonwebtoken",
+    "cors",
+    "helmet",
+  ];
+
+  for (const dep of dependencies) {
+    try {
+      require.resolve(dep);
+      checks.push({
+        name: `Dépendance ${dep}`,
+        status: "✅",
+        issue: null,
+      });
+    } catch {
+      checks.push({
+        name: `Dépendance ${dep}`,
+        status: "❌",
+        issue: `Module non installé: ${dep}`,
+      });
+    }
+  }
+
+  // 6. Vérifier les erreurs de TypeScript
+  console.log("\n📝 Vérification TypeScript...");
+  try {
+    const { stdout, stderr } = await execPromise("npx tsc --noEmit");
+    if (stderr) {
+      checks.push({
+        name: "TypeScript",
+        status: "⚠️",
+        issue: "Warnings TypeScript",
+      });
+    } else {
+      checks.push({
+        name: "TypeScript",
+        status: "✅",
+        issue: null,
+      });
+    }
+  } catch (error) {
+    checks.push({
+      name: "TypeScript",
+      status: "❌",
+      issue: "Erreurs de compilation TypeScript",
+    });
+  }
+
+  // Résumé
+  console.log("\n📊 RÉSUMÉ DU DIAGNOSTIC\n");
+  console.log("Statut | Vérification");
+  console.log("-------|-------------");
+
+  const issues = [];
+  for (const check of checks) {
+    console.log(`${check.status}     | ${check.name}`);
+    if (check.issue) {
+      issues.push(check.issue);
+    }
+  }
+
+  if (issues.length > 0) {
+    console.log("\n❌ PROBLÈMES DÉTECTÉS:\n");
+    issues.forEach((issue, i) => {
+      console.log(`${i + 1}. ${issue}`);
+    });
+
+    console.log("\n💡 SOLUTIONS RECOMMANDÉES:\n");
+
+    if (issues.some((i) => i.includes("Module non installé"))) {
+      console.log("• Exécuter: npm install");
     }
 
-    const client = new Client({ connectionString });
+    if (issues.some((i) => i.includes("Variable manquante"))) {
+      console.log(
+        "• Créer/compléter le fichier .env avec les variables requises"
+      );
+      console.log("• Copier .env.example vers .env et remplir les valeurs");
+    }
 
-    console.log("🔗 Tentative de connexion à la base de données...");
-    await client.connect();
-    console.log("✅ Connexion à la base de données réussie!");
+    if (issues.some((i) => i.includes("PostgreSQL"))) {
+      console.log("• Vérifier que PostgreSQL est démarré");
+      console.log("• Vérifier DATABASE_URL dans .env");
+      console.log("• Créer la base de données: createdb isra_seeds");
+      console.log("• Exécuter: npx prisma db push");
+    }
 
-    const result = await client.query("SELECT NOW()");
-    console.log("✅ Requête test réussie:", result.rows[0].now);
+    if (issues.some((i) => i.includes("Port"))) {
+      console.log(`• Tuer le processus utilisant le port ${port}`);
+      console.log("• Ou changer le PORT dans .env");
+    }
 
-    await client.end();
-  } catch (error) {
-    console.log("❌ Erreur lors du test:", error.message);
+    if (issues.some((i) => i.includes("TypeScript"))) {
+      console.log("• Exécuter: npx tsc --noEmit pour voir les erreurs");
+      console.log("• Corriger les erreurs TypeScript");
+    }
+  } else {
+    console.log("\n✅ TOUT EST OK ! Le serveur devrait démarrer correctement.");
+    console.log("\n🚀 Exécuter: npm run dev");
   }
 }
 
-// Exécuter tous les tests
-async function runDiagnostics() {
-  console.log("Démarrage du diagnostic...\n");
-
-  const envOk = checkEnvFile();
-  if (!envOk) {
-    console.log("\n⚠️  Corrigez d'abord le fichier .env");
-  }
-
-  const port = process.env.PORT || 3001;
-  await checkPort(port);
-
-  checkPostgres();
-
-  const depsOk = checkDependencies();
-  if (!depsOk) {
-    console.log("\n⚠️  Installez d'abord les dépendances");
-  }
-
-  checkPrisma();
-
-  if (envOk && depsOk) {
-    await quickStartTest();
-  }
-
-  console.log("\n📊 Résumé du diagnostic:");
-  console.log("1. Si PostgreSQL n'est pas démarré, démarrez-le");
-  console.log("2. Si le port est occupé, changez PORT dans .env");
-  console.log("3. Si des dépendances manquent: npm install");
-  console.log("4. Si Prisma n'est pas synchronisé: npx prisma db push");
-  console.log("5. Redémarrez avec: npm run dev");
-}
-
-// Lancer le diagnostic
-runDiagnostics();
+// Exécuter le diagnostic
+diagnose().catch(console.error);

@@ -1,3 +1,4 @@
+// backend/src/middleware/enumTransformMiddleware-fixed.ts
 import { Request, Response, NextFunction } from "express";
 import { ENUM_MAPPINGS, transformEnum } from "../config/enumMappings";
 
@@ -39,6 +40,11 @@ export const enumTransformMiddleware = (
   // Intercepter la réponse pour transformer (DB -> UI)
   const originalJson = res.json.bind(res);
   res.json = function (data: any) {
+    // Ne pas transformer les erreurs de validation
+    if (data && data.success === false && data.errors) {
+      return originalJson(data);
+    }
+
     if (data && typeof data === "object") {
       data = transformResponseData(data);
     }
@@ -68,6 +74,7 @@ function transformRequestData(data: any): any {
       "MULTIPLIER_STATUS",
     ],
     level: ["SEED_LEVEL"],
+    seedLevel: ["SEED_LEVEL"], // Ajouter seedLevel
     cropType: ["CROP_TYPE"],
     role: ["USER_ROLE"],
     type: ["ACTIVITY_TYPE", "ISSUE_TYPE", "REPORT_TYPE"],
@@ -91,6 +98,12 @@ function transformRequestData(data: any): any {
         }
       }
     }
+  }
+
+  // Gérer le cas spécial seedLevel -> level
+  if (transformed.seedLevel && !transformed.level) {
+    transformed.level = transformed.seedLevel;
+    delete transformed.seedLevel;
   }
 
   // Transformer récursivement les objets imbriqués
@@ -128,6 +141,7 @@ function transformResponseData(data: any): any {
       "MULTIPLIER_STATUS",
     ],
     level: ["SEED_LEVEL"],
+    seedLevel: ["SEED_LEVEL"], // Ajouter seedLevel
     cropType: ["CROP_TYPE"],
     role: ["USER_ROLE"],
     type: ["ACTIVITY_TYPE", "ISSUE_TYPE", "REPORT_TYPE"],
@@ -167,7 +181,7 @@ function transformResponseData(data: any): any {
   return transformed;
 }
 
-// Middleware spécifiques pour chaque module
+// Middlewares spécifiques pour chaque module
 export const seedLotTransformMiddleware = enumTransformMiddleware;
 export const varietyTransformMiddleware = enumTransformMiddleware;
 export const multiplierTransformMiddleware = enumTransformMiddleware;
