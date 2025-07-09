@@ -51,7 +51,7 @@ import { DeleteSeedLotDialog } from "../../components/seeds/DeleteSeedLotDialog"
 import { api } from "../../services/api";
 import { seedLotService } from "../../services/seedLotService";
 import { SeedLot } from "../../types/entities";
-import { ApiResponse, PaginationParams, SeedLotFilters } from "../../types/api";
+import { ApiResponse, SeedLotFilters } from "../../types/api";
 import {
   SEED_LEVELS,
   LOT_STATUSES,
