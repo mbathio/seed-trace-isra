@@ -3,10 +3,14 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { AuthProvider } from "./contexts/AuthContext";
 
 // Layout
 import DashboardLayout from "./layouts/DashboardLayout";
 import AuthLayout from "./layouts/AuthLayout";
+
+// Landing Page
+import LandingPage from "./pages/LandingPage";
 
 // Auth Pages
 import Login from "./pages/auth/Login";
@@ -51,6 +55,7 @@ import QualityControlDetail from "./pages/quality/QualityControlDetail";
 // Other Pages
 import Genealogy from "./pages/genealogy/Genealogy";
 import Users from "./pages/users/Users";
+import Reports from "./pages/reports/Reports";
 
 // Protected Route Component
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -68,99 +73,102 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          {/* Redirect root to dashboard */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Landing Page - Accessible to everyone */}
+            <Route path="/" element={<LandingPage />} />
 
-          {/* Auth Routes */}
-          <Route element={<AuthLayout />}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-          </Route>
-
-          {/* Protected Dashboard Routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }
-          >
-            {/* Dashboard Home */}
-            <Route index element={<Dashboard />} />
-
-            {/* Seed Lots Routes */}
-            <Route path="seed-lots">
-              <Route index element={<SeedLots />} />
-              <Route path="create" element={<CreateSeedLot />} />
-              <Route path=":id" element={<SeedLotDetail />} />
-              <Route path=":id/edit" element={<EditSeedLot />} />
-              <Route path=":id/transfer" element={<TransferSeedLot />} />
+            {/* Auth Routes */}
+            <Route path="/auth" element={<AuthLayout />}>
+              <Route path="login" element={<Login />} />
+              <Route path="register" element={<Register />} />
             </Route>
 
-            {/* Varieties Routes */}
-            <Route path="varieties">
-              <Route index element={<Varieties />} />
-              <Route path="create" element={<CreateVariety />} />
-              <Route path=":id" element={<VarietyDetail />} />
+            {/* Protected Dashboard Routes */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              {/* Dashboard Home */}
+              <Route index element={<Dashboard />} />
+
+              {/* Seed Lots Routes */}
+              <Route path="seed-lots">
+                <Route index element={<SeedLots />} />
+                <Route path="create" element={<CreateSeedLot />} />
+                <Route path=":id" element={<SeedLotDetail />} />
+                <Route path=":id/edit" element={<EditSeedLot />} />
+                <Route path=":id/transfer" element={<TransferSeedLot />} />
+              </Route>
+
+              {/* Varieties Routes */}
+              <Route path="varieties">
+                <Route index element={<Varieties />} />
+                <Route path="create" element={<CreateVariety />} />
+                <Route path=":id" element={<VarietyDetail />} />
+              </Route>
+
+              {/* Multipliers Routes */}
+              <Route path="multipliers">
+                <Route index element={<Multipliers />} />
+                <Route path="create" element={<CreateMultiplier />} />
+                <Route path=":id" element={<MultiplierDetail />} />
+              </Route>
+
+              {/* Parcels Routes */}
+              <Route path="parcels">
+                <Route index element={<Parcels />} />
+                <Route path="create" element={<CreateParcel />} />
+                <Route path=":id" element={<ParcelDetail />} />
+                <Route path=":id/edit" element={<EditParcel />} />
+              </Route>
+
+              {/* Productions Routes */}
+              <Route path="productions">
+                <Route index element={<Productions />} />
+                <Route path="create" element={<CreateProduction />} />
+                <Route path=":id" element={<ProductionDetail />} />
+              </Route>
+
+              {/* Quality Controls Routes */}
+              <Route path="quality-controls">
+                <Route index element={<QualityControls />} />
+                <Route path="create" element={<CreateQualityControl />} />
+                <Route path=":id" element={<QualityControlDetail />} />
+              </Route>
+
+              {/* Other Routes */}
+              <Route path="genealogy" element={<Genealogy />} />
+              <Route path="users" element={<Users />} />
+              <Route path="reports" element={<Reports />} />
+
+              {/* 404 within dashboard - Redirect to dashboard home */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
 
-            {/* Multipliers Routes */}
-            <Route path="multipliers">
-              <Route index element={<Multipliers />} />
-              <Route path="create" element={<CreateMultiplier />} />
-              <Route path=":id" element={<MultiplierDetail />} />
-            </Route>
+            {/* Catch all - redirect to landing page */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
 
-            {/* Parcels Routes */}
-            <Route path="parcels">
-              <Route index element={<Parcels />} />
-              <Route path="create" element={<CreateParcel />} />
-              <Route path=":id" element={<ParcelDetail />} />
-              <Route path=":id/edit" element={<EditParcel />} />
-            </Route>
-
-            {/* Productions Routes */}
-            <Route path="productions">
-              <Route index element={<Productions />} />
-              <Route path="create" element={<CreateProduction />} />
-              <Route path=":id" element={<ProductionDetail />} />
-            </Route>
-
-            {/* Quality Controls Routes */}
-            <Route path="quality-controls">
-              <Route index element={<QualityControls />} />
-              <Route path="create" element={<CreateQualityControl />} />
-              <Route path=":id" element={<QualityControlDetail />} />
-            </Route>
-
-            {/* Other Routes */}
-            <Route path="genealogy" element={<Genealogy />} />
-            <Route path="users" element={<Users />} />
-
-            {/* 404 - Redirect to dashboard */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Route>
-
-          {/* Catch all - redirect to dashboard */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-
-        {/* Toast notifications */}
-        <ToastContainer
-          position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-        />
-      </BrowserRouter>
+          {/* Toast notifications */}
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+          />
+        </BrowserRouter>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
