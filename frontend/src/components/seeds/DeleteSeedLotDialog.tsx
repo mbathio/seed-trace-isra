@@ -27,7 +27,6 @@ export const DeleteSeedLotDialog: React.FC<DeleteSeedLotDialogProps> = ({
   onClose,
   onConfirm,
 }) => {
-  const lotIdentifier = seedLot?.id || seedLotId || "ce lot";
   const lotNumber = seedLot?.id || seedLotId || "";
 
   return (

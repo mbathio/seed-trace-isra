@@ -1299,8 +1299,7 @@ const SeedLotDetail: React.FC = () => {
         isOpen={showDeleteDialog}
         onClose={() => setShowDeleteDialog(false)}
         onConfirm={confirmDelete}
-        seedLotId={seedLot.id}
-        isDeleting={deleteMutation.isPending}
+        seedLot={seedLot}
       />
     </div>
   );

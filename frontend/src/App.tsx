@@ -1,5 +1,4 @@
 // frontend/src/App.tsx - Configuration des routes
-import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastContainer } from "react-toastify";
@@ -54,7 +53,7 @@ import Genealogy from "./pages/genealogy/Genealogy";
 import Users from "./pages/users/Users";
 
 // Protected Route Component
-import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // Create a client
 const queryClient = new QueryClient({
