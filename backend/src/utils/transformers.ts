@@ -1,4 +1,5 @@
-// backend/src/utils/transformers.ts - ✅ VERSION COMPLÈTE AVEC TOUTES LES MÉTHODES
+// backend/src/utils/transformers.ts - VERSION COMPLÈTE
+
 import {
   ROLE_MAPPINGS,
   CROP_TYPE_MAPPINGS,
@@ -21,6 +22,347 @@ import {
  * Centralise toutes les transformations d'enums et d'entités
  */
 export default class DataTransformer {
+  // ===== TRANSFORMATION D'ENTITÉS COMPLÈTES =====
+
+  /**
+   * Transforme un lot de semences complet (DB → UI)
+   */
+  static transformSeedLot(seedLot: any): any {
+    if (!seedLot) return null;
+
+    return {
+      id: seedLot.id,
+      varietyId: seedLot.varietyId,
+      varietyName: seedLot.variety?.name,
+      varietyCode: seedLot.variety?.code,
+      level: seedLot.level, // Pas de transformation nécessaire pour SeedLevel
+      quantity: seedLot.quantity,
+      productionDate: seedLot.productionDate,
+      expiryDate: seedLot.expiryDate,
+      multiplierId: seedLot.multiplierId,
+      multiplierName: seedLot.multiplier?.name,
+      parcelId: seedLot.parcelId,
+      parcelName: seedLot.parcel?.name,
+      status: this.transformLotStatusDBToUI(seedLot.status),
+      batchNumber: seedLot.batchNumber,
+      parentLotId: seedLot.parentLotId,
+      notes: seedLot.notes,
+      qrCode: seedLot.qrCode,
+      isActive: seedLot.isActive,
+      createdAt: seedLot.createdAt,
+      updatedAt: seedLot.updatedAt,
+      // Relations transformées
+      qualityControls: seedLot.qualityControls?.map((qc: any) =>
+        this.transformQualityControl(qc)
+      ),
+      productions: seedLot.productions?.map((p: any) =>
+        this.transformProduction(p)
+      ),
+      childLots: seedLot.childLots?.map((cl: any) => this.transformSeedLot(cl)),
+      parentLot: seedLot.parentLot
+        ? this.transformSeedLot(seedLot.parentLot)
+        : null,
+    };
+  }
+
+  /**
+   * Transforme une variété complète (DB → UI)
+   */
+  static transformVariety(variety: any): any {
+    if (!variety) return null;
+
+    return {
+      id: variety.id,
+      code: variety.code,
+      name: variety.name,
+      cropType: this.transformCropTypeDBToUI(variety.cropType),
+      description: variety.description,
+      maturityDays: variety.maturityDays,
+      yieldPotential: variety.yieldPotential,
+      resistances: variety.resistances,
+      origin: variety.origin,
+      releaseYear: variety.releaseYear,
+      isActive: variety.isActive,
+      createdAt: variety.createdAt,
+      updatedAt: variety.updatedAt,
+      // Comptes si inclus
+      _count: variety._count,
+    };
+  }
+
+  /**
+   * Transforme un multiplicateur complet (DB → UI)
+   */
+  static transformMultiplier(multiplier: any): any {
+    if (!multiplier) return null;
+
+    return {
+      id: multiplier.id,
+      name: multiplier.name,
+      code: multiplier.code,
+      status: this.transformMultiplierStatusDBToUI(multiplier.status),
+      address: multiplier.address,
+      latitude: multiplier.latitude,
+      longitude: multiplier.longitude,
+      yearsExperience: multiplier.yearsExperience,
+      certificationLevel: this.transformCertificationLevelDBToUI(
+        multiplier.certificationLevel
+      ),
+      specialization: multiplier.specialization,
+      phone: multiplier.phone,
+      email: multiplier.email,
+      isActive: multiplier.isActive,
+      createdAt: multiplier.createdAt,
+      updatedAt: multiplier.updatedAt,
+      // Relations si incluses
+      parcels: multiplier.parcels?.map((p: any) => this.transformParcel(p)),
+      contracts: multiplier.contracts?.map((c: any) =>
+        this.transformContract(c)
+      ),
+      seedLots: multiplier.seedLots?.map((sl: any) =>
+        this.transformSeedLot(sl)
+      ),
+      productions: multiplier.productions?.map((p: any) =>
+        this.transformProduction(p)
+      ),
+      _count: multiplier._count,
+    };
+  }
+
+  /**
+   * Transforme une parcelle complète (DB → UI)
+   */
+  static transformParcel(parcel: any): any {
+    if (!parcel) return null;
+
+    return {
+      id: parcel.id,
+      name: parcel.name,
+      area: parcel.area,
+      latitude: parcel.latitude,
+      longitude: parcel.longitude,
+      status: this.transformParcelStatusDBToUI(parcel.status),
+      soilType: parcel.soilType,
+      irrigationSystem: parcel.irrigationSystem,
+      address: parcel.address,
+      multiplierId: parcel.multiplierId,
+      multiplierName: parcel.multiplier?.name,
+      isActive: parcel.isActive,
+      createdAt: parcel.createdAt,
+      updatedAt: parcel.updatedAt,
+      // Relations si incluses
+      multiplier: parcel.multiplier
+        ? this.transformMultiplier(parcel.multiplier)
+        : null,
+      seedLots: parcel.seedLots?.map((sl: any) => this.transformSeedLot(sl)),
+      productions: parcel.productions?.map((p: any) =>
+        this.transformProduction(p)
+      ),
+      soilAnalyses: parcel.soilAnalyses,
+      previousCrops: parcel.previousCrops,
+      _count: parcel._count,
+    };
+  }
+
+  /**
+   * Transforme un contrôle qualité complet (DB → UI)
+   */
+  static transformQualityControl(qc: any): any {
+    if (!qc) return null;
+
+    return {
+      id: qc.id,
+      lotId: qc.lotId,
+      controlDate: qc.controlDate,
+      germinationRate: qc.germinationRate,
+      varietyPurity: qc.varietyPurity,
+      moistureContent: qc.moistureContent,
+      seedHealth: qc.seedHealth,
+      result: this.transformTestResultDBToUI(qc.result),
+      observations: qc.observations,
+      inspectorId: qc.inspectorId,
+      inspectorName: qc.inspector?.name,
+      testMethod: qc.testMethod,
+      laboratoryRef: qc.laboratoryRef,
+      certificateUrl: qc.certificateUrl,
+      createdAt: qc.createdAt,
+      updatedAt: qc.updatedAt,
+      // Relations si incluses
+      seedLot: qc.seedLot ? this.transformSeedLot(qc.seedLot) : null,
+      inspector: qc.inspector ? this.transformUser(qc.inspector) : null,
+    };
+  }
+
+  /**
+   * Transforme une production complète (DB → UI)
+   */
+  static transformProduction(production: any): any {
+    if (!production) return null;
+
+    return {
+      id: production.id,
+      lotId: production.lotId,
+      startDate: production.startDate,
+      endDate: production.endDate,
+      sowingDate: production.sowingDate,
+      harvestDate: production.harvestDate,
+      yield: production.yield,
+      conditions: production.conditions,
+      status: this.transformProductionStatusDBToUI(production.status),
+      plannedQuantity: production.plannedQuantity,
+      actualYield: production.actualYield,
+      notes: production.notes,
+      weatherConditions: production.weatherConditions,
+      parcelId: production.parcelId,
+      parcelName: production.parcel?.name,
+      multiplierId: production.multiplierId,
+      multiplierName: production.multiplier?.name,
+      createdAt: production.createdAt,
+      updatedAt: production.updatedAt,
+      // Relations si incluses
+      seedLot: production.seedLot
+        ? this.transformSeedLot(production.seedLot)
+        : null,
+      multiplier: production.multiplier
+        ? this.transformMultiplier(production.multiplier)
+        : null,
+      parcel: production.parcel
+        ? this.transformParcel(production.parcel)
+        : null,
+      activities: production.activities?.map((a: any) =>
+        this.transformActivity(a)
+      ),
+      issues: production.issues?.map((i: any) => this.transformIssue(i)),
+      weatherData: production.weatherData,
+      _count: production._count,
+    };
+  }
+
+  /**
+   * Transforme une activité de production (DB → UI)
+   */
+  static transformActivity(activity: any): any {
+    if (!activity) return null;
+
+    return {
+      id: activity.id,
+      productionId: activity.productionId,
+      activityDate: activity.activityDate,
+      type: this.transformActivityTypeDBToUI(activity.type),
+      description: activity.description,
+      responsibleId: activity.responsibleId,
+      responsibleName: activity.responsible?.name,
+      duration: activity.duration,
+      laborCount: activity.laborCount,
+      cost: activity.cost,
+      notes: activity.notes,
+      createdAt: activity.createdAt,
+      updatedAt: activity.updatedAt,
+      // Relations si incluses
+      inputs: activity.inputs,
+      responsible: activity.responsible
+        ? this.transformUser(activity.responsible)
+        : null,
+    };
+  }
+
+  /**
+   * Transforme un problème/issue de production (DB → UI)
+   */
+  static transformIssue(issue: any): any {
+    if (!issue) return null;
+
+    return {
+      id: issue.id,
+      productionId: issue.productionId,
+      issueDate: issue.issueDate,
+      type: this.transformIssueTypeDBToUI(issue.type),
+      severity: this.transformIssueSeverityDBToUI(issue.severity),
+      description: issue.description,
+      actions: issue.actions,
+      resolved: issue.resolved,
+      resolvedDate: issue.resolvedDate,
+      cost: issue.cost,
+      createdAt: issue.createdAt,
+      updatedAt: issue.updatedAt,
+    };
+  }
+
+  /**
+   * Transforme un utilisateur complet (DB → UI)
+   */
+  static transformUser(user: any): any {
+    if (!user) return null;
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: this.transformRoleDBToUI(user.role),
+      avatar: user.avatar,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      // Ne jamais renvoyer le mot de passe
+    };
+  }
+
+  /**
+   * Transforme un contrat complet (DB → UI)
+   */
+  static transformContract(contract: any): any {
+    if (!contract) return null;
+
+    return {
+      id: contract.id,
+      multiplierId: contract.multiplierId,
+      varietyId: contract.varietyId,
+      startDate: contract.startDate,
+      endDate: contract.endDate,
+      seedLevel: contract.seedLevel, // Pas de transformation nécessaire
+      expectedQuantity: contract.expectedQuantity,
+      actualQuantity: contract.actualQuantity,
+      status: this.transformContractStatusDBToUI(contract.status),
+      parcelId: contract.parcelId,
+      paymentTerms: contract.paymentTerms,
+      notes: contract.notes,
+      createdAt: contract.createdAt,
+      updatedAt: contract.updatedAt,
+      // Relations si incluses
+      multiplier: contract.multiplier
+        ? this.transformMultiplier(contract.multiplier)
+        : null,
+      variety: contract.variety
+        ? this.transformVariety(contract.variety)
+        : null,
+      parcel: contract.parcel ? this.transformParcel(contract.parcel) : null,
+    };
+  }
+
+  /**
+   * Transforme un rapport complet (DB → UI)
+   */
+  static transformReport(report: any): any {
+    if (!report) return null;
+
+    return {
+      id: report.id,
+      title: report.title,
+      description: report.description,
+      type: this.transformReportTypeDBToUI(report.type),
+      createdById: report.createdById,
+      fileName: report.fileName,
+      filePath: report.filePath,
+      parameters: report.parameters,
+      data: report.data,
+      isPublic: report.isPublic,
+      createdAt: report.createdAt,
+      updatedAt: report.updatedAt,
+      // Relations si incluses
+      createdBy: report.createdBy ? this.transformUser(report.createdBy) : null,
+    };
+  }
+
   // ===== TRANSFORMATIONS D'ENUMS INDIVIDUELS =====
 
   /**
@@ -47,34 +389,6 @@ export default class DataTransformer {
     return (
       CROP_TYPE_MAPPINGS.DB_TO_UI[
         value as keyof typeof CROP_TYPE_MAPPINGS.DB_TO_UI
-      ] || value
-    );
-  }
-
-  /**
-   * Transforme un résultat de test UI vers DB
-   */
-  static transformTestResultUIToDB(
-    value: string | undefined
-  ): string | undefined {
-    if (!value) return undefined;
-    return (
-      TEST_RESULT_MAPPINGS.UI_TO_DB[
-        value as keyof typeof TEST_RESULT_MAPPINGS.UI_TO_DB
-      ] || value
-    );
-  }
-
-  /**
-   * Transforme un résultat de test DB vers UI
-   */
-  static transformTestResultDBToUI(
-    value: string | undefined
-  ): string | undefined {
-    if (!value) return undefined;
-    return (
-      TEST_RESULT_MAPPINGS.DB_TO_UI[
-        value as keyof typeof TEST_RESULT_MAPPINGS.DB_TO_UI
       ] || value
     );
   }
@@ -108,107 +422,29 @@ export default class DataTransformer {
   }
 
   /**
-   * Transforme un rôle UI vers DB
+   * Transforme un résultat de test UI vers DB
    */
-  static transformRoleUIToDB(value: string | undefined): string | undefined {
-    if (!value) return undefined;
-    return (
-      ROLE_MAPPINGS.UI_TO_DB[value as keyof typeof ROLE_MAPPINGS.UI_TO_DB] ||
-      value
-    );
-  }
-
-  /**
-   * Transforme un rôle DB vers UI
-   */
-  static transformRoleDBToUI(value: string | undefined): string | undefined {
-    if (!value) return undefined;
-    return (
-      ROLE_MAPPINGS.DB_TO_UI[value as keyof typeof ROLE_MAPPINGS.DB_TO_UI] ||
-      value
-    );
-  }
-
-  /**
-   * Transforme un statut de multiplicateur UI vers DB
-   */
-  static transformMultiplierStatusUIToDB(
+  static transformTestResultUIToDB(
     value: string | undefined
   ): string | undefined {
     if (!value) return undefined;
     return (
-      MULTIPLIER_STATUS_MAPPINGS.UI_TO_DB[
-        value as keyof typeof MULTIPLIER_STATUS_MAPPINGS.UI_TO_DB
+      TEST_RESULT_MAPPINGS.UI_TO_DB[
+        value as keyof typeof TEST_RESULT_MAPPINGS.UI_TO_DB
       ] || value
     );
   }
 
   /**
-   * Transforme un statut de multiplicateur DB vers UI
+   * Transforme un résultat de test DB vers UI
    */
-  static transformMultiplierStatusDBToUI(
+  static transformTestResultDBToUI(
     value: string | undefined
   ): string | undefined {
     if (!value) return undefined;
     return (
-      MULTIPLIER_STATUS_MAPPINGS.DB_TO_UI[
-        value as keyof typeof MULTIPLIER_STATUS_MAPPINGS.DB_TO_UI
-      ] || value
-    );
-  }
-
-  /**
-   * Transforme un niveau de certification UI vers DB
-   */
-  static transformCertificationLevelUIToDB(
-    value: string | undefined
-  ): string | undefined {
-    if (!value) return undefined;
-    return (
-      CERTIFICATION_LEVEL_MAPPINGS.UI_TO_DB[
-        value as keyof typeof CERTIFICATION_LEVEL_MAPPINGS.UI_TO_DB
-      ] || value
-    );
-  }
-
-  /**
-   * Transforme un niveau de certification DB vers UI
-   */
-  static transformCertificationLevelDBToUI(
-    value: string | undefined
-  ): string | undefined {
-    if (!value) return undefined;
-    return (
-      CERTIFICATION_LEVEL_MAPPINGS.DB_TO_UI[
-        value as keyof typeof CERTIFICATION_LEVEL_MAPPINGS.DB_TO_UI
-      ] || value
-    );
-  }
-
-  /**
-   * Transforme un statut de parcelle UI vers DB
-   */
-  static transformParcelStatusUIToDB(
-    value: string | undefined
-  ): string | undefined {
-    if (!value) return undefined;
-    return (
-      PARCEL_STATUS_MAPPINGS.UI_TO_DB[
-        value as keyof typeof PARCEL_STATUS_MAPPINGS.UI_TO_DB
-      ] || value
-    );
-  }
-
-  /**
-   * Transforme un statut de parcelle DB vers UI
-   */
-  static transformParcelStatusDBToUI(
-    value: string | undefined
-  ): string | undefined {
-    if (!value) return undefined;
-    return (
-      PARCEL_STATUS_MAPPINGS.DB_TO_UI[
-        value as keyof typeof PARCEL_STATUS_MAPPINGS.DB_TO_UI
+      TEST_RESULT_MAPPINGS.DB_TO_UI[
+        value as keyof typeof TEST_RESULT_MAPPINGS.DB_TO_UI
       ] || value
     );
   }
@@ -326,6 +562,112 @@ export default class DataTransformer {
   }
 
   /**
+   * Transforme un rôle UI vers DB
+   */
+  static transformRoleUIToDB(value: string | undefined): string | undefined {
+    if (!value) return undefined;
+    return (
+      ROLE_MAPPINGS.UI_TO_DB[value as keyof typeof ROLE_MAPPINGS.UI_TO_DB] ||
+      value
+    );
+  }
+
+  /**
+   * Transforme un rôle DB vers UI
+   */
+  static transformRoleDBToUI(value: string | undefined): string | undefined {
+    if (!value) return undefined;
+    return (
+      ROLE_MAPPINGS.DB_TO_UI[value as keyof typeof ROLE_MAPPINGS.DB_TO_UI] ||
+      value
+    );
+  }
+
+  /**
+   * Transforme un statut de parcelle UI vers DB
+   */
+  static transformParcelStatusUIToDB(
+    value: string | undefined
+  ): string | undefined {
+    if (!value) return undefined;
+    return (
+      PARCEL_STATUS_MAPPINGS.UI_TO_DB[
+        value as keyof typeof PARCEL_STATUS_MAPPINGS.UI_TO_DB
+      ] || value
+    );
+  }
+
+  /**
+   * Transforme un statut de parcelle DB vers UI
+   */
+  static transformParcelStatusDBToUI(
+    value: string | undefined
+  ): string | undefined {
+    if (!value) return undefined;
+    return (
+      PARCEL_STATUS_MAPPINGS.DB_TO_UI[
+        value as keyof typeof PARCEL_STATUS_MAPPINGS.DB_TO_UI
+      ] || value
+    );
+  }
+
+  /**
+   * Transforme un niveau de certification UI vers DB
+   */
+  static transformCertificationLevelUIToDB(
+    value: string | undefined
+  ): string | undefined {
+    if (!value) return undefined;
+    return (
+      CERTIFICATION_LEVEL_MAPPINGS.UI_TO_DB[
+        value as keyof typeof CERTIFICATION_LEVEL_MAPPINGS.UI_TO_DB
+      ] || value
+    );
+  }
+
+  /**
+   * Transforme un niveau de certification DB vers UI
+   */
+  static transformCertificationLevelDBToUI(
+    value: string | undefined
+  ): string | undefined {
+    if (!value) return undefined;
+    return (
+      CERTIFICATION_LEVEL_MAPPINGS.DB_TO_UI[
+        value as keyof typeof CERTIFICATION_LEVEL_MAPPINGS.DB_TO_UI
+      ] || value
+    );
+  }
+
+  /**
+   * Transforme un statut de multiplicateur UI vers DB
+   */
+  static transformMultiplierStatusUIToDB(
+    value: string | undefined
+  ): string | undefined {
+    if (!value) return undefined;
+    return (
+      MULTIPLIER_STATUS_MAPPINGS.UI_TO_DB[
+        value as keyof typeof MULTIPLIER_STATUS_MAPPINGS.UI_TO_DB
+      ] || value
+    );
+  }
+
+  /**
+   * Transforme un statut de multiplicateur DB vers UI
+   */
+  static transformMultiplierStatusDBToUI(
+    value: string | undefined
+  ): string | undefined {
+    if (!value) return undefined;
+    return (
+      MULTIPLIER_STATUS_MAPPINGS.DB_TO_UI[
+        value as keyof typeof MULTIPLIER_STATUS_MAPPINGS.DB_TO_UI
+      ] || value
+    );
+  }
+
+  /**
    * Transforme un statut de contrat UI vers DB
    */
   static transformContractStatusUIToDB(
@@ -381,259 +723,142 @@ export default class DataTransformer {
     );
   }
 
-  // ===== TRANSFORMATIONS D'ENTITÉS COMPLÈTES =====
-
-  /**
-   * Transforme une variété complète (DB → UI)
-   */
-  static transformVariety(variety: any): any {
-    if (!variety) return null;
-
-    return {
-      ...variety,
-      cropType: this.transformCropTypeDBToUI(variety.cropType),
-      // Transformer les lots de semences associés si présents
-      seedLots: variety.seedLots?.map((lot: any) => this.transformSeedLot(lot)),
-      // Transformer les contrats associés si présents
-      contracts: variety.contracts?.map((contract: any) =>
-        this.transformContract(contract)
-      ),
-    };
-  }
-
-  /**
-   * Transforme un lot de semences complet (DB → UI)
-   */
-  static transformSeedLot(lot: any): any {
-    if (!lot) return null;
-
-    return {
-      ...lot,
-      status: this.transformLotStatusDBToUI(lot.status),
-      // Transformer la variété associée si présente
-      variety: lot.variety ? this.transformVariety(lot.variety) : undefined,
-      // Transformer le multiplicateur associé si présent
-      multiplier: lot.multiplier
-        ? this.transformMultiplier(lot.multiplier)
-        : undefined,
-      // Transformer la parcelle associée si présente
-      parcel: lot.parcel ? this.transformParcel(lot.parcel) : undefined,
-      // Transformer le lot parent si présent
-      parentLot: lot.parentLot
-        ? this.transformSeedLot(lot.parentLot)
-        : undefined,
-      // Transformer les lots enfants si présents
-      childLots: lot.childLots?.map((child: any) =>
-        this.transformSeedLot(child)
-      ),
-      // Transformer les contrôles qualité associés si présents
-      qualityControls: lot.qualityControls?.map((qc: any) =>
-        this.transformQualityControl(qc)
-      ),
-      // Transformer les productions associées si présentes
-      productions: lot.productions?.map((prod: any) =>
-        this.transformProduction(prod)
-      ),
-    };
-  }
-
-  /**
-   * Transforme un contrôle qualité complet (DB → UI)
-   */
-  static transformQualityControl(qc: any): any {
-    if (!qc) return null;
-
-    return {
-      ...qc,
-      result: this.transformTestResultDBToUI(qc.result),
-      // Transformer le lot associé si présent
-      seedLot: qc.seedLot ? this.transformSeedLot(qc.seedLot) : undefined,
-      // Transformer l'inspecteur associé si présent
-      inspector: qc.inspector ? this.transformUser(qc.inspector) : undefined,
-    };
-  }
-
-  /**
-   * Transforme un multiplicateur complet (DB → UI)
-   */
-  static transformMultiplier(multiplier: any): any {
-    if (!multiplier) return null;
-
-    return {
-      ...multiplier,
-      status: this.transformMultiplierStatusDBToUI(multiplier.status),
-      certificationLevel: this.transformCertificationLevelDBToUI(
-        multiplier.certificationLevel
-      ),
-      // Transformer les spécialisations (types de cultures)
-      specialization: multiplier.specialization?.map((spec: string) =>
-        this.transformCropTypeDBToUI(spec)
-      ),
-      // Transformer les parcelles associées si présentes
-      parcels: multiplier.parcels?.map((parcel: any) =>
-        this.transformParcel(parcel)
-      ),
-      // Transformer les contrats associés si présents
-      contracts: multiplier.contracts?.map((contract: any) =>
-        this.transformContract(contract)
-      ),
-      // Transformer les lots de semences associés si présents
-      seedLots: multiplier.seedLots?.map((lot: any) =>
-        this.transformSeedLot(lot)
-      ),
-      // Transformer les productions associées si présentes
-      productions: multiplier.productions?.map((prod: any) =>
-        this.transformProduction(prod)
-      ),
-    };
-  }
-
-  /**
-   * Transforme une parcelle complète (DB → UI)
-   */
-  static transformParcel(parcel: any): any {
-    if (!parcel) return null;
-
-    return {
-      ...parcel,
-      status: this.transformParcelStatusDBToUI(parcel.status),
-      // Transformer le multiplicateur associé si présent
-      multiplier: parcel.multiplier
-        ? this.transformMultiplier(parcel.multiplier)
-        : undefined,
-      // Transformer les analyses de sol si présentes
-      soilAnalyses: parcel.soilAnalyses,
-      // Transformer les cultures précédentes si présentes
-      previousCrops: parcel.previousCrops,
-    };
-  }
-
-  /**
-   * Transforme une production complète (DB → UI)
-   */
-  static transformProduction(production: any): any {
-    if (!production) return null;
-
-    return {
-      ...production,
-      status: this.transformProductionStatusDBToUI(production.status),
-      // Transformer le lot associé si présent
-      seedLot: production.seedLot
-        ? this.transformSeedLot(production.seedLot)
-        : undefined,
-      // Transformer le multiplicateur associé si présent
-      multiplier: production.multiplier
-        ? this.transformMultiplier(production.multiplier)
-        : undefined,
-      // Transformer la parcelle associée si présente
-      parcel: production.parcel
-        ? this.transformParcel(production.parcel)
-        : undefined,
-      // Transformer les activités associées si présentes
-      activities: production.activities?.map((activity: any) => ({
-        ...activity,
-        type: this.transformActivityTypeDBToUI(activity.type),
-        user: activity.user ? this.transformUser(activity.user) : undefined,
-      })),
-      // Transformer les problèmes associés si présents
-      issues: production.issues?.map((issue: any) => ({
-        ...issue,
-        type: this.transformIssueTypeDBToUI(issue.type),
-        severity: this.transformIssueSeverityDBToUI(issue.severity),
-      })),
-    };
-  }
-
-  /**
-   * Transforme un utilisateur complet (DB → UI)
-   */
-  static transformUser(user: any): any {
-    if (!user) return null;
-
-    return {
-      ...user,
-      role: this.transformRoleDBToUI(user.role),
-    };
-  }
-
-  /**
-   * Transforme un contrat complet (DB → UI)
-   */
-  static transformContract(contract: any): any {
-    if (!contract) return null;
-
-    return {
-      ...contract,
-      status: this.transformContractStatusDBToUI(contract.status),
-      // Les niveaux de semences sont identiques UI/DB, pas de transformation nécessaire
-      seedLevel: contract.seedLevel,
-      // Transformer le multiplicateur associé si présent
-      multiplier: contract.multiplier
-        ? this.transformMultiplier(contract.multiplier)
-        : undefined,
-      // Transformer la variété associée si présente
-      variety: contract.variety
-        ? this.transformVariety(contract.variety)
-        : undefined,
-      // Transformer la parcelle associée si présente
-      parcel: contract.parcel
-        ? this.transformParcel(contract.parcel)
-        : undefined,
-    };
-  }
-
-  /**
-   * Transforme un rapport complet (DB → UI)
-   */
-  static transformReport(report: any): any {
-    if (!report) return null;
-
-    return {
-      ...report,
-      type: this.transformReportTypeDBToUI(report.type),
-      // Transformer l'utilisateur créateur si présent
-      createdBy: report.createdBy
-        ? this.transformUser(report.createdBy)
-        : undefined,
-    };
-  }
-
   // ===== MÉTHODES UTILITAIRES =====
 
   /**
-   * Nettoie les valeurs undefined d'un objet
+   * Nettoie les champs undefined d'un objet
    */
-  static cleanUndefinedValues(obj: any): any {
+  static cleanUndefinedFields(obj: any): any {
+    if (!obj || typeof obj !== "object") return obj;
+
     const cleaned: any = {};
-    for (const key in obj) {
-      if (obj[key] !== undefined) {
-        cleaned[key] = obj[key];
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        cleaned[key] = value;
       }
     }
+
     return cleaned;
   }
 
   /**
-   * Transforme un tableau d'entités
+   * Transforme les données pour une création (UI → DB)
    */
-  static transformArray(items: any[], transformFn: (item: any) => any): any[] {
-    if (!items || !Array.isArray(items)) return [];
-    return items.map(transformFn).filter(Boolean);
+  static transformForCreate(data: any, entityType: string): any {
+    const transformed = { ...data };
+
+    switch (entityType) {
+      case "seedLot":
+        if (transformed.status) {
+          transformed.status = this.transformLotStatusUIToDB(
+            transformed.status
+          );
+        }
+        break;
+
+      case "variety":
+        if (transformed.cropType) {
+          transformed.cropType = this.transformCropTypeUIToDB(
+            transformed.cropType
+          );
+        }
+        break;
+
+      case "multiplier":
+        if (transformed.status) {
+          transformed.status = this.transformMultiplierStatusUIToDB(
+            transformed.status
+          );
+        }
+        if (transformed.certificationLevel) {
+          transformed.certificationLevel =
+            this.transformCertificationLevelUIToDB(
+              transformed.certificationLevel
+            );
+        }
+        break;
+
+      case "parcel":
+        if (transformed.status) {
+          transformed.status = this.transformParcelStatusUIToDB(
+            transformed.status
+          );
+        }
+        break;
+
+      case "qualityControl":
+        if (transformed.result) {
+          transformed.result = this.transformTestResultUIToDB(
+            transformed.result
+          );
+        }
+        break;
+
+      case "production":
+        if (transformed.status) {
+          transformed.status = this.transformProductionStatusUIToDB(
+            transformed.status
+          );
+        }
+        break;
+
+      case "activity":
+        if (transformed.type) {
+          transformed.type = this.transformActivityTypeUIToDB(transformed.type);
+        }
+        break;
+
+      case "issue":
+        if (transformed.type) {
+          transformed.type = this.transformIssueTypeUIToDB(transformed.type);
+        }
+        if (transformed.severity) {
+          transformed.severity = this.transformIssueSeverityUIToDB(
+            transformed.severity
+          );
+        }
+        break;
+
+      case "user":
+        if (transformed.role) {
+          transformed.role = this.transformRoleUIToDB(transformed.role);
+        }
+        break;
+
+      case "contract":
+        if (transformed.status) {
+          transformed.status = this.transformContractStatusUIToDB(
+            transformed.status
+          );
+        }
+        break;
+
+      case "report":
+        if (transformed.type) {
+          transformed.type = this.transformReportTypeUIToDB(transformed.type);
+        }
+        break;
+    }
+
+    return this.cleanUndefinedFields(transformed);
   }
 
   /**
-   * Log de transformation pour debug
+   * Transforme les données pour une mise à jour (UI → DB)
    */
-  static debugTransform(
-    entityType: string,
-    original: any,
-    transformed: any
-  ): void {
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[DataTransformer] ${entityType}:`, {
-        original,
-        transformed,
-      });
-    }
+  static transformForUpdate(data: any, entityType: string): any {
+    // Utilise la même logique que transformForCreate
+    return this.transformForCreate(data, entityType);
+  }
+
+  /**
+   * Transforme une collection d'entités
+   */
+  static transformCollection(
+    items: any[],
+    transformMethod: (item: any) => any
+  ): any[] {
+    if (!Array.isArray(items)) return [];
+    return items.map((item) => transformMethod.call(this, item));
   }
 }

@@ -65,16 +65,42 @@ export const updateSeedLotSchema = z.object({
   batchNumber: z.string().max(50).optional(),
 });
 
-// Schéma de requête avec filtres
+// ✅ CORRECTION: Schéma de requête avec transformation des types
 export const seedLotQuerySchema = paginationSchema.extend({
   level: SeedLevelEnum.optional(),
   status: LotStatusEnum.optional(),
-  varietyId: positiveIntSchema.optional(),
-  multiplierId: positiveIntSchema.optional(),
+  varietyId: z
+    .union([z.string(), z.number()])
+    .transform((val) => {
+      if (typeof val === "string") {
+        const num = parseInt(val, 10);
+        return isNaN(num) ? undefined : num;
+      }
+      return val;
+    })
+    .optional(),
+  multiplierId: z
+    .union([z.string(), z.number()])
+    .transform((val) => {
+      if (typeof val === "string") {
+        const num = parseInt(val, 10);
+        return isNaN(num) ? undefined : num;
+      }
+      return val;
+    })
+    .optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  includeRelations: z.boolean().optional(),
-  includeExpired: z.boolean().optional(),
+  // ✅ CORRECTION: Gérer includeRelations comme booléen ou string
+  includeRelations: z
+    .union([z.boolean(), z.string().transform((val) => val === "true")])
+    .optional(),
+  includeExpired: z
+    .union([z.boolean(), z.string().transform((val) => val === "true")])
+    .optional(),
+  search: z.string().optional(),
+  sortBy: z.string().optional(),
+  sortOrder: z.enum(["asc", "desc"]).optional(),
 });
 
 // Schéma pour création de lot enfant

@@ -97,6 +97,7 @@ const SeedLots: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Requête principale pour récupérer les lots
+
   const { data, isLoading, error, refetch } = useQuery<ApiResponse<SeedLot[]>>({
     queryKey: [
       "seedLots",
@@ -114,7 +115,8 @@ const SeedLots: React.FC = () => {
         pageSize: pagination.pageSize,
         sortBy: sortBy,
         sortOrder: sortOrder,
-        includeRelations: true, // Booléen, pas de string!
+        // ✅ CORRECTION: Ne pas inclure includeRelations dans les params
+        // Il sera géré par le service
       };
 
       // Ajouter search seulement si non vide

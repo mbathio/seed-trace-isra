@@ -12,35 +12,41 @@ export interface RequestWithParsedQuery extends Request {
   parsedQuery: ParsedQuery;
 }
 
-export function parseQueryParams(
+export const parseQueryParams = (
   req: Request,
   res: Response,
   next: NextFunction
-): void {
-  try {
-    // Créer un objet parsedQuery
-    const parsedQuery: ParsedQuery = {
-      page: parseInt(req.query.page as string) || 1,
-      pageSize: Math.min(parseInt(req.query.pageSize as string) || 10, 100),
-      search: (req.query.search as string) || undefined,
-    };
+) => {
+  // Parser les booléens
+  const booleanFields = [
+    "includeRelations",
+    "includeExpired",
+    "includeInactive",
+  ];
 
-    // Ajouter d'autres paramètres
-    Object.keys(req.query).forEach((key) => {
-      if (!["page", "pageSize", "search"].includes(key)) {
-        parsedQuery[key] = req.query[key];
+  booleanFields.forEach((field) => {
+    if (req.query[field] !== undefined) {
+      req.query[field] = req.query[field] === ("true" as any);
+    }
+  });
+
+  // Parser les nombres
+  const numberFields = [
+    "page",
+    "pageSize",
+    "varietyId",
+    "multiplierId",
+    "parcelId",
+  ];
+
+  numberFields.forEach((field) => {
+    if (req.query[field] !== undefined) {
+      const value = parseInt(req.query[field] as string, 10);
+      if (!isNaN(value)) {
+        req.query[field] = value as any;
       }
-    });
+    }
+  });
 
-    // Attacher à la requête
-    (req as RequestWithParsedQuery).parsedQuery = parsedQuery;
-
-    next();
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: "Paramètres de requête invalides",
-      data: null,
-    });
-  }
-}
+  next();
+};

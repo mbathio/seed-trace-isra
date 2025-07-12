@@ -66,6 +66,7 @@ export interface GenealogyNode {
 }
 
 // Fonction utilitaire pour nettoyer les paramètres
+
 const cleanParams = (params: any): any => {
   if (!params) return {};
 
@@ -81,9 +82,13 @@ const cleanParams = (params: any): any => {
         if (!isNaN(numValue) && numValue > 0) {
           cleaned[key] = numValue;
         }
-      } else if (key === "includeRelations") {
-        // S'assurer que c'est un booléen
-        cleaned[key] = Boolean(value);
+      } else if (
+        key === "includeRelations" ||
+        key === "includeExpired" ||
+        key === "includeInactive"
+      ) {
+        // ✅ CORRECTION: Convertir en booléen réel
+        cleaned[key] = value === true || value === "true";
       } else if (key === "sortOrder" && (value === "asc" || value === "desc")) {
         // Valider l'ordre de tri
         cleaned[key] = value;
@@ -93,6 +98,16 @@ const cleanParams = (params: any): any => {
       } else if (key === "status" && value === "all") {
         // Ne pas envoyer le statut si c'est "all"
         // On ne fait rien, donc on ne l'ajoute pas aux params nettoyés
+      } else if (
+        key === "varietyId" ||
+        key === "multiplierId" ||
+        key === "parcelId"
+      ) {
+        // ✅ CORRECTION: S'assurer que les IDs sont des nombres
+        const numValue = Number(value);
+        if (!isNaN(numValue) && numValue > 0) {
+          cleaned[key] = numValue;
+        }
       } else {
         // Pour tous les autres paramètres
         cleaned[key] = value;
@@ -112,12 +127,16 @@ export const seedLotService = {
   /**
    * Récupère la liste des lots avec pagination et filtres
    */
+
   async getAll(
     params?: Partial<SeedLotFilters> & PaginationParams
   ): Promise<ApiResponse<SeedLot[]>> {
     try {
       // Nettoyer et valider les paramètres
       const validParams = cleanParams(params);
+
+      // ✅ AJOUT: Toujours inclure les relations par défaut
+      validParams.includeRelations = true;
 
       console.log("Fetching seed lots with params:", validParams);
 
@@ -142,7 +161,7 @@ export const seedLotService = {
         const errorMessage =
           validationErrors.length > 0
             ? `Erreur de validation: ${validationErrors
-                .map((e: any) => e.message)
+                .map((e: any) => e.message || e)
                 .join(", ")}`
             : "Paramètres de requête invalides";
 

@@ -75,6 +75,8 @@ export class SeedLotController {
         includeRelations: req.query.includeRelations === "true",
       };
 
+      console.log("Transformed filters:", filters);
+
       const result = await SeedLotService.getSeedLots(filters);
 
       // Retourner directement le résultat qui contient déjà data, message et meta
