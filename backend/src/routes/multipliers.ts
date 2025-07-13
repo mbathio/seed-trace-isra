@@ -2,13 +2,13 @@ import { Router } from "express";
 import { MultiplierController } from "../controllers/MultiplierController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole } from "../middleware/auth";
-import { multiplierTransformation } from "../middleware/transformationMiddleware";
+import { fullTransformation } from "../middleware/transformationMiddleware";
 import { z } from "zod";
 
 const router = Router();
 
 // ✅ Appliquer le middleware de transformation
-router.use(multiplierTransformation);
+router.use(fullTransformation);
 
 // Schémas de validation avec valeurs UI
 const createMultiplierSchema = z.object({

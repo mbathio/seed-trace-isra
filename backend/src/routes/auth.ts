@@ -2,7 +2,7 @@ import { Router } from "express";
 import { AuthController } from "../controllers/AuthController";
 import { validateRequest } from "../middleware/validation";
 import { authMiddleware } from "../middleware/auth";
-import { userTransformation } from "../middleware/transformationMiddleware";
+import { fullTransformation } from "../middleware/transformationMiddleware";
 import {
   loginSchema,
   registerSchema,
@@ -12,7 +12,7 @@ import {
 const router = Router();
 
 // ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
-router.use(userTransformation);
+router.use(fullTransformation);
 
 // Routes d'authentification
 router.post(

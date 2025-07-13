@@ -5,7 +5,7 @@ import { SeedLotController } from "../controllers/SeedLotController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole, authMiddleware } from "../middleware/auth";
 import { parseQueryParams } from "../middleware/queryParser";
-import { seedLotTransformation } from "../middleware/transformationMiddleware";
+import { fullTransformation } from "../middleware/transformationMiddleware";
 import {
   createSeedLotSchema,
   updateSeedLotSchema,
@@ -18,7 +18,7 @@ import {
 const router = Router();
 
 // Appliquer le middleware de transformation
-router.use(seedLotTransformation);
+router.use(fullTransformation);
 
 // Middleware de debug pour les requêtes
 if (process.env.NODE_ENV === "development") {

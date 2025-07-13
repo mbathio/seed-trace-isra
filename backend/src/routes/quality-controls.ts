@@ -2,7 +2,7 @@ import { Router } from "express";
 import { QualityControlController } from "../controllers/QualityControlController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole } from "../middleware/auth";
-import { qualityControlTransformation } from "../middleware/transformationMiddleware";
+import { fullTransformation } from "../middleware/transformationMiddleware";
 import {
   createQualityControlSchema,
   updateQualityControlSchema,
@@ -11,7 +11,7 @@ import {
 const router = Router();
 
 // ✅ Appliquer le middleware de transformation
-router.use(qualityControlTransformation);
+router.use(fullTransformation);
 
 // Routes
 router.get("/", QualityControlController.getQualityControls);

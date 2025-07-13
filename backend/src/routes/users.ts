@@ -3,13 +3,13 @@ import { Router } from "express";
 import { UserController } from "../controllers/UserController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole } from "../middleware/auth";
-import { userTransformation } from "../middleware/transformationMiddleware"; // ✅ AJOUTÉ
+import { fullTransformation } from "../middleware/transformationMiddleware";
 import { z } from "zod";
 
 const router = Router();
 
 // ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
-router.use(userTransformation);
+router.use(fullTransformation);
 
 const createUserSchema = z.object({
   name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),

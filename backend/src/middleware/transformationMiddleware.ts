@@ -1,4 +1,4 @@
-// backend/src/middleware/transformationMiddleware.ts - VERSION FINALE CORRIGÉE
+// backend/src/middleware/transformationMiddleware.ts - VERSION CORRIGÉE
 import { Request, Response, NextFunction } from "express";
 import { transformEnum, ENUM_MAPPINGS } from "../config/enumMappings";
 
@@ -35,8 +35,9 @@ export const enumTransformMiddleware = (
           key === "includeExpired" ||
           key === "includeInactive"
         ) {
-          // Convertir string en boolean
-          transformedQuery[key] = value === "true" || value === true;
+          // Convertir string en boolean - CORRECTION ICI
+          transformedQuery[key] =
+            value === "true" || (typeof value === "boolean" && value === true);
         } else if (key === "page" || key === "pageSize") {
           // Convertir en nombre
           transformedQuery[key] =

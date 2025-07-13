@@ -3,13 +3,13 @@ import { Router } from "express";
 import { VarietyController } from "../controllers/VarietyController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole, authMiddleware } from "../middleware/auth";
-import { varietyTransformation } from "../middleware/transformationMiddleware";
+import { fullTransformation } from "../middleware/transformationMiddleware";
 import { z } from "zod";
 
 const router = Router();
 
 // ✅ IMPORTANT: Appliquer le middleware de transformation
-router.use(varietyTransformation);
+router.use(fullTransformation);
 
 const createVarietySchema = z.object({
   code: z.string().min(1),

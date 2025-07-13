@@ -3,13 +3,13 @@ import { Router } from "express";
 import { ProductionController } from "../controllers/ProductionController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole } from "../middleware/auth";
-import { productionTransformation } from "../middleware/transformationMiddleware"; // ✅ AJOUTÉ
+import { fullTransformation } from "../middleware/transformationMiddleware";
 import { z } from "zod";
 
 const router = Router();
 
 // ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
-router.use(productionTransformation);
+router.use(fullTransformation);
 
 const createProductionSchema = z.object({
   lotId: z.string().min(1),

@@ -3,13 +3,13 @@ import { Router } from "express";
 import { ParcelController } from "../controllers/ParcelController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole } from "../middleware/auth";
-import { parcelTransformation } from "../middleware/transformationMiddleware";
+import { fullTransformation } from "../middleware/transformationMiddleware";
 import { z } from "zod";
 
 const router = Router();
 
 // ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
-router.use(parcelTransformation);
+router.use(fullTransformation);
 
 const createParcelSchema = z.object({
   name: z.string().optional(),
