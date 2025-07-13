@@ -1,6 +1,42 @@
 // frontend/src/types/entities.ts - VERSION CORRIGÉE
 import type { StatusConfig } from "../constants";
 
+// backend/src/types/entities.ts - AJOUT
+
+// Interface pour les filtres de recherche de lots
+export interface SeedLotFilters {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  level?: string;
+  status?: string;
+  varietyId?: number;
+  multiplierId?: number;
+  parcelId?: number;
+  startDate?: string;
+  endDate?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  includeRelations?: boolean;
+  includeExpired?: boolean;
+  includeInactive?: boolean;
+}
+
+// Interface pour le résultat de getSeedLots
+export interface GetSeedLotsResult {
+  success: boolean;
+  message: string;
+  data: any[];
+  meta: {
+    totalCount: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
+}
+
 export interface User {
   id: number;
   name: string;

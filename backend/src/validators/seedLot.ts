@@ -1,13 +1,48 @@
-// backend/src/validators/seedLot.ts
+// backend/src/validators/seedLot.ts - VERSION CORRIGÉE
 
 import { z } from "zod";
-import {
-  SeedLevelEnum,
-  LotStatusEnum,
-  positiveIntSchema,
-  notesSchema,
-  paginationSchema,
-} from "./common";
+
+// Schémas de base réutilisables
+const positiveIntSchema = z.number().int().positive();
+const notesSchema = z.string().max(1000).optional();
+
+// Enums avec valeurs UI
+const SeedLevelEnum = z.enum(["GO", "G1", "G2", "G3", "G4", "R1", "R2"]);
+const LotStatusEnum = z.enum([
+  "pending",
+  "certified",
+  "rejected",
+  "in-stock",
+  "sold",
+  "active",
+  "distributed",
+]);
+
+// Schéma de pagination
+const paginationSchema = z.object({
+  page: z
+    .union([z.string(), z.number()])
+    .transform((val) => {
+      if (typeof val === "string") {
+        const num = parseInt(val, 10);
+        return isNaN(num) || num < 1 ? 1 : num;
+      }
+      return val < 1 ? 1 : val;
+    })
+    .optional()
+    .default(1),
+  pageSize: z
+    .union([z.string(), z.number()])
+    .transform((val) => {
+      if (typeof val === "string") {
+        const num = parseInt(val, 10);
+        return isNaN(num) || num < 1 ? 10 : Math.min(num, 100);
+      }
+      return val < 1 ? 10 : Math.min(val, 100);
+    })
+    .optional()
+    .default(10),
+});
 
 // Schéma de création avec validation métier
 export const createSeedLotSchema = z
@@ -65,7 +100,7 @@ export const updateSeedLotSchema = z.object({
   batchNumber: z.string().max(50).optional(),
 });
 
-// ✅ CORRECTION: Schéma de requête avec transformation des types
+// Schéma de requête avec transformation des types
 export const seedLotQuerySchema = paginationSchema.extend({
   level: SeedLevelEnum.optional(),
   status: LotStatusEnum.optional(),
@@ -74,9 +109,9 @@ export const seedLotQuerySchema = paginationSchema.extend({
     .transform((val) => {
       if (typeof val === "string") {
         const num = parseInt(val, 10);
-        return isNaN(num) ? undefined : num;
+        return isNaN(num) || num < 1 ? undefined : num;
       }
-      return val;
+      return val < 1 ? undefined : val;
     })
     .optional(),
   multiplierId: z
@@ -84,29 +119,53 @@ export const seedLotQuerySchema = paginationSchema.extend({
     .transform((val) => {
       if (typeof val === "string") {
         const num = parseInt(val, 10);
-        return isNaN(num) ? undefined : num;
+        return isNaN(num) || num < 1 ? undefined : num;
       }
-      return val;
+      return val < 1 ? undefined : val;
     })
     .optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  // ✅ CORRECTION: Gérer includeRelations comme booléen ou string
+  startDate: z
+    .string()
+    .refine((date) => !date || !isNaN(Date.parse(date)), "Date invalide")
+    .optional(),
+  endDate: z
+    .string()
+    .refine((date) => !date || !isNaN(Date.parse(date)), "Date invalide")
+    .optional(),
   includeRelations: z
-    .union([z.boolean(), z.string().transform((val) => val === "true")])
-    .optional(),
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true"),
+      z.literal("true").transform(() => true),
+      z.literal("false").transform(() => false),
+    ])
+    .optional()
+    .default(true),
   includeExpired: z
-    .union([z.boolean(), z.string().transform((val) => val === "true")])
-    .optional(),
+    .union([
+      z.boolean(),
+      z.string().transform((val) => val === "true"),
+      z.literal("true").transform(() => true),
+      z.literal("false").transform(() => false),
+    ])
+    .optional()
+    .default(false),
   search: z.string().optional(),
-  sortBy: z.string().optional(),
-  sortOrder: z.enum(["asc", "desc"]).optional(),
+  sortBy: z
+    .string()
+    .regex(/^[a-zA-Z]+(\.[a-zA-Z]+)?$/, "Format de tri invalide")
+    .optional()
+    .default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
 });
 
 // Schéma pour création de lot enfant
 export const createChildLotSchema = z.object({
-  quantity: z.number().positive(),
-  productionDate: z.string().refine((date) => !isNaN(Date.parse(date))),
+  quantity: z.number().positive("La quantité doit être positive"),
+  productionDate: z
+    .string()
+    .refine((date) => !isNaN(Date.parse(date)), "Date invalide"),
+  level: SeedLevelEnum,
   multiplierId: positiveIntSchema.optional(),
   parcelId: positiveIntSchema.optional(),
   notes: notesSchema,
@@ -116,13 +175,16 @@ export const createChildLotSchema = z.object({
 // Schéma pour transfert
 export const transferLotSchema = z.object({
   targetMultiplierId: positiveIntSchema,
-  quantity: z.number().positive(),
+  quantity: z.number().positive("La quantité doit être positive"),
   notes: notesSchema,
 });
 
 // Schéma pour mise à jour en masse
 export const bulkUpdateSchema = z.object({
-  ids: z.array(z.string()).min(1).max(100),
+  ids: z
+    .array(z.string())
+    .min(1, "Au moins un ID requis")
+    .max(100, "Maximum 100 lots à la fois"),
   updateData: updateSeedLotSchema,
 });
 

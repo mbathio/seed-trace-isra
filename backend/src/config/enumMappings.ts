@@ -1,6 +1,5 @@
-// Configuration centralisée des mappings d'enums UI <-> DB
+// backend/src/config/enumMappings.ts - VERSION COMPLÈTE
 export const ENUM_MAPPINGS = {
-  // Statuts de lots
   LOT_STATUS: {
     UI_TO_DB: {
       pending: "PENDING",
@@ -21,20 +20,26 @@ export const ENUM_MAPPINGS = {
       DISTRIBUTED: "distributed",
     },
   },
-  // Statuts de parcelles
-  PARCEL_STATUS: {
+  SEED_LEVEL: {
     UI_TO_DB: {
-      available: "AVAILABLE",
-      "in-use": "IN_USE",
-      resting: "RESTING",
+      GO: "GO",
+      G1: "G1",
+      G2: "G2",
+      G3: "G3",
+      G4: "G4",
+      R1: "R1",
+      R2: "R2",
     },
     DB_TO_UI: {
-      AVAILABLE: "available",
-      IN_USE: "in-use",
-      RESTING: "resting",
+      GO: "GO",
+      G1: "G1",
+      G2: "G2",
+      G3: "G3",
+      G4: "G4",
+      R1: "R1",
+      R2: "R2",
     },
   },
-  // Types de cultures
   CROP_TYPE: {
     UI_TO_DB: {
       rice: "RICE",
@@ -55,28 +60,38 @@ export const ENUM_MAPPINGS = {
       WHEAT: "wheat",
     },
   },
-  // Rôles utilisateurs
   USER_ROLE: {
     UI_TO_DB: {
       admin: "ADMIN",
       manager: "MANAGER",
-      researcher: "RESEARCHER",
       technician: "TECHNICIAN",
       inspector: "INSPECTOR",
+      researcher: "RESEARCHER",
       multiplier: "MULTIPLIER",
       guest: "GUEST",
     },
     DB_TO_UI: {
       ADMIN: "admin",
       MANAGER: "manager",
-      RESEARCHER: "researcher",
       TECHNICIAN: "technician",
       INSPECTOR: "inspector",
+      RESEARCHER: "researcher",
       MULTIPLIER: "multiplier",
       GUEST: "guest",
     },
   },
-  // Statuts de production
+  PARCEL_STATUS: {
+    UI_TO_DB: {
+      available: "AVAILABLE",
+      "in-use": "IN_USE",
+      resting: "RESTING",
+    },
+    DB_TO_UI: {
+      AVAILABLE: "available",
+      IN_USE: "in-use",
+      RESTING: "resting",
+    },
+  },
   PRODUCTION_STATUS: {
     UI_TO_DB: {
       planned: "PLANNED",
@@ -91,7 +106,42 @@ export const ENUM_MAPPINGS = {
       CANCELLED: "cancelled",
     },
   },
-  // Types d'activités
+  CONTRACT_STATUS: {
+    UI_TO_DB: {
+      draft: "DRAFT",
+      active: "ACTIVE",
+      completed: "COMPLETED",
+      cancelled: "CANCELLED",
+    },
+    DB_TO_UI: {
+      DRAFT: "draft",
+      ACTIVE: "active",
+      COMPLETED: "completed",
+      CANCELLED: "cancelled",
+    },
+  },
+  MULTIPLIER_STATUS: {
+    UI_TO_DB: {
+      active: "ACTIVE",
+      inactive: "INACTIVE",
+    },
+    DB_TO_UI: {
+      ACTIVE: "active",
+      INACTIVE: "inactive",
+    },
+  },
+  CERTIFICATION_LEVEL: {
+    UI_TO_DB: {
+      beginner: "BEGINNER",
+      intermediate: "INTERMEDIATE",
+      expert: "EXPERT",
+    },
+    DB_TO_UI: {
+      BEGINNER: "beginner",
+      INTERMEDIATE: "intermediate",
+      EXPERT: "expert",
+    },
+  },
   ACTIVITY_TYPE: {
     UI_TO_DB: {
       "soil-preparation": "SOIL_PREPARATION",
@@ -114,37 +164,6 @@ export const ENUM_MAPPINGS = {
       OTHER: "other",
     },
   },
-  // Résultats de tests
-
-  // Niveaux de certification
-  CERTIFICATION_LEVEL: {
-    UI_TO_DB: {
-      beginner: "BEGINNER",
-      intermediate: "INTERMEDIATE",
-      expert: "EXPERT",
-    },
-    DB_TO_UI: {
-      BEGINNER: "beginner",
-      INTERMEDIATE: "intermediate",
-      EXPERT: "expert",
-    },
-  },
-  // Statuts de contrats
-  CONTRACT_STATUS: {
-    UI_TO_DB: {
-      draft: "DRAFT",
-      active: "ACTIVE",
-      completed: "COMPLETED",
-      cancelled: "CANCELLED",
-    },
-    DB_TO_UI: {
-      DRAFT: "draft",
-      ACTIVE: "active",
-      COMPLETED: "completed",
-      CANCELLED: "cancelled",
-    },
-  },
-  // Types de problèmes
   ISSUE_TYPE: {
     UI_TO_DB: {
       disease: "DISEASE",
@@ -161,7 +180,6 @@ export const ENUM_MAPPINGS = {
       OTHER: "other",
     },
   },
-  // Sévérité des problèmes
   ISSUE_SEVERITY: {
     UI_TO_DB: {
       low: "LOW",
@@ -174,7 +192,16 @@ export const ENUM_MAPPINGS = {
       HIGH: "high",
     },
   },
-  // Types de rapports
+  TEST_RESULT: {
+    UI_TO_DB: {
+      pass: "PASS",
+      fail: "FAIL",
+    },
+    DB_TO_UI: {
+      PASS: "pass",
+      FAIL: "fail",
+    },
+  },
   REPORT_TYPE: {
     UI_TO_DB: {
       production: "PRODUCTION",
@@ -191,78 +218,19 @@ export const ENUM_MAPPINGS = {
       CUSTOM: "custom",
     },
   },
-  // Statuts de multiplicateurs
-  MULTIPLIER_STATUS: {
-    UI_TO_DB: {
-      active: "ACTIVE",
-      inactive: "INACTIVE",
-    },
-    DB_TO_UI: {
-      ACTIVE: "active",
-      INACTIVE: "inactive",
-    },
-  },
-  // Niveaux de semences (identiques UI/DB)
-  SEED_LEVEL: {
-    UI_TO_DB: {
-      GO: "GO",
-      G1: "G1",
-      G2: "G2",
-      G3: "G3",
-      G4: "G4",
-      R1: "R1",
-      R2: "R2",
-    },
-    DB_TO_UI: {
-      GO: "GO",
-      G1: "G1",
-      G2: "G2",
-      G3: "G3",
-      G4: "G4",
-      R1: "R1",
-      R2: "R2",
-    },
-  },
+} as const;
 
-  TEST_RESULT: {
-    UI_TO_DB: {
-      pass: "PASS",
-      fail: "FAIL",
-    },
-    DB_TO_UI: {
-      PASS: "pass",
-      FAIL: "fail",
-    },
-  },
-};
+export type EnumType = keyof typeof ENUM_MAPPINGS;
+export type TransformDirection = "UI_TO_DB" | "DB_TO_UI";
 
-// Fonction helper pour transformer une valeur d'enum
 export function transformEnum(
-  value: string | undefined | null,
-  enumType: keyof typeof ENUM_MAPPINGS,
-  direction: "UI_TO_DB" | "DB_TO_UI"
-): string | undefined {
-  if (!value) return undefined;
-
-  const mapping = ENUM_MAPPINGS[enumType]?.[direction];
+  value: string,
+  enumType: EnumType,
+  direction: TransformDirection
+): string {
+  const mapping = ENUM_MAPPINGS[enumType];
   if (!mapping) return value;
 
-  return mapping[value as keyof typeof mapping] || value;
+  const transformMap = mapping[direction];
+  return transformMap[value as keyof typeof transformMap] || value;
 }
-
-// Export des mappings individuels pour compatibilité
-export const UI_TO_DB_MAPPINGS = Object.entries(ENUM_MAPPINGS).reduce(
-  (acc, [key, value]) => {
-    acc[key.toLowerCase()] = value.UI_TO_DB;
-    return acc;
-  },
-  {} as any
-);
-
-export const DB_TO_UI_MAPPINGS = Object.entries(ENUM_MAPPINGS).reduce(
-  (acc, [key, value]) => {
-    acc[key.toLowerCase()] = value.DB_TO_UI;
-    return acc;
-  },
-  {} as any
-);

@@ -1,6 +1,6 @@
-// backend/src/middleware/enumTransformMiddleware-fixed.ts
+// backend/src/middleware/enumTransformMiddleware.ts - VERSION FINALE CORRIGÉE
 import { Request, Response, NextFunction } from "express";
-import { EnumTransformer } from "../utils/enumHelpers";
+import { transformEnum, ENUM_MAPPINGS } from "../config/enumMappings";
 
 // Middleware de transformation générique pour toutes les requêtes
 export const enumTransformMiddleware = (
@@ -15,6 +15,8 @@ export const enumTransformMiddleware = (
     "sortOrder",
     "search",
     "includeRelations",
+    "includeExpired",
+    "includeInactive",
   ];
 
   // Transformer les données de requête (UI -> DB)
@@ -27,8 +29,31 @@ export const enumTransformMiddleware = (
 
     for (const [key, value] of Object.entries(req.query)) {
       if (systemParams.includes(key)) {
-        // Garder les paramètres système tels quels
-        transformedQuery[key] = value;
+        // Gérer les paramètres système spécialement
+        if (
+          key === "includeRelations" ||
+          key === "includeExpired" ||
+          key === "includeInactive"
+        ) {
+          // Convertir string en boolean
+          transformedQuery[key] = value === "true" || value === true;
+        } else if (key === "page" || key === "pageSize") {
+          // Convertir en nombre
+          transformedQuery[key] =
+            parseInt(value as string, 10) || (key === "page" ? 1 : 10);
+        } else if (
+          key === "varietyId" ||
+          key === "multiplierId" ||
+          key === "parcelId"
+        ) {
+          // Convertir les IDs en nombres
+          const numValue = parseInt(value as string, 10);
+          if (!isNaN(numValue)) {
+            transformedQuery[key] = numValue;
+          }
+        } else {
+          transformedQuery[key] = value;
+        }
       } else {
         // Transformer les autres paramètres
         transformedQuery[key] = transformRequestData({ [key]: value })[key];
@@ -65,94 +90,39 @@ function transformRequestData(data: any): any {
 
   const transformed = { ...data };
 
-  // Transformer les champs connus
-  for (const key in transformed) {
-    const value = transformed[key];
+  // Transformer les champs d'enum connus
+  const enumFields = {
+    status: [
+      "LOT_STATUS",
+      "PARCEL_STATUS",
+      "PRODUCTION_STATUS",
+      "CONTRACT_STATUS",
+      "MULTIPLIER_STATUS",
+    ],
+    level: ["SEED_LEVEL"],
+    seedLevel: ["SEED_LEVEL"],
+    cropType: ["CROP_TYPE"],
+    role: ["USER_ROLE"],
+    type: ["ACTIVITY_TYPE", "ISSUE_TYPE", "REPORT_TYPE"],
+    result: ["TEST_RESULT"],
+    certificationLevel: ["CERTIFICATION_LEVEL"],
+    severity: ["ISSUE_SEVERITY"],
+  };
 
-    if (typeof value === "string") {
-      // Transformation des rôles
-      if (key === "role") {
-        const dbValue = EnumTransformer.transformRole(value, "toDb");
-        if (dbValue) transformed[key] = dbValue;
-      }
-
-      // Transformation des types de cultures
-      else if (key === "cropType") {
-        const dbValue = EnumTransformer.transformCropType(value, "toDb");
-        if (dbValue) transformed[key] = dbValue;
-      }
-
-      // Transformation des statuts
-      else if (key === "status") {
-        // Essayer différents types de statuts selon le contexte
-        const lotStatus = EnumTransformer.transformLotStatus(value, "toDb");
-        const parcelStatus = EnumTransformer.transformParcelStatus(
-          value,
-          "toDb"
+  for (const [field, enumTypes] of Object.entries(enumFields)) {
+    if (transformed[field] !== undefined && transformed[field] !== null) {
+      // Essayer chaque type d'enum jusqu'à trouver une correspondance
+      for (const enumType of enumTypes) {
+        const mappedValue = transformEnum(
+          transformed[field],
+          enumType as keyof typeof ENUM_MAPPINGS,
+          "UI_TO_DB"
         );
-        const productionStatus = EnumTransformer.transformProductionStatus(
-          value,
-          "toDb"
-        );
-        const multiplierStatus = EnumTransformer.transformMultiplierStatus(
-          value,
-          "toDb"
-        );
-        const contractStatus = EnumTransformer.transformContractStatus(
-          value,
-          "toDb"
-        );
-
-        if (lotStatus) transformed[key] = lotStatus;
-        else if (parcelStatus) transformed[key] = parcelStatus;
-        else if (productionStatus) transformed[key] = productionStatus;
-        else if (multiplierStatus) transformed[key] = multiplierStatus;
-        else if (contractStatus) transformed[key] = contractStatus;
+        if (mappedValue !== transformed[field]) {
+          transformed[field] = mappedValue;
+          break;
+        }
       }
-
-      // Transformation des résultats de tests
-      else if (key === "result") {
-        const dbValue = EnumTransformer.transformTestResult(value, "toDb");
-        if (dbValue) transformed[key] = dbValue;
-      }
-
-      // Transformation des niveaux de certification
-      else if (key === "certificationLevel") {
-        const dbValue = EnumTransformer.transformCertificationLevel(
-          value,
-          "toDb"
-        );
-        if (dbValue) transformed[key] = dbValue;
-      }
-
-      // Transformation des types d'activités
-      else if (key === "type" && transformed.hasOwnProperty("activityDate")) {
-        const dbValue = EnumTransformer.transformActivityType(value, "toDb");
-        if (dbValue) transformed[key] = dbValue;
-      }
-
-      // Transformation des types de problèmes
-      else if (key === "type" && transformed.hasOwnProperty("severity")) {
-        const dbValue = EnumTransformer.transformIssueType(value, "toDb");
-        if (dbValue) transformed[key] = dbValue;
-      }
-
-      // Transformation de la sévérité
-      else if (key === "severity") {
-        const dbValue = EnumTransformer.transformIssueSeverity(value, "toDb");
-        if (dbValue) transformed[key] = dbValue;
-      }
-
-      // Transformation des types de rapports
-      else if (key === "type" && transformed.hasOwnProperty("title")) {
-        const dbValue = EnumTransformer.transformReportType(value, "toDb");
-        if (dbValue) transformed[key] = dbValue;
-      }
-    }
-
-    // Transformer récursivement les objets imbriqués
-    else if (typeof value === "object" && value !== null) {
-      transformed[key] = transformRequestData(value);
     }
   }
 
@@ -160,6 +130,18 @@ function transformRequestData(data: any): any {
   if (transformed.seedLevel && !transformed.level) {
     transformed.level = transformed.seedLevel;
     delete transformed.seedLevel;
+  }
+
+  // Transformer récursivement les objets imbriqués
+  for (const key in transformed) {
+    if (
+      typeof transformed[key] === "object" &&
+      transformed[key] !== null &&
+      !Array.isArray(transformed[key]) &&
+      !(transformed[key] instanceof Date)
+    ) {
+      transformed[key] = transformRequestData(transformed[key]);
+    }
   }
 
   return transformed;
@@ -180,102 +162,52 @@ function transformResponseData(data: any): any {
     transformed.data = transformResponseData(transformed.data);
   }
 
-  // Transformer les champs connus
-  for (const key in transformed) {
-    const value = transformed[key];
+  // Transformer les champs d'enum connus
+  const enumFields = {
+    status: [
+      "LOT_STATUS",
+      "PARCEL_STATUS",
+      "PRODUCTION_STATUS",
+      "CONTRACT_STATUS",
+      "MULTIPLIER_STATUS",
+    ],
+    level: ["SEED_LEVEL"],
+    seedLevel: ["SEED_LEVEL"],
+    cropType: ["CROP_TYPE"],
+    role: ["USER_ROLE"],
+    type: ["ACTIVITY_TYPE", "ISSUE_TYPE", "REPORT_TYPE"],
+    result: ["TEST_RESULT"],
+    certificationLevel: ["CERTIFICATION_LEVEL"],
+    severity: ["ISSUE_SEVERITY"],
+  };
 
-    if (typeof value === "string") {
-      // Transformation des rôles
-      if (key === "role") {
-        const uiValue = EnumTransformer.transformRole(value, "toUi");
-        if (uiValue) transformed[key] = uiValue;
-      }
-
-      // Transformation des types de cultures
-      else if (key === "cropType") {
-        const uiValue = EnumTransformer.transformCropType(value, "toUi");
-        if (uiValue) transformed[key] = uiValue;
-      }
-
-      // Transformation des statuts
-      else if (key === "status") {
-        // Déterminer le type de statut selon le contexte
-        if (EnumTransformer.isDbEnum(value, "lotStatus")) {
-          const uiValue = EnumTransformer.transformLotStatus(value, "toUi");
-          if (uiValue) transformed[key] = uiValue;
-        } else if (EnumTransformer.isDbEnum(value, "parcelStatus")) {
-          const uiValue = EnumTransformer.transformParcelStatus(value, "toUi");
-          if (uiValue) transformed[key] = uiValue;
-        } else if (EnumTransformer.isDbEnum(value, "productionStatus")) {
-          const uiValue = EnumTransformer.transformProductionStatus(
-            value,
-            "toUi"
-          );
-          if (uiValue) transformed[key] = uiValue;
-        } else if (EnumTransformer.isDbEnum(value, "multiplierStatus")) {
-          const uiValue = EnumTransformer.transformMultiplierStatus(
-            value,
-            "toUi"
-          );
-          if (uiValue) transformed[key] = uiValue;
-        } else if (EnumTransformer.isDbEnum(value, "contractStatus")) {
-          const uiValue = EnumTransformer.transformContractStatus(
-            value,
-            "toUi"
-          );
-          if (uiValue) transformed[key] = uiValue;
+  for (const [field, enumTypes] of Object.entries(enumFields)) {
+    if (transformed[field] !== undefined && transformed[field] !== null) {
+      // Essayer chaque type d'enum jusqu'à trouver une correspondance
+      for (const enumType of enumTypes) {
+        const mappedValue = transformEnum(
+          transformed[field],
+          enumType as keyof typeof ENUM_MAPPINGS,
+          "DB_TO_UI"
+        );
+        if (mappedValue !== transformed[field]) {
+          transformed[field] = mappedValue;
+          break;
         }
       }
-
-      // Transformation des résultats de tests
-      else if (key === "result") {
-        const uiValue = EnumTransformer.transformTestResult(value, "toUi");
-        if (uiValue) transformed[key] = uiValue;
-      }
-
-      // Transformation des niveaux de certification
-      else if (key === "certificationLevel") {
-        const uiValue = EnumTransformer.transformCertificationLevel(
-          value,
-          "toUi"
-        );
-        if (uiValue) transformed[key] = uiValue;
-      }
-
-      // Transformation des types d'activités
-      else if (
-        key === "type" &&
-        EnumTransformer.isDbEnum(value, "activityType")
-      ) {
-        const uiValue = EnumTransformer.transformActivityType(value, "toUi");
-        if (uiValue) transformed[key] = uiValue;
-      }
-
-      // Transformation des types de problèmes
-      else if (key === "type" && EnumTransformer.isDbEnum(value, "issueType")) {
-        const uiValue = EnumTransformer.transformIssueType(value, "toUi");
-        if (uiValue) transformed[key] = uiValue;
-      }
-
-      // Transformation de la sévérité
-      else if (key === "severity") {
-        const uiValue = EnumTransformer.transformIssueSeverity(value, "toUi");
-        if (uiValue) transformed[key] = uiValue;
-      }
-
-      // Transformation des types de rapports
-      else if (
-        key === "type" &&
-        EnumTransformer.isDbEnum(value, "reportType")
-      ) {
-        const uiValue = EnumTransformer.transformReportType(value, "toUi");
-        if (uiValue) transformed[key] = uiValue;
-      }
     }
+  }
 
-    // Transformer récursivement les objets imbriqués
-    else if (typeof value === "object" && value !== null && key !== "data") {
-      transformed[key] = transformResponseData(value);
+  // Transformer récursivement les objets imbriqués
+  for (const key in transformed) {
+    if (
+      typeof transformed[key] === "object" &&
+      transformed[key] !== null &&
+      key !== "data" &&
+      !Array.isArray(transformed[key]) &&
+      !(transformed[key] instanceof Date)
+    ) {
+      transformed[key] = transformResponseData(transformed[key]);
     }
   }
 
@@ -290,13 +222,3 @@ export const parcelTransformMiddleware = enumTransformMiddleware;
 export const productionTransformMiddleware = enumTransformMiddleware;
 export const qualityControlTransformMiddleware = enumTransformMiddleware;
 export const userTransformMiddleware = enumTransformMiddleware;
-
-// Alias pour les imports dans les routes
-export const seedLotTransformation = enumTransformMiddleware;
-export const varietyTransformation = enumTransformMiddleware;
-export const multiplierTransformation = enumTransformMiddleware;
-export const parcelTransformation = enumTransformMiddleware;
-export const productionTransformation = enumTransformMiddleware;
-export const qualityControlTransformation = enumTransformMiddleware;
-export const userTransformation = enumTransformMiddleware;
-export const fullTransformation = enumTransformMiddleware;

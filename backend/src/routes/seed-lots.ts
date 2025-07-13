@@ -1,4 +1,4 @@
-// backend/src/routes/seed-lots.ts
+// backend/src/routes/seed-lots.ts - VERSION CORRIGÉE AVEC LOGS
 
 import { Router } from "express";
 import { SeedLotController } from "../controllers/SeedLotController";
@@ -20,6 +20,18 @@ const router = Router();
 // Appliquer le middleware de transformation
 router.use(seedLotTransformation);
 
+// Middleware de debug pour les requêtes
+if (process.env.NODE_ENV === "development") {
+  router.use((req, res, next) => {
+    console.log(`[SeedLots] ${req.method} ${req.path}`, {
+      query: req.query,
+      body: req.body,
+      params: req.params,
+    });
+    next();
+  });
+}
+
 // Routes publiques (consultation) - PAS D'AUTHENTIFICATION REQUISE
 router.get(
   "/",
@@ -28,7 +40,7 @@ router.get(
   SeedLotController.getSeedLots
 );
 
-router.get("/search", SeedLotController.searchSeedLots);
+router.get("/search", parseQueryParams, SeedLotController.searchSeedLots);
 
 router.get("/:id", SeedLotController.getSeedLotById);
 router.get("/:id/genealogy", SeedLotController.getGenealogyTree);

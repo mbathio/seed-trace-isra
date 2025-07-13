@@ -220,9 +220,6 @@ export class SeedLotService {
    */
   // backend/src/services/SeedLotService.ts - EXTRAIT CORRIGÉ
 
-  /**
-   * READ - Récupérer la liste des lots avec pagination et filtres
-   */
   static async getSeedLots(
     filters: SeedLotFilters = {}
   ): Promise<GetSeedLotsResult> {
@@ -290,16 +287,26 @@ export class SeedLotService {
       const orderBy: any = {};
       const sortBy = filters.sortBy || "createdAt";
       const sortOrder = filters.sortOrder || "desc";
-      orderBy[sortBy] = sortOrder;
 
-      // 4. Exécuter les requêtes
+      // Gérer le tri par relation
+      if (sortBy.includes(".")) {
+        const [relation, field] = sortBy.split(".");
+        orderBy[relation] = { [field]: sortOrder };
+      } else {
+        orderBy[sortBy] = sortOrder;
+      }
+
+      // 4. Déterminer les relations à inclure
+      const includeRelations = filters.includeRelations !== false;
+
+      // 5. Exécuter les requêtes
       const [seedLots, totalCount] = await Promise.all([
         prisma.seedLot.findMany({
           where,
           skip,
           take: pageSize,
           orderBy,
-          include: filters.includeRelations
+          include: includeRelations
             ? {
                 variety: true,
                 multiplier: true,
@@ -337,12 +344,19 @@ export class SeedLotService {
         prisma.seedLot.count({ where }),
       ]);
 
-      // 5. Transformer les données pour le frontend
-      const transformedSeedLots = seedLots.map((lot) =>
-        DataTransformer.transformSeedLot(lot)
-      );
+      // 6. Calculer les quantités disponibles
+      const lotsWithAvailableQuantity = seedLots.map((lot) => {
+        const childLotsQuantity = includeRelations
+          ? lot.childLots?.reduce((sum, child) => sum + child.quantity, 0) || 0
+          : 0;
 
-      // 6. Calcul des métadonnées
+        return {
+          ...lot,
+          availableQuantity: lot.quantity - childLotsQuantity,
+        };
+      });
+
+      // 7. Calcul des métadonnées
       const totalPages = Math.ceil(totalCount / pageSize);
       const hasNextPage = page < totalPages;
       const hasPreviousPage = page > 1;
@@ -350,7 +364,7 @@ export class SeedLotService {
       const result: GetSeedLotsResult = {
         success: true,
         message: "Lots récupérés avec succès",
-        data: transformedSeedLots,
+        data: lotsWithAvailableQuantity,
         meta: {
           totalCount,
           page,
@@ -362,7 +376,7 @@ export class SeedLotService {
       };
 
       logger.info("Seed lots retrieved successfully", {
-        count: transformedSeedLots.length,
+        count: lotsWithAvailableQuantity.length,
         totalCount,
         page,
         totalPages,

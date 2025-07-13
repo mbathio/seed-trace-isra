@@ -99,44 +99,92 @@ const SeedLots: React.FC = () => {
   // Requête principale pour récupérer les lots
 
   const { data, isLoading, error, refetch } = useQuery<ApiResponse<SeedLot[]>>({
-    queryKey: [
-      "seedLots",
-      pagination.page,
-      pagination.pageSize,
-      debouncedSearch,
-      filters,
-      sortBy,
-      sortOrder,
-    ],
-    queryFn: async () => {
-      // Construire les paramètres proprement
-      const params: Record<string, any> = {
-        page: pagination.page,
-        pageSize: pagination.pageSize,
-        sortBy: sortBy,
-        sortOrder: sortOrder,
-        // ✅ CORRECTION: Ne pas inclure includeRelations dans les params
-        // Il sera géré par le service
-      };
+  queryKey: [
+    "seedLots",
+    pagination.page,
+    pagination.pageSize,
+    debouncedSearch,
+    filters,
+    sortBy,
+    sortOrder,
+  ],
+  queryFn: async () => {
+    // Construire les paramètres proprement
+    const params: Record<string, any> = {
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      sortBy: sortBy,
+      sortOrder: sortOrder,
+      includeRelations: true, // Toujours inclure les relations
+    };
 
-      // Ajouter search seulement si non vide
-      if (debouncedSearch) {
-        params.search = debouncedSearch;
-      }
+    // Ajouter search seulement si non vide
+    if (debouncedSearch && debouncedSearch.trim()) {
+      params.search = debouncedSearch.trim();
+    }
 
-      // Ajouter les filtres seulement s'ils existent
-      if (filters.status) {
-        params.status = filters.status;
-      }
+    // Ajouter les filtres seulement s'ils existent et ne sont pas "all"
+    if (filters.status && filters.status !== "all") {
+      params.status = filters.status;
+    }
 
-      if (filters.level) {
-        params.level = filters.level;
-      }
+    if (filters.level && filters.level !== "all") {
+      params.level = filters.level;
+    }
 
-      const response = await api.get("/seed-lots", { params });
-      return response.data;
-    },
-  });
+    console.log("Fetching seed lots with params:", params);
+
+    const response = await api.get("/seed-lots", { params });
+    console.log("Seed lots response:", response.data);
+    
+    return response.data;
+  },
+});
+
+// Dans les Select pour les filtres
+<Select
+  value={filters.level || "all"}
+  onValueChange={(value) =>
+    setFilters({
+      ...filters,
+      level: value === "all" ? undefined : (value as SeedLevel),
+    })
+  }
+>
+  <SelectTrigger className="w-[180px]">
+    <SelectValue placeholder="Niveau" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="all">Tous les niveaux</SelectItem>
+    {SEED_LEVELS.map((level) => (
+      <SelectItem key={level.value} value={level.value}>
+        <div className="flex items-center">{level.label}</div>
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
+<Select
+  value={filters.status || "all"}
+  onValueChange={(value) =>
+    setFilters({
+      ...filters,
+      status: value === "all" ? undefined : (value as SeedLotStatus),
+    })
+  }
+>
+  <SelectTrigger className="w-[180px]">
+    <SelectValue placeholder="Statut" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="all">Tous les statuts</SelectItem>
+    {LOT_STATUSES.map((status) => (
+      <SelectItem key={status.value} value={status.value}>
+        {status.label}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
 
   // Mutation pour supprimer un lot
   const deleteMutation = useMutation({
