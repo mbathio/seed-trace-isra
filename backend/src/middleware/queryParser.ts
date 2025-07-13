@@ -7,7 +7,6 @@ export interface ParsedQuery {
   [key: string]: any;
 }
 
-// Étendre le type Request localement
 export interface RequestWithParsedQuery extends Request {
   parsedQuery: ParsedQuery;
 }
@@ -17,18 +16,15 @@ export const parseQueryParams = (
   res: Response,
   next: NextFunction
 ) => {
+  // Créer un nouvel objet pour les paramètres transformés
+  const transformedQuery: any = {};
+
   // Parser les booléens
   const booleanFields = [
     "includeRelations",
     "includeExpired",
     "includeInactive",
   ];
-
-  booleanFields.forEach((field) => {
-    if (req.query[field] !== undefined) {
-      req.query[field] = req.query[field] === ("true" as any);
-    }
-  });
 
   // Parser les nombres
   const numberFields = [
@@ -39,14 +35,30 @@ export const parseQueryParams = (
     "parcelId",
   ];
 
+  // Copier tous les paramètres existants
+  Object.keys(req.query).forEach((key) => {
+    transformedQuery[key] = req.query[key];
+  });
+
+  // Transformer les booléens
+  booleanFields.forEach((field) => {
+    if (req.query[field] !== undefined) {
+      transformedQuery[field] = req.query[field] === "true";
+    }
+  });
+
+  // Transformer les nombres
   numberFields.forEach((field) => {
     if (req.query[field] !== undefined) {
       const value = parseInt(req.query[field] as string, 10);
       if (!isNaN(value)) {
-        req.query[field] = value as any;
+        transformedQuery[field] = value;
       }
     }
   });
+
+  // Remplacer req.query avec l'objet transformé
+  req.query = transformedQuery;
 
   next();
 };

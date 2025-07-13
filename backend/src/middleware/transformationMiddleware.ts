@@ -1,4 +1,4 @@
-// backend/src/middleware/enumTransformMiddleware.ts - VERSION FINALE CORRIGÉE
+// backend/src/middleware/transformationMiddleware.ts - VERSION FINALE CORRIGÉE
 import { Request, Response, NextFunction } from "express";
 import { transformEnum, ENUM_MAPPINGS } from "../config/enumMappings";
 
@@ -222,3 +222,4 @@ export const parcelTransformMiddleware = enumTransformMiddleware;
 export const productionTransformMiddleware = enumTransformMiddleware;
 export const qualityControlTransformMiddleware = enumTransformMiddleware;
 export const userTransformMiddleware = enumTransformMiddleware;
+export const fullTransformation = enumTransformMiddleware;

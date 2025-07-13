@@ -346,9 +346,13 @@ export class SeedLotService {
 
       // 6. Calculer les quantités disponibles
       const lotsWithAvailableQuantity = seedLots.map((lot) => {
-        const childLotsQuantity = includeRelations
-          ? lot.childLots?.reduce((sum, child) => sum + child.quantity, 0) || 0
-          : 0;
+        const childLotsQuantity =
+          includeRelations && "childLots" in lot
+            ? (lot as any).childLots?.reduce(
+                (sum: number, child: any) => sum + child.quantity,
+                0
+              ) || 0
+            : 0;
 
         return {
           ...lot,
