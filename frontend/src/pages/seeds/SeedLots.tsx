@@ -49,7 +49,6 @@ import { Input } from "../../components/ui/input";
 import { Checkbox } from "../../components/ui/checkbox";
 import { QRCodeModal } from "../../components/qr-code/QRCodeModal";
 import { DeleteSeedLotDialog } from "../../components/seeds/DeleteSeedLotDialog";
-import { api } from "../../services/api";
 import { seedLotService } from "../../services/seedLotService";
 import { SeedLot } from "../../types/entities";
 import { ApiResponse, SeedLotFilters } from "../../types/api";
@@ -64,36 +63,9 @@ import { usePagination } from "../../hooks/usePagination";
 import { formatDate, formatNumber } from "../../utils/formatters";
 import { toast } from "react-toastify";
 
-// Types pour les valeurs de filtre
-type SeedLevelFilter =
-  | "GO"
-  | "G1"
-  | "G2"
-  | "G3"
-  | "G4"
-  | "R1"
-  | "R2"
-  | undefined;
-type LotStatusFilter =
-  | "pending"
-  | "certified"
-  | "rejected"
-  | "in-stock"
-  | "active"
-  | "distributed"
-  | "sold"
-  | undefined;
-
-// Interface typée pour les filtres
-interface TypedSeedLotFilters
-  extends Omit<Partial<SeedLotFilters>, "level" | "status"> {
-  level?: SeedLevelFilter;
-  status?: LotStatusFilter;
-}
-
 const SeedLots: React.FC = () => {
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<TypedSeedLotFilters>({});
+  const [filters, setFilters] = useState<Partial<SeedLotFilters>>({});
   const [selectedLotForQR, setSelectedLotForQR] = useState<SeedLot | null>(
     null
   );
@@ -108,7 +80,6 @@ const SeedLots: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Requête principale pour récupérer les lots
-  // Mise à jour de la requête principale
   const { data, isLoading, error, refetch } = useQuery<ApiResponse<SeedLot[]>>({
     queryKey: [
       "seedLots",
@@ -139,11 +110,15 @@ const SeedLots: React.FC = () => {
         }
       });
 
-      console.log("Fetching seed lots with params:", params);
+      console.log("🔍 Fetching seed lots with params:", params);
 
       const response = await seedLotService.getAll(params);
 
-      console.log("Seed lots response:", response);
+      console.log("📦 Seed lots response:", {
+        totalCount: response.meta?.totalCount,
+        resultsCount: response.data?.length,
+        firstResult: response.data?.[0],
+      });
 
       return response;
     },
@@ -248,25 +223,6 @@ const SeedLots: React.FC = () => {
       filters.multiplierId
   );
 
-  // Fonction pour vérifier si une valeur est un niveau valide
-  const isValidSeedLevel = (value: string): value is SeedLevelFilter => {
-    return ["GO", "G1", "G2", "G3", "G4", "R1", "R2", ""].includes(value);
-  };
-
-  // Fonction pour vérifier si une valeur est un statut valide
-  const isValidLotStatus = (value: string): value is LotStatusFilter => {
-    return [
-      "pending",
-      "certified",
-      "rejected",
-      "in-stock",
-      "active",
-      "distributed",
-      "sold",
-      "",
-    ].includes(value);
-  };
-
   if (error) {
     return (
       <div className="container mx-auto p-6">
@@ -335,13 +291,13 @@ const SeedLots: React.FC = () => {
               <Select
                 value={filters.level || ""}
                 onValueChange={(value) => {
-                  if (isValidSeedLevel(value)) {
-                    setFilters({
-                      ...filters,
-                      level:
-                        value === "" ? undefined : (value as SeedLevelFilter),
-                    });
-                  }
+                  setFilters({
+                    ...filters,
+                    level:
+                      value === ""
+                        ? undefined
+                        : (value as SeedLotFilters["level"]),
+                  });
                 }}
               >
                 <SelectTrigger className="w-[180px]">
@@ -359,13 +315,13 @@ const SeedLots: React.FC = () => {
               <Select
                 value={filters.status || ""}
                 onValueChange={(value) => {
-                  if (isValidLotStatus(value)) {
-                    setFilters({
-                      ...filters,
-                      status:
-                        value === "" ? undefined : (value as LotStatusFilter),
-                    });
-                  }
+                  setFilters({
+                    ...filters,
+                    status:
+                      value === ""
+                        ? undefined
+                        : (value as SeedLotFilters["status"]),
+                  });
                 }}
               >
                 <SelectTrigger className="w-[180px]">

@@ -222,6 +222,8 @@ export class SeedLotService {
   // backend/src/services/SeedLotService.ts - EXTRAIT CORRIGÉ
 
   // Mise à jour de la méthode getSeedLots
+  // backend/src/services/SeedLotService.ts - EXTRAIT CORRIGÉ pour la recherche
+
   static async getSeedLots(
     filters: SeedLotFilters = {}
   ): Promise<GetSeedLotsResult> {
@@ -238,29 +240,30 @@ export class SeedLotService {
         isActive: true,
       };
 
-      // Recherche textuelle
-      if (filters.search) {
+      // Recherche textuelle - CORRECTION ICI
+      if (filters.search && filters.search.trim()) {
+        const searchTerm = filters.search.trim();
         where.OR = [
-          { id: { contains: filters.search, mode: "insensitive" } },
-          { notes: { contains: filters.search, mode: "insensitive" } },
-          { batchNumber: { contains: filters.search, mode: "insensitive" } },
+          { id: { contains: searchTerm, mode: "insensitive" } },
+          { notes: { contains: searchTerm, mode: "insensitive" } },
+          { batchNumber: { contains: searchTerm, mode: "insensitive" } },
           {
             variety: {
               OR: [
-                { name: { contains: filters.search, mode: "insensitive" } },
-                { code: { contains: filters.search, mode: "insensitive" } },
+                { name: { contains: searchTerm, mode: "insensitive" } },
+                { code: { contains: searchTerm, mode: "insensitive" } },
               ],
             },
           },
           {
             multiplier: {
-              name: { contains: filters.search, mode: "insensitive" },
+              name: { contains: searchTerm, mode: "insensitive" },
             },
           },
         ];
       }
 
-      // Filtres spécifiques - Les valeurs sont déjà en DB format grâce au middleware
+      // Filtres spécifiques
       if (filters.level) {
         where.level = filters.level;
       }
@@ -299,6 +302,9 @@ export class SeedLotService {
       } else {
         orderBy[sortBy] = sortOrder;
       }
+
+      // DEBUG: Log la requête WHERE
+      logger.info("Prisma WHERE clause:", JSON.stringify(where, null, 2));
 
       // 4. Exécuter les requêtes
       const [seedLots, totalCount] = await Promise.all([
@@ -373,6 +379,7 @@ export class SeedLotService {
         totalCount,
         page,
         totalPages,
+        searchTerm: filters.search,
       });
 
       return result;
@@ -381,7 +388,6 @@ export class SeedLotService {
       throw error;
     }
   }
-
   /**
    * READ - Récupérer un lot spécifique par son ID
    */
