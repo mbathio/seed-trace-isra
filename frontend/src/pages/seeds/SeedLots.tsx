@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/SeedLots.tsx - VERSION FINALE CORRIGÉE
+// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -64,25 +64,9 @@ import { usePagination } from "../../hooks/usePagination";
 import { formatDate, formatNumber } from "../../utils/formatters";
 import { toast } from "react-toastify";
 
-// Types pour les filtres
-type SeedLevel = "GO" | "G1" | "G2" | "G3" | "G4" | "R1" | "R2";
-type SeedLotStatus =
-  | "pending"
-  | "certified"
-  | "rejected"
-  | "in-stock"
-  | "active"
-  | "distributed"
-  | "sold";
-
-interface FilterParamsExtended extends Partial<SeedLotFilters> {
-  level?: SeedLevel;
-  status?: SeedLotStatus;
-}
-
 const SeedLots: React.FC = () => {
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<FilterParamsExtended>({});
+  const [filters, setFilters] = useState<Partial<SeedLotFilters>>({});
   const [selectedLotForQR, setSelectedLotForQR] = useState<SeedLot | null>(
     null
   );
@@ -108,7 +92,6 @@ const SeedLots: React.FC = () => {
       sortOrder,
     ],
     queryFn: async () => {
-      // Construire les paramètres proprement
       const params: Record<string, any> = {
         page: pagination.page,
         pageSize: pagination.pageSize,
@@ -123,12 +106,28 @@ const SeedLots: React.FC = () => {
       }
 
       // Ajouter les filtres seulement s'ils existent
+      if (filters.level) {
+        params.level = filters.level;
+      }
+
       if (filters.status) {
         params.status = filters.status;
       }
 
-      if (filters.level) {
-        params.level = filters.level;
+      if (filters.varietyId) {
+        params.varietyId = filters.varietyId;
+      }
+
+      if (filters.multiplierId) {
+        params.multiplierId = filters.multiplierId;
+      }
+
+      if (filters.startDate) {
+        params.startDate = filters.startDate;
+      }
+
+      if (filters.endDate) {
+        params.endDate = filters.endDate;
       }
 
       console.log("Fetching seed lots with params:", params);
@@ -160,7 +159,7 @@ const SeedLots: React.FC = () => {
   // Mutation pour export
   const exportMutation = useMutation({
     mutationFn: async (format: "csv" | "xlsx") => {
-      return seedLotService.export(format, filters as Partial<SeedLotFilters>);
+      return seedLotService.export(format, filters);
     },
     onError: () => {
       toast.error("Erreur lors de l'export");
@@ -169,20 +168,12 @@ const SeedLots: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const config = getStatusConfig(status, LOT_STATUSES);
-    return (
-      <Badge variant={config.variant || "default"} className={config.color}>
-        {config.label}
-      </Badge>
-    );
+    return <Badge className={config.color}>{config.label}</Badge>;
   };
 
   const getLevelBadge = (level: string) => {
     const config = getSeedLevelConfig(level);
-    return (
-      <Badge variant="outline" className={config.color}>
-        {config.label}
-      </Badge>
-    );
+    return <Badge className={config.color}>{config.label}</Badge>;
   };
 
   const handleSelectAll = () => {
@@ -239,7 +230,13 @@ const SeedLots: React.FC = () => {
     setSortOrder("desc");
   };
 
-  const hasActiveFilters = Boolean(search || filters.level || filters.status);
+  const hasActiveFilters = Boolean(
+    search ||
+      filters.level ||
+      filters.status ||
+      filters.varietyId ||
+      filters.multiplierId
+  );
 
   if (error) {
     return (
@@ -311,18 +308,18 @@ const SeedLots: React.FC = () => {
                 onValueChange={(value) =>
                   setFilters({
                     ...filters,
-                    level: value ? (value as SeedLevel) : undefined,
+                    level: value || undefined,
                   })
                 }
               >
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Tous les niveaux" />
+                  <SelectValue placeholder="Niveau" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Tous les niveaux</SelectItem>
                   {SEED_LEVELS.map((level) => (
                     <SelectItem key={level.value} value={level.value}>
-                      {level.label}
+                      <div className="flex items-center">{level.label}</div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -332,12 +329,12 @@ const SeedLots: React.FC = () => {
                 onValueChange={(value) =>
                   setFilters({
                     ...filters,
-                    status: value ? (value as SeedLotStatus) : undefined,
+                    status: value || undefined,
                   })
                 }
               >
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Tous les statuts" />
+                  <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Tous les statuts</SelectItem>

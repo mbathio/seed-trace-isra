@@ -2,7 +2,6 @@
 import { Request, Response, NextFunction } from "express";
 import { transformEnum, ENUM_MAPPINGS } from "../config/enumMappings";
 
-// Middleware de transformation générique pour toutes les requêtes
 export const enumTransformMiddleware = (
   req: Request,
   res: Response,
@@ -35,23 +34,24 @@ export const enumTransformMiddleware = (
           key === "includeExpired" ||
           key === "includeInactive"
         ) {
-          // Convertir string en boolean - CORRECTION ICI
-          transformedQuery[key] =
-            value === "true" || (typeof value === "boolean" && value === true);
+          // Convertir string en boolean
+          transformedQuery[key] = value === "true" || value === true;
         } else if (key === "page" || key === "pageSize") {
           // Convertir en nombre
           transformedQuery[key] =
             parseInt(value as string, 10) || (key === "page" ? 1 : 10);
-        } else if (
-          key === "varietyId" ||
-          key === "multiplierId" ||
-          key === "parcelId"
-        ) {
-          // Convertir les IDs en nombres
-          const numValue = parseInt(value as string, 10);
-          if (!isNaN(numValue)) {
-            transformedQuery[key] = numValue;
-          }
+        } else {
+          transformedQuery[key] = value;
+        }
+      } else if (
+        key === "varietyId" ||
+        key === "multiplierId" ||
+        key === "parcelId"
+      ) {
+        // Convertir les IDs en nombres
+        const numValue = parseInt(value as string, 10);
+        if (!isNaN(numValue)) {
+          transformedQuery[key] = numValue;
         } else {
           transformedQuery[key] = value;
         }
@@ -112,25 +112,24 @@ function transformRequestData(data: any): any {
 
   for (const [field, enumTypes] of Object.entries(enumFields)) {
     if (transformed[field] !== undefined && transformed[field] !== null) {
-      // Essayer chaque type d'enum jusqu'à trouver une correspondance
-      for (const enumType of enumTypes) {
-        const mappedValue = transformEnum(
-          transformed[field],
-          enumType as keyof typeof ENUM_MAPPINGS,
-          "UI_TO_DB"
-        );
-        if (mappedValue !== transformed[field]) {
-          transformed[field] = mappedValue;
-          break;
+      // Pour les niveaux de semences, toujours en majuscules
+      if (field === "level" || field === "seedLevel") {
+        transformed[field] = String(transformed[field]).toUpperCase();
+      } else {
+        // Essayer chaque type d'enum jusqu'à trouver une correspondance
+        for (const enumType of enumTypes) {
+          const mappedValue = transformEnum(
+            transformed[field],
+            enumType as keyof typeof ENUM_MAPPINGS,
+            "UI_TO_DB"
+          );
+          if (mappedValue !== transformed[field]) {
+            transformed[field] = mappedValue;
+            break;
+          }
         }
       }
     }
-  }
-
-  // Gérer le cas spécial seedLevel -> level
-  if (transformed.seedLevel && !transformed.level) {
-    transformed.level = transformed.seedLevel;
-    delete transformed.seedLevel;
   }
 
   // Transformer récursivement les objets imbriqués
@@ -184,16 +183,21 @@ function transformResponseData(data: any): any {
 
   for (const [field, enumTypes] of Object.entries(enumFields)) {
     if (transformed[field] !== undefined && transformed[field] !== null) {
-      // Essayer chaque type d'enum jusqu'à trouver une correspondance
-      for (const enumType of enumTypes) {
-        const mappedValue = transformEnum(
-          transformed[field],
-          enumType as keyof typeof ENUM_MAPPINGS,
-          "DB_TO_UI"
-        );
-        if (mappedValue !== transformed[field]) {
-          transformed[field] = mappedValue;
-          break;
+      // Les niveaux de semences restent identiques (déjà en majuscules)
+      if (field === "level" || field === "seedLevel") {
+        transformed[field] = String(transformed[field]);
+      } else {
+        // Essayer chaque type d'enum jusqu'à trouver une correspondance
+        for (const enumType of enumTypes) {
+          const mappedValue = transformEnum(
+            transformed[field],
+            enumType as keyof typeof ENUM_MAPPINGS,
+            "DB_TO_UI"
+          );
+          if (mappedValue !== transformed[field]) {
+            transformed[field] = mappedValue;
+            break;
+          }
         }
       }
     }
@@ -215,7 +219,6 @@ function transformResponseData(data: any): any {
   return transformed;
 }
 
-// Middlewares spécifiques pour chaque module (gardés pour compatibilité)
 export const seedLotTransformMiddleware = enumTransformMiddleware;
 export const varietyTransformMiddleware = enumTransformMiddleware;
 export const multiplierTransformMiddleware = enumTransformMiddleware;

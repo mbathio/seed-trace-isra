@@ -220,6 +220,7 @@ export class SeedLotService {
    */
   // backend/src/services/SeedLotService.ts - EXTRAIT CORRIGÉ
 
+  // backend/src/services/SeedLotService.ts - EXTRAIT CORRIGÉ
   static async getSeedLots(
     filters: SeedLotFilters = {}
   ): Promise<GetSeedLotsResult> {
@@ -258,16 +259,26 @@ export class SeedLotService {
         ];
       }
 
-      // Filtres spécifiques
+      // Filtres spécifiques - IMPORTANT: Utiliser les valeurs DB
       if (filters.level) {
-        where.level = filters.level;
+        // Les niveaux sont identiques UI/DB, pas de transformation nécessaire
+        where.level = filters.level.toUpperCase();
       }
+
       if (filters.status) {
-        where.status = filters.status;
+        // Transformer le statut UI vers DB
+        const dbStatus = transformEnum(
+          filters.status,
+          "LOT_STATUS",
+          "UI_TO_DB"
+        );
+        where.status = dbStatus;
       }
+
       if (filters.varietyId) {
         where.varietyId = filters.varietyId;
       }
+
       if (filters.multiplierId) {
         where.multiplierId = filters.multiplierId;
       }
