@@ -39,7 +39,16 @@ export function useSeedLots(
 ) {
   return useQuery<ApiResponse<SeedLot[]>>({
     queryKey: SEED_LOT_KEYS.list(params || {}),
-    queryFn: () => seedLotService.getAll(params),
+    queryFn: async () => {
+      const response = await seedLotService.getAll(params);
+
+      // Log pour debug
+      if (import.meta.env.DEV) {
+        console.log("SeedLots response:", response);
+      }
+
+      return response;
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
     ...options,
   });

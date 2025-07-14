@@ -7,6 +7,7 @@ export const enumTransformMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
+  // Paramètres système à ne pas transformer
   const systemParams = [
     "page",
     "pageSize",
@@ -35,11 +36,15 @@ export const enumTransformMiddleware = (
           key === "includeInactive"
         ) {
           // Convertir string en boolean
-          transformedQuery[key] = value === "true" || value === "true";
+          transformedQuery[key] = value === "true";
         } else if (key === "page" || key === "pageSize") {
           // Convertir en nombre
-          transformedQuery[key] =
-            parseInt(value as string, 10) || (key === "page" ? 1 : 10);
+          const numValue = parseInt(value as string, 10);
+          transformedQuery[key] = isNaN(numValue)
+            ? key === "page"
+              ? 1
+              : 10
+            : numValue;
         } else {
           transformedQuery[key] = value;
         }
@@ -52,11 +57,9 @@ export const enumTransformMiddleware = (
         const numValue = parseInt(value as string, 10);
         if (!isNaN(numValue)) {
           transformedQuery[key] = numValue;
-        } else {
-          transformedQuery[key] = value;
         }
       } else {
-        // Transformer les autres paramètres
+        // Transformer les enums
         transformedQuery[key] = transformRequestData({ [key]: value })[key];
       }
     }
@@ -67,7 +70,6 @@ export const enumTransformMiddleware = (
   // Intercepter la réponse pour transformer (DB -> UI)
   const originalJson = res.json.bind(res);
   res.json = function (data: any) {
-    // Ne pas transformer les erreurs de validation
     if (data && data.success === false && data.errors) {
       return originalJson(data);
     }

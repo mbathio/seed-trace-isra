@@ -299,18 +299,23 @@ export class DataTransformer {
    * Transforme un lot de semences depuis le backend vers l'UI
    * CORRIGÉ: Gestion correcte des valeurs déjà transformées par le middleware
    */
+  // Mise à jour de transformSeedLotFromAPI
   static transformSeedLotFromAPI(lot: any): any {
     if (!lot) return null;
 
     // Le middleware backend a déjà transformé les valeurs DB -> UI
-    // donc on reçoit déjà les valeurs en format UI
+    // Donc on ne transforme PAS les enums, seulement les dates et la structure
     return {
       ...lot,
-      // Les dates restent à formater
-      productionDate: this.formatDateForDisplay(lot.productionDate),
-      expiryDate: this.formatDateForDisplay(lot.expiryDate),
-      createdAt: this.formatDateForDisplay(lot.createdAt),
-      updatedAt: this.formatDateForDisplay(lot.updatedAt),
+      // Formater les dates pour l'affichage
+      productionDate: lot.productionDate
+        ? new Date(lot.productionDate).toISOString().split("T")[0]
+        : undefined,
+      expiryDate: lot.expiryDate
+        ? new Date(lot.expiryDate).toISOString().split("T")[0]
+        : undefined,
+      createdAt: lot.createdAt,
+      updatedAt: lot.updatedAt,
 
       // Les relations sont déjà transformées par le middleware
       variety: lot.variety,
@@ -323,31 +328,26 @@ export class DataTransformer {
     };
   }
 
-  /**
-   * Transforme un lot de semences pour l'API
-   */
+  // Mise à jour de transformSeedLotForAPI
   static transformSeedLotForAPI(lot: any): any {
     if (!lot) return null;
 
-    // Nettoyer l'objet des champs undefined
-    const cleaned = this.cleanUndefinedFields({
-      ...lot,
-      // Les valeurs sont déjà en format UI, pas besoin de transformation
-      // Le middleware backend les transformera UI -> DB
-      productionDate: this.formatDateForAPI(lot.productionDate),
-      expiryDate: this.formatDateForAPI(lot.expiryDate),
-    });
+    // Nettoyer l'objet des champs undefined et préparer pour l'API
+    const cleaned: any = {};
 
-    // Retirer les relations pour éviter les problèmes
-    delete cleaned.variety;
-    delete cleaned.multiplier;
-    delete cleaned.parcel;
-    delete cleaned.parentLot;
-    delete cleaned.childLots;
-    delete cleaned.qualityControls;
-    delete cleaned.productions;
-    delete cleaned.createdAt;
-    delete cleaned.updatedAt;
+    // Copier seulement les champs qui doivent être envoyés
+    if (lot.varietyId !== undefined) cleaned.varietyId = lot.varietyId;
+    if (lot.level !== undefined) cleaned.level = lot.level.toUpperCase();
+    if (lot.quantity !== undefined) cleaned.quantity = lot.quantity;
+    if (lot.productionDate !== undefined)
+      cleaned.productionDate = lot.productionDate;
+    if (lot.expiryDate) cleaned.expiryDate = lot.expiryDate;
+    if (lot.status) cleaned.status = lot.status;
+    if (lot.batchNumber) cleaned.batchNumber = lot.batchNumber;
+    if (lot.multiplierId) cleaned.multiplierId = lot.multiplierId;
+    if (lot.parcelId) cleaned.parcelId = lot.parcelId;
+    if (lot.parentLotId) cleaned.parentLotId = lot.parentLotId;
+    if (lot.notes) cleaned.notes = lot.notes;
 
     return cleaned;
   }

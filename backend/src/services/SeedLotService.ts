@@ -221,7 +221,7 @@ export class SeedLotService {
    */
   // backend/src/services/SeedLotService.ts - EXTRAIT CORRIGÉ
 
-  // backend/src/services/SeedLotService.ts - EXTRAIT CORRIGÉ
+  // Mise à jour de la méthode getSeedLots
   static async getSeedLots(
     filters: SeedLotFilters = {}
   ): Promise<GetSeedLotsResult> {
@@ -260,20 +260,13 @@ export class SeedLotService {
         ];
       }
 
-      // Filtres spécifiques - IMPORTANT: Utiliser les valeurs DB
+      // Filtres spécifiques - Les valeurs sont déjà en DB format grâce au middleware
       if (filters.level) {
-        // Les niveaux sont identiques UI/DB, pas de transformation nécessaire
-        where.level = filters.level.toUpperCase();
+        where.level = filters.level;
       }
 
       if (filters.status) {
-        // Transformer le statut UI vers DB
-        const dbStatus = transformEnum(
-          filters.status,
-          "LOT_STATUS",
-          "UI_TO_DB"
-        );
-        where.status = dbStatus;
+        where.status = filters.status;
       }
 
       if (filters.varietyId) {
@@ -300,7 +293,6 @@ export class SeedLotService {
       const sortBy = filters.sortBy || "createdAt";
       const sortOrder = filters.sortOrder || "desc";
 
-      // Gérer le tri par relation
       if (sortBy.includes(".")) {
         const [relation, field] = sortBy.split(".");
         orderBy[relation] = { [field]: sortOrder };
@@ -308,63 +300,50 @@ export class SeedLotService {
         orderBy[sortBy] = sortOrder;
       }
 
-      // 4. Déterminer les relations à inclure
-      const includeRelations = filters.includeRelations !== false;
-
-      // 5. Exécuter les requêtes
+      // 4. Exécuter les requêtes
       const [seedLots, totalCount] = await Promise.all([
         prisma.seedLot.findMany({
           where,
           skip,
           take: pageSize,
           orderBy,
-          include: includeRelations
-            ? {
-                variety: true,
-                multiplier: true,
-                parcel: true,
-                parentLot: {
-                  include: { variety: true },
-                },
-                childLots: {
-                  include: { variety: true },
-                },
-                qualityControls: {
-                  orderBy: { controlDate: "desc" },
-                  take: 1,
-                },
-                productions: {
-                  orderBy: { startDate: "desc" },
-                  take: 1,
-                },
-                _count: {
-                  select: {
-                    childLots: true,
-                    qualityControls: true,
-                    productions: true,
-                  },
-                },
-              }
-            : {
-                variety: true,
-                multiplier: true,
-                _count: {
-                  select: { childLots: true },
-                },
+          include: {
+            variety: true,
+            multiplier: true,
+            parcel: true,
+            parentLot: {
+              include: { variety: true },
+            },
+            childLots: {
+              include: { variety: true },
+            },
+            qualityControls: {
+              orderBy: { controlDate: "desc" },
+              take: 1,
+            },
+            productions: {
+              orderBy: { startDate: "desc" },
+              take: 1,
+            },
+            _count: {
+              select: {
+                childLots: true,
+                qualityControls: true,
+                productions: true,
               },
+            },
+          },
         }),
         prisma.seedLot.count({ where }),
       ]);
 
-      // 6. Calculer les quantités disponibles
+      // 5. Calculer les quantités disponibles
       const lotsWithAvailableQuantity = seedLots.map((lot) => {
         const childLotsQuantity =
-          includeRelations && "childLots" in lot
-            ? (lot as any).childLots?.reduce(
-                (sum: number, child: any) => sum + child.quantity,
-                0
-              ) || 0
-            : 0;
+          lot.childLots?.reduce(
+            (sum: number, child: any) => sum + child.quantity,
+            0
+          ) || 0;
 
         return {
           ...lot,
@@ -372,10 +351,8 @@ export class SeedLotService {
         };
       });
 
-      // 7. Calcul des métadonnées
+      // 6. Calcul des métadonnées
       const totalPages = Math.ceil(totalCount / pageSize);
-      const hasNextPage = page < totalPages;
-      const hasPreviousPage = page > 1;
 
       const result: GetSeedLotsResult = {
         success: true,
@@ -386,8 +363,8 @@ export class SeedLotService {
           page,
           pageSize,
           totalPages,
-          hasNextPage,
-          hasPreviousPage,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
         },
       };
 

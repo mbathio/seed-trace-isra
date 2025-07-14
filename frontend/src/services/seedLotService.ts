@@ -67,6 +67,8 @@ export interface GenealogyNode {
 
 // Fonction utilitaire pour nettoyer les paramètres
 
+// Mise à jour de la fonction cleanParams
+// Mise à jour de la fonction cleanParams
 const cleanParams = (params: any): any => {
   if (!params) return {};
 
@@ -77,7 +79,6 @@ const cleanParams = (params: any): any => {
     if (value !== undefined && value !== null && value !== "") {
       // Gérer les cas spéciaux
       if (key === "page" || key === "pageSize") {
-        // S'assurer que les valeurs de pagination sont des nombres valides
         const numValue = Number(value);
         if (!isNaN(numValue) && numValue > 0) {
           cleaned[key] = numValue;
@@ -87,29 +88,22 @@ const cleanParams = (params: any): any => {
         key === "includeExpired" ||
         key === "includeInactive"
       ) {
-        // ✅ CORRECTION: Convertir en booléen réel
-        cleaned[key] = value === true || value === "true";
+        // Envoyer comme string, le backend convertira
+        cleaned[key] = value === true || value === "true" ? "true" : "false";
       } else if (key === "sortOrder" && (value === "asc" || value === "desc")) {
-        // Valider l'ordre de tri
         cleaned[key] = value;
       } else if (key === "level" && typeof value === "string") {
-        // S'assurer que le niveau est en majuscules
         cleaned[key] = value.toUpperCase();
-      } else if (key === "status" && value === "all") {
-        // Ne pas envoyer le statut si c'est "all"
-        // On ne fait rien, donc on ne l'ajoute pas aux params nettoyés
       } else if (
         key === "varietyId" ||
         key === "multiplierId" ||
         key === "parcelId"
       ) {
-        // ✅ CORRECTION: S'assurer que les IDs sont des nombres
         const numValue = Number(value);
         if (!isNaN(numValue) && numValue > 0) {
           cleaned[key] = numValue;
         }
       } else {
-        // Pour tous les autres paramètres
         cleaned[key] = value;
       }
     }
@@ -118,6 +112,7 @@ const cleanParams = (params: any): any => {
   // Ajouter des valeurs par défaut si nécessaire
   if (!cleaned.page) cleaned.page = 1;
   if (!cleaned.pageSize) cleaned.pageSize = 10;
+  if (!cleaned.includeRelations) cleaned.includeRelations = "true";
 
   return cleaned;
 };

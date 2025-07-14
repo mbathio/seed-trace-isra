@@ -108,6 +108,7 @@ const SeedLots: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Requête principale pour récupérer les lots
+  // Mise à jour de la requête principale
   const { data, isLoading, error, refetch } = useQuery<ApiResponse<SeedLot[]>>({
     queryKey: [
       "seedLots",
@@ -124,7 +125,6 @@ const SeedLots: React.FC = () => {
         pageSize: pagination.pageSize,
         sortBy: sortBy,
         sortOrder: sortOrder,
-        includeRelations: true,
       };
 
       // Ajouter search seulement si non vide
@@ -132,37 +132,20 @@ const SeedLots: React.FC = () => {
         params.search = debouncedSearch.trim();
       }
 
-      // Ajouter les filtres seulement s'ils existent
-      if (filters.level) {
-        params.level = filters.level;
-      }
-
-      if (filters.status) {
-        params.status = filters.status;
-      }
-
-      if (filters.varietyId) {
-        params.varietyId = filters.varietyId;
-      }
-
-      if (filters.multiplierId) {
-        params.multiplierId = filters.multiplierId;
-      }
-
-      if (filters.startDate) {
-        params.startDate = filters.startDate;
-      }
-
-      if (filters.endDate) {
-        params.endDate = filters.endDate;
-      }
+      // Ajouter les filtres actifs
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== "" && value !== null) {
+          params[key] = value;
+        }
+      });
 
       console.log("Fetching seed lots with params:", params);
 
-      const response = await api.get("/seed-lots", { params });
-      console.log("Seed lots response:", response.data);
+      const response = await seedLotService.getAll(params);
 
-      return response.data;
+      console.log("Seed lots response:", response);
+
+      return response;
     },
   });
 
