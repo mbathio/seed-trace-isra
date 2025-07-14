@@ -239,7 +239,6 @@ export class SeedLotService {
       const where: any = {
         isActive: true,
       };
-
       // Recherche textuelle - CORRECTION ICI
       if (filters.search && filters.search.trim()) {
         const searchTerm = filters.search.trim();
@@ -257,7 +256,10 @@ export class SeedLotService {
           },
           {
             multiplier: {
-              name: { contains: searchTerm, mode: "insensitive" },
+              OR: [
+                { name: { contains: searchTerm, mode: "insensitive" } },
+                { address: { contains: searchTerm, mode: "insensitive" } },
+              ],
             },
           },
         ];

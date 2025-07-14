@@ -54,25 +54,26 @@ export class SeedLotController {
     next: NextFunction
   ): Promise<Response | void> {
     try {
+      // Conversion des paramètres avec gestion des types
       const filters = {
-        page: req.query.page ? parseInt(req.query.page as string) : 1,
+        page: req.query.page ? parseInt(String(req.query.page)) : 1,
         pageSize: req.query.pageSize
-          ? parseInt(req.query.pageSize as string)
+          ? parseInt(String(req.query.pageSize))
           : 10,
         search: req.query.search as string,
         level: req.query.level as string,
         status: req.query.status as string,
         varietyId: req.query.varietyId
-          ? parseInt(req.query.varietyId as string)
+          ? parseInt(String(req.query.varietyId))
           : undefined,
         multiplierId: req.query.multiplierId
-          ? parseInt(req.query.multiplierId as string)
+          ? parseInt(String(req.query.multiplierId))
           : undefined,
         startDate: req.query.startDate as string,
         endDate: req.query.endDate as string,
         sortBy: (req.query.sortBy as string) || "createdAt",
         sortOrder: (req.query.sortOrder as "asc" | "desc") || "desc",
-        includeRelations: req.query.includeRelations === "true",
+        includeRelations: req.query.includeRelations !== "false",
       };
 
       console.log("Transformed filters:", filters);

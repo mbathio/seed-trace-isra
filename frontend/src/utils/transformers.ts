@@ -304,19 +304,19 @@ export class DataTransformer {
     if (!lot) return null;
 
     // Le middleware backend a déjà transformé les valeurs DB -> UI
-    // Donc on ne transforme PAS les enums, seulement les dates et la structure
+    // On ne transforme que les dates pour l'affichage
     return {
       ...lot,
-      // Formater les dates pour l'affichage
+      // Formater les dates pour l'affichage si nécessaires
       productionDate: lot.productionDate
         ? new Date(lot.productionDate).toISOString().split("T")[0]
         : undefined,
       expiryDate: lot.expiryDate
         ? new Date(lot.expiryDate).toISOString().split("T")[0]
         : undefined,
+      // Garder les dates complètes pour l'affichage détaillé
       createdAt: lot.createdAt,
       updatedAt: lot.updatedAt,
-
       // Les relations sont déjà transformées par le middleware
       variety: lot.variety,
       multiplier: lot.multiplier,
@@ -325,6 +325,8 @@ export class DataTransformer {
       childLots: lot.childLots,
       qualityControls: lot.qualityControls,
       productions: lot.productions,
+      // Ajouter la quantité disponible si elle n'est pas fournie
+      availableQuantity: lot.availableQuantity ?? lot.quantity,
     };
   }
 

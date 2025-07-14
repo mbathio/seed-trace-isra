@@ -75,8 +75,12 @@ const cleanParams = (params: any): any => {
   const cleaned: any = {};
 
   Object.entries(params).forEach(([key, value]) => {
-    // Ne pas inclure les valeurs undefined, null ou chaînes vides
-    if (value !== undefined && value !== null && value !== "") {
+    // Ne pas inclure les valeurs undefined, null ou chaînes vides (sauf pour search)
+    if (
+      value !== undefined &&
+      value !== null &&
+      (value !== "" || key === "search")
+    ) {
       // Gérer les cas spéciaux
       if (key === "page" || key === "pageSize") {
         const numValue = Number(value);
@@ -112,7 +116,8 @@ const cleanParams = (params: any): any => {
   // Ajouter des valeurs par défaut si nécessaire
   if (!cleaned.page) cleaned.page = 1;
   if (!cleaned.pageSize) cleaned.pageSize = 10;
-  if (!cleaned.includeRelations) cleaned.includeRelations = "true";
+  if (!cleaned.hasOwnProperty("includeRelations"))
+    cleaned.includeRelations = "true";
 
   return cleaned;
 };

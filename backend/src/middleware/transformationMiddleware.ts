@@ -30,13 +30,21 @@ export const enumTransformMiddleware = (
     for (const [key, value] of Object.entries(req.query)) {
       if (systemParams.includes(key)) {
         // Gérer les paramètres système spécialement
+        // Gérer les paramètres système spécialement
         if (
           key === "includeRelations" ||
           key === "includeExpired" ||
           key === "includeInactive"
         ) {
           // Convertir string en boolean
-          transformedQuery[key] = value === "true";
+          const stringValue = String(value);
+          if (stringValue === "true") {
+            transformedQuery[key] = true;
+          } else if (stringValue === "false") {
+            transformedQuery[key] = false;
+          } else {
+            transformedQuery[key] = Boolean(value);
+          }
         } else if (key === "page" || key === "pageSize") {
           // Convertir en nombre
           const numValue = parseInt(value as string, 10);
