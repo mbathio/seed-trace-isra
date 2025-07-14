@@ -64,9 +64,36 @@ import { usePagination } from "../../hooks/usePagination";
 import { formatDate, formatNumber } from "../../utils/formatters";
 import { toast } from "react-toastify";
 
+// Types pour les valeurs de filtre
+type SeedLevelFilter =
+  | "GO"
+  | "G1"
+  | "G2"
+  | "G3"
+  | "G4"
+  | "R1"
+  | "R2"
+  | undefined;
+type LotStatusFilter =
+  | "pending"
+  | "certified"
+  | "rejected"
+  | "in-stock"
+  | "active"
+  | "distributed"
+  | "sold"
+  | undefined;
+
+// Interface typée pour les filtres
+interface TypedSeedLotFilters
+  extends Omit<Partial<SeedLotFilters>, "level" | "status"> {
+  level?: SeedLevelFilter;
+  status?: LotStatusFilter;
+}
+
 const SeedLots: React.FC = () => {
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<Partial<SeedLotFilters>>({});
+  const [filters, setFilters] = useState<TypedSeedLotFilters>({});
   const [selectedLotForQR, setSelectedLotForQR] = useState<SeedLot | null>(
     null
   );
@@ -238,6 +265,25 @@ const SeedLots: React.FC = () => {
       filters.multiplierId
   );
 
+  // Fonction pour vérifier si une valeur est un niveau valide
+  const isValidSeedLevel = (value: string): value is SeedLevelFilter => {
+    return ["GO", "G1", "G2", "G3", "G4", "R1", "R2", ""].includes(value);
+  };
+
+  // Fonction pour vérifier si une valeur est un statut valide
+  const isValidLotStatus = (value: string): value is LotStatusFilter => {
+    return [
+      "pending",
+      "certified",
+      "rejected",
+      "in-stock",
+      "active",
+      "distributed",
+      "sold",
+      "",
+    ].includes(value);
+  };
+
   if (error) {
     return (
       <div className="container mx-auto p-6">
@@ -305,12 +351,15 @@ const SeedLots: React.FC = () => {
               </div>
               <Select
                 value={filters.level || ""}
-                onValueChange={(value) =>
-                  setFilters({
-                    ...filters,
-                    level: value || undefined,
-                  })
-                }
+                onValueChange={(value) => {
+                  if (isValidSeedLevel(value)) {
+                    setFilters({
+                      ...filters,
+                      level:
+                        value === "" ? undefined : (value as SeedLevelFilter),
+                    });
+                  }
+                }}
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Niveau" />
@@ -326,12 +375,15 @@ const SeedLots: React.FC = () => {
               </Select>
               <Select
                 value={filters.status || ""}
-                onValueChange={(value) =>
-                  setFilters({
-                    ...filters,
-                    status: value || undefined,
-                  })
-                }
+                onValueChange={(value) => {
+                  if (isValidLotStatus(value)) {
+                    setFilters({
+                      ...filters,
+                      status:
+                        value === "" ? undefined : (value as LotStatusFilter),
+                    });
+                  }
+                }}
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Statut" />

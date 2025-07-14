@@ -14,6 +14,7 @@ import { ValidationService } from "./ValidationService";
 import { GenealogyService } from "./GenealogyService";
 import { SeedLevel, LotStatus } from "@prisma/client";
 import DataTransformer from "../utils/transformers";
+import { transformEnum } from "../config/enumMappings";
 
 const prisma = new PrismaClient();
 

@@ -35,7 +35,7 @@ export const enumTransformMiddleware = (
           key === "includeInactive"
         ) {
           // Convertir string en boolean
-          transformedQuery[key] = value === "true" || value === true;
+          transformedQuery[key] = value === "true" || value === "true";
         } else if (key === "page" || key === "pageSize") {
           // Convertir en nombre
           transformedQuery[key] =
