@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE
+// frontend/src/pages/seeds/SeedLots.tsx - VERSION FINALE CORRIGÉE
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -97,94 +97,48 @@ const SeedLots: React.FC = () => {
   const queryClient = useQueryClient();
 
   // Requête principale pour récupérer les lots
-
   const { data, isLoading, error, refetch } = useQuery<ApiResponse<SeedLot[]>>({
-  queryKey: [
-    "seedLots",
-    pagination.page,
-    pagination.pageSize,
-    debouncedSearch,
-    filters,
-    sortBy,
-    sortOrder,
-  ],
-  queryFn: async () => {
-    // Construire les paramètres proprement
-    const params: Record<string, any> = {
-      page: pagination.page,
-      pageSize: pagination.pageSize,
-      sortBy: sortBy,
-      sortOrder: sortOrder,
-      includeRelations: true, // Toujours inclure les relations
-    };
+    queryKey: [
+      "seedLots",
+      pagination.page,
+      pagination.pageSize,
+      debouncedSearch,
+      filters,
+      sortBy,
+      sortOrder,
+    ],
+    queryFn: async () => {
+      // Construire les paramètres proprement
+      const params: Record<string, any> = {
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        sortBy: sortBy,
+        sortOrder: sortOrder,
+        includeRelations: true,
+      };
 
-    // Ajouter search seulement si non vide
-    if (debouncedSearch && debouncedSearch.trim()) {
-      params.search = debouncedSearch.trim();
-    }
+      // Ajouter search seulement si non vide
+      if (debouncedSearch && debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
 
-    // Ajouter les filtres seulement s'ils existent et ne sont pas "all"
-    if (filters.status && filters.status !== "all") {
-      params.status = filters.status;
-    }
+      // Ajouter les filtres seulement s'ils existent
+      if (filters.status) {
+        params.status = filters.status;
+      }
 
-    if (filters.level && filters.level !== "all") {
-      params.level = filters.level;
-    }
+      if (filters.level) {
+        params.level = filters.level;
+      }
 
-    console.log("Fetching seed lots with params:", params);
+      console.log("Fetching seed lots with params:", params);
 
-    const response = await api.get("/seed-lots", { params });
-    console.log("Seed lots response:", response.data);
-    
-    return response.data;
-  },
-});
+      const response = await api.get("/seed-lots", { params });
+      console.log("Seed lots response:", response.data);
 
-// Dans les Select pour les filtres
-<Select
-  value={filters.level || "all"}
-  onValueChange={(value) =>
-    setFilters({
-      ...filters,
-      level: value === "all" ? undefined : (value as SeedLevel),
-    })
-  }
->
-  <SelectTrigger className="w-[180px]">
-    <SelectValue placeholder="Niveau" />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="all">Tous les niveaux</SelectItem>
-    {SEED_LEVELS.map((level) => (
-      <SelectItem key={level.value} value={level.value}>
-        <div className="flex items-center">{level.label}</div>
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
-
-<Select
-  value={filters.status || "all"}
-  onValueChange={(value) =>
-    setFilters({
-      ...filters,
-      status: value === "all" ? undefined : (value as SeedLotStatus),
-    })
-  }
->
-  <SelectTrigger className="w-[180px]">
-    <SelectValue placeholder="Statut" />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="all">Tous les statuts</SelectItem>
-    {LOT_STATUSES.map((status) => (
-      <SelectItem key={status.value} value={status.value}>
-        {status.label}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
+      return response.data;
+    },
+  });
 
   // Mutation pour supprimer un lot
   const deleteMutation = useMutation({
@@ -216,14 +170,18 @@ const SeedLots: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const config = getStatusConfig(status, LOT_STATUSES);
     return (
-      <Badge className={`${config.color} text-white`}>{config.label}</Badge>
+      <Badge variant={config.variant || "default"} className={config.color}>
+        {config.label}
+      </Badge>
     );
   };
 
   const getLevelBadge = (level: string) => {
     const config = getSeedLevelConfig(level);
     return (
-      <Badge className={`${config.color} text-white`}>{config.label}</Badge>
+      <Badge variant="outline" className={config.color}>
+        {config.label}
+      </Badge>
     );
   };
 
@@ -349,44 +307,43 @@ const SeedLots: React.FC = () => {
                 />
               </div>
               <Select
-                value={filters.level || "all"}
+                value={filters.level || ""}
                 onValueChange={(value) =>
                   setFilters({
                     ...filters,
-                    level: value === "all" ? undefined : (value as SeedLevel),
+                    level: value ? (value as SeedLevel) : undefined,
                   })
                 }
               >
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Niveau" />
+                  <SelectValue placeholder="Tous les niveaux" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tous les niveaux</SelectItem>
-                  {Object.entries(SEED_LEVELS).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>
-                      <div className="flex items-center">{config.label}</div>
+                  <SelectItem value="">Tous les niveaux</SelectItem>
+                  {SEED_LEVELS.map((level) => (
+                    <SelectItem key={level.value} value={level.value}>
+                      {level.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select
-                value={filters.status || "all"}
+                value={filters.status || ""}
                 onValueChange={(value) =>
                   setFilters({
                     ...filters,
-                    status:
-                      value === "all" ? undefined : (value as SeedLotStatus),
+                    status: value ? (value as SeedLotStatus) : undefined,
                   })
                 }
               >
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Statut" />
+                  <SelectValue placeholder="Tous les statuts" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
-                  {Object.entries(LOT_STATUSES).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>
-                      {config.label}
+                  <SelectItem value="">Tous les statuts</SelectItem>
+                  {LOT_STATUSES.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
