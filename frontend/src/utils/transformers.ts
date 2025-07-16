@@ -308,12 +308,9 @@ export class DataTransformer {
     return {
       ...lot,
       // Formater les dates pour l'affichage si nécessaires
-      productionDate: lot.productionDate
-        ? new Date(lot.productionDate).toISOString().split("T")[0]
-        : undefined,
-      expiryDate: lot.expiryDate
-        ? new Date(lot.expiryDate).toISOString().split("T")[0]
-        : undefined,
+      productionDate: DataTransformer.formatDateForDisplay(lot.productionDate),
+      expiryDate: DataTransformer.formatDateForDisplay(lot.expiryDate),
+
       // Garder les dates complètes pour l'affichage détaillé
       createdAt: lot.createdAt,
       updatedAt: lot.updatedAt,

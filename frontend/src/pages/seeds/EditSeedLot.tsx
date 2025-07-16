@@ -34,7 +34,7 @@ import { seedLotValidationSchema } from "../../utils/validators";
 
 interface EditSeedLotForm {
   varietyId: number;
-  level: "GO" | "G1" | "G2" | "G3" | "G4" | "R1" | "R2";
+  level: string;
   quantity: number;
   productionDate: string;
   expiryDate?: string;
@@ -50,7 +50,6 @@ const EditSeedLot: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Récupération du lot existant
   const { data: seedLotData, isLoading: seedLotLoading } = useQuery<
     ApiResponse<SeedLot>
   >({
@@ -64,7 +63,6 @@ const EditSeedLot: React.FC = () => {
 
   const seedLot = seedLotData?.data;
 
-  // Récupération des variétés
   const { data: varietiesData, isLoading: varietiesLoading } = useQuery<
     ApiResponse<Variety[]>
   >({
@@ -79,7 +77,6 @@ const EditSeedLot: React.FC = () => {
 
   const varieties = varietiesData?.data || [];
 
-  // Récupération des multiplicateurs
   const { data: multipliersData, isLoading: multipliersLoading } = useQuery<
     ApiResponse<Multiplier[]>
   >({
@@ -103,15 +100,17 @@ const EditSeedLot: React.FC = () => {
     resolver: yupResolver(seedLotValidationSchema),
   });
 
-  // Initialiser le formulaire avec les données existantes
   useEffect(() => {
     if (seedLot) {
+      const safeDate = (value?: string) =>
+        value && value.includes("T") ? value.split("T")[0] : "";
+
       reset({
         varietyId: seedLot.varietyId,
         level: seedLot.level,
         quantity: seedLot.quantity,
-        productionDate: seedLot.productionDate.split("T")[0],
-        expiryDate: seedLot.expiryDate?.split("T")[0],
+        productionDate: safeDate(seedLot.productionDate),
+        expiryDate: safeDate(seedLot.expiryDate),
         status: seedLot.status,
         notes: seedLot.notes || "",
         batchNumber: seedLot.batchNumber || "",
@@ -122,7 +121,7 @@ const EditSeedLot: React.FC = () => {
   }, [seedLot, reset]);
 
   const updateMutation = useMutation({
-    mutationFn: async (data: EditSeedLotForm) => {
+    mutationFn: async (data: Partial<EditSeedLotForm>) => {
       if (!id) throw new Error("ID manquant");
       const response = await seedLotService.update(id, data);
       return response.data;
@@ -134,15 +133,26 @@ const EditSeedLot: React.FC = () => {
     onError: (error: any) => {
       const errorMessage =
         error?.response?.data?.message ||
+        error?.message ||
         "Erreur lors de la mise à jour du lot";
+      console.error("Erreur backend:", error?.response?.data);
       toast.error(errorMessage);
     },
   });
 
   const onSubmit = async (data: EditSeedLotForm) => {
+    const payload = {
+      quantity: data.quantity,
+      status: data.status,
+      notes: data.notes,
+      expiryDate: data.expiryDate,
+      batchNumber: data.batchNumber,
+      multiplierId: data.multiplierId,
+    };
+
     setIsSubmitting(true);
     try {
-      await updateMutation.mutateAsync(data);
+      await updateMutation.mutateAsync(payload);
     } finally {
       setIsSubmitting(false);
     }
@@ -171,7 +181,6 @@ const EditSeedLot: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center space-x-4">
         <Button
           variant="ghost"
@@ -372,16 +381,18 @@ const EditSeedLot: React.FC = () => {
                   control={control}
                   render={({ field }) => (
                     <Select
-                      value={field.value?.toString()}
+                      value={field.value?.toString() || "__none"}
                       onValueChange={(value) =>
-                        field.onChange(value ? parseInt(value) : undefined)
+                        field.onChange(
+                          value === "__none" ? undefined : parseInt(value)
+                        )
                       }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un multiplicateur" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Aucun</SelectItem>
+                        <SelectItem value="__none">Aucun</SelectItem>
                         {multipliers.map((multiplier) => (
                           <SelectItem
                             key={multiplier.id}

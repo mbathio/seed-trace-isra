@@ -289,12 +289,12 @@ const SeedLots: React.FC = () => {
                 />
               </div>
               <Select
-                value={filters.level || ""}
+                value={filters.level || "__all"}
                 onValueChange={(value) => {
                   setFilters({
                     ...filters,
                     level:
-                      value === ""
+                      value === "__all"
                         ? undefined
                         : (value as SeedLotFilters["level"]),
                   });
@@ -304,7 +304,8 @@ const SeedLots: React.FC = () => {
                   <SelectValue placeholder="Niveau" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous les niveaux</SelectItem>
+                  <SelectItem value="__all">Tous les niveaux</SelectItem>
+
                   {SEED_LEVELS.map((level) => (
                     <SelectItem key={level.value} value={level.value}>
                       <div className="flex items-center">{level.label}</div>
@@ -313,12 +314,12 @@ const SeedLots: React.FC = () => {
                 </SelectContent>
               </Select>
               <Select
-                value={filters.status || ""}
+                value={filters.status || "__all"}
                 onValueChange={(value) => {
                   setFilters({
                     ...filters,
                     status:
-                      value === ""
+                      value === "__all"
                         ? undefined
                         : (value as SeedLotFilters["status"]),
                   });
@@ -328,7 +329,7 @@ const SeedLots: React.FC = () => {
                   <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous les statuts</SelectItem>
+                  <SelectItem value="__all">Tous les statuts</SelectItem>
                   {LOT_STATUSES.map((status) => (
                     <SelectItem key={status.value} value={status.value}>
                       {status.label}
