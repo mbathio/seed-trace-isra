@@ -34,7 +34,7 @@ import { seedLotValidationSchema } from "../../utils/validators";
 
 interface EditSeedLotForm {
   varietyId: number;
-  level: string;
+  level: "GO" | "G1" | "G2" | "G3" | "G4" | "R1" | "R2";
   quantity: number;
   productionDate: string;
   expiryDate?: string;
@@ -251,7 +251,10 @@ const EditSeedLot: React.FC = () => {
                   name="level"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value ?? ""}
+                      onValueChange={field.onChange}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un niveau" />
                       </SelectTrigger>
@@ -300,7 +303,10 @@ const EditSeedLot: React.FC = () => {
                   name="status"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value ?? ""}
+                      onValueChange={field.onChange}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un statut" />
                       </SelectTrigger>
