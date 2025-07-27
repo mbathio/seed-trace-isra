@@ -200,15 +200,15 @@ const Multipliers: React.FC = () => {
               }
             >
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Statut" />
+                <SelectValue placeholder="Tous les statuts" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tous les statuts</SelectItem>
-                {MULTIPLIER_STATUSES.map((status) => (
-                  <SelectItem key={status.value} value={status.value}>
-                    {status.label}
-                  </SelectItem>
-                ))}
+                {MULTIPLIER_STATUSES.filter((status) => status.value !== "") // ✅ Empêche une valeur vide
+                  .map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
 
@@ -222,15 +222,15 @@ const Multipliers: React.FC = () => {
               }
             >
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Certification" />
+                <SelectValue placeholder="Toutes les certifications" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tous les niveaux</SelectItem>
-                {CERTIFICATION_LEVELS.map((level) => (
-                  <SelectItem key={level.value} value={level.value}>
-                    {level.label}
-                  </SelectItem>
-                ))}
+                {CERTIFICATION_LEVELS.filter((level) => level.value !== "") // ✅ Empêche une valeur vide
+                  .map((level) => (
+                    <SelectItem key={level.value} value={level.value}>
+                      {level.label}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>

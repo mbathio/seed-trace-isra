@@ -217,7 +217,7 @@ const CreateQualityControl: React.FC = () => {
                       </SelectTrigger>
                       <SelectContent>
                         {lotsLoading ? (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="loading" disabled>
                             Recherche en cours...
                           </SelectItem>
                         ) : seedLots.length > 0 ? (
@@ -233,11 +233,11 @@ const CreateQualityControl: React.FC = () => {
                             </SelectItem>
                           ))
                         ) : lotSearch.length >= 2 ? (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="not-found" disabled>
                             Aucun lot trouvé
                           </SelectItem>
                         ) : (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="search-hint" disabled>
                             Tapez au moins 2 caractères pour rechercher
                           </SelectItem>
                         )}
@@ -318,7 +318,7 @@ const CreateQualityControl: React.FC = () => {
                         <SelectValue placeholder="Sélectionner une méthode" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Non spécifiée</SelectItem>
+                        <SelectItem value="none">Non spécifiée</SelectItem>
                         {testMethods.map((method) => (
                           <SelectItem key={method} value={method}>
                             {method}

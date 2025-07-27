@@ -127,14 +127,17 @@ const QualityControls: React.FC = () => {
             <Select
               value={filters.result || ""}
               onValueChange={(value) =>
-                setFilters((prev) => ({ ...prev, result: value || undefined }))
+                setFilters((prev) => ({
+                  ...prev,
+                  result: value === "tous" ? undefined : value,
+                }))
               }
             >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Résultat" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tous les résultats</SelectItem>
+                <SelectItem value="tous">Tous les résultats</SelectItem>
                 {QUALITY_TEST_RESULTS.map((result) => (
                   <SelectItem key={result.value} value={result.value}>
                     {result.label}

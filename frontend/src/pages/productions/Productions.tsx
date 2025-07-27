@@ -81,7 +81,7 @@ interface ProductionsResponse {
 
 const Productions: React.FC = () => {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
 
@@ -106,7 +106,7 @@ const Productions: React.FC = () => {
         params.search = debouncedSearch;
       }
 
-      if (statusFilter) {
+      if (statusFilter && statusFilter !== "all") {
         params.status = statusFilter;
       }
 
@@ -138,7 +138,7 @@ const Productions: React.FC = () => {
 
   const resetFilters = () => {
     setSearch("");
-    setStatusFilter("");
+    setStatusFilter("all");
     setPage(1);
   };
 
@@ -284,7 +284,7 @@ const Productions: React.FC = () => {
                   <SelectValue placeholder="Tous les statuts" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous les statuts</SelectItem>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
                   {PRODUCTION_STATUSES.map((status) => (
                     <SelectItem key={status.value} value={status.value}>
                       {status.label}
