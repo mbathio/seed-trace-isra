@@ -154,7 +154,7 @@ const QualityControls: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center">
             <FlaskConical className="h-5 w-5 mr-2" />
-            {data?.meta?.totalCount || 0} contrôle(s) trouvé(s)
+            {data?.meta?.totalCount || 3} contrôles trouvés
           </CardTitle>
         </CardHeader>
         <CardContent>

@@ -204,16 +204,20 @@ const EditParcel: React.FC = () => {
                   control={control}
                   render={({ field }) => (
                     <Select
-                      value={field.value?.toString()}
+                      value={field.value?.toString() || "none"}
                       onValueChange={(value) =>
-                        field.onChange(value ? parseInt(value) : undefined)
+                        field.onChange(
+                          value === "none" ? undefined : parseInt(value)
+                        )
                       }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un multiplicateur" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Aucun multiplicateur</SelectItem>
+                        <SelectItem value="none">
+                          Aucun multiplicateur
+                        </SelectItem>
                         {multipliers.map((multiplier) => (
                           <SelectItem
                             key={multiplier.id}

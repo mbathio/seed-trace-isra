@@ -387,10 +387,10 @@ const EditSeedLot: React.FC = () => {
                   control={control}
                   render={({ field }) => (
                     <Select
-                      value={field.value?.toString() || "__none"}
+                      value={field.value?.toString() || "0"} // Au lieu de "__none"
                       onValueChange={(value) =>
                         field.onChange(
-                          value === "__none" ? undefined : parseInt(value)
+                          value === "0" ? undefined : parseInt(value) // Au lieu de "__none"
                         )
                       }
                     >
@@ -398,7 +398,8 @@ const EditSeedLot: React.FC = () => {
                         <SelectValue placeholder="Sélectionner un multiplicateur" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none">Aucun</SelectItem>
+                        <SelectItem value="0">Aucun</SelectItem> // ✅
+                        CORRECTION
                         {multipliers.map((multiplier) => (
                           <SelectItem
                             key={multiplier.id}

@@ -108,7 +108,15 @@ const CreateParcel: React.FC = () => {
   const onSubmit: SubmitHandler<CreateParcelForm> = async (data) => {
     setIsSubmitting(true);
     try {
-      await createMutation.mutateAsync(data);
+      // Remove undefined/null values before submission
+      const cleanedData = {
+        ...data,
+        multiplierId: data.multiplierId || undefined,
+        soilType: data.soilType === "none" ? undefined : data.soilType,
+        irrigationSystem:
+          data.irrigationSystem === "none" ? undefined : data.irrigationSystem,
+      };
+      await createMutation.mutateAsync(cleanedData);
     } finally {
       setIsSubmitting(false);
     }
@@ -274,16 +282,20 @@ const CreateParcel: React.FC = () => {
                   control={control}
                   render={({ field }) => (
                     <Select
-                      value={field.value?.toString()}
+                      value={field.value?.toString() || "none"}
                       onValueChange={(value) =>
-                        field.onChange(value ? parseInt(value) : undefined)
+                        field.onChange(
+                          value === "none" ? undefined : parseInt(value)
+                        )
                       }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un multiplicateur (optionnel)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Aucun multiplicateur</SelectItem>
+                        <SelectItem value="none">
+                          Aucun multiplicateur
+                        </SelectItem>
                         {multipliers.map((multiplier) => (
                           <SelectItem
                             key={multiplier.id}
@@ -321,14 +333,16 @@ const CreateParcel: React.FC = () => {
                   control={control}
                   render={({ field }) => (
                     <Select
-                      value={field.value || ""}
-                      onValueChange={field.onChange}
+                      value={field.value || "none"}
+                      onValueChange={(value) =>
+                        field.onChange(value === "none" ? undefined : value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un type de sol" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Non spécifié</SelectItem>
+                        <SelectItem value="none">Non spécifié</SelectItem>
                         {soilTypes.map((type) => (
                           <SelectItem key={type} value={type}>
                             {type}
@@ -352,14 +366,16 @@ const CreateParcel: React.FC = () => {
                   control={control}
                   render={({ field }) => (
                     <Select
-                      value={field.value || ""}
-                      onValueChange={field.onChange}
+                      value={field.value || "none"}
+                      onValueChange={(value) =>
+                        field.onChange(value === "none" ? undefined : value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un système d'irrigation" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Non spécifié</SelectItem>
+                        <SelectItem value="none">Non spécifié</SelectItem>
                         {irrigationSystems.map((system) => (
                           <SelectItem key={system} value={system}>
                             {system}
