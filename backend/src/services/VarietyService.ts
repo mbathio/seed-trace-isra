@@ -1,30 +1,46 @@
-// ===== 2. backend/src/services/VarietyService.ts - MISE À JOUR AVEC TRANSFORMATEURS =====
+// backend/src/services/VarietyService.ts - VERSION CORRIGÉE
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { PaginationQuery } from "../types/api";
 import { CropType } from "@prisma/client";
-import DataTransformer from "../utils/transformers"; // ✅ AJOUTÉ
+import DataTransformer from "../utils/transformers";
 
 export class VarietyService {
   static async createVariety(data: any): Promise<any> {
     try {
-      // ✅ TRANSFORMATION : Transformer le type de culture UI vers DB
-      const transformedCropType = data.cropType
-        ? (DataTransformer.transformCropTypeUIToDB(data.cropType) as CropType)
-        : undefined;
+      // Transformer le type de culture vers le format DB
+      let cropType = data.cropType;
 
-      if (
-        !transformedCropType ||
-        !Object.values(CropType).includes(transformedCropType)
-      ) {
-        throw new Error(`Type de culture invalide: ${data.cropType}`);
+      // Mapping UI vers DB
+      const cropTypeMapping: Record<string, CropType> = {
+        rice: CropType.RICE,
+        maize: CropType.MAIZE,
+        peanut: CropType.PEANUT,
+        sorghum: CropType.SORGHUM,
+        cowpea: CropType.COWPEA,
+        millet: CropType.MILLET,
+        wheat: CropType.WHEAT,
+        // Accepter aussi les majuscules
+        RICE: CropType.RICE,
+        MAIZE: CropType.MAIZE,
+        PEANUT: CropType.PEANUT,
+        SORGHUM: CropType.SORGHUM,
+        COWPEA: CropType.COWPEA,
+        MILLET: CropType.MILLET,
+        WHEAT: CropType.WHEAT,
+      };
+
+      const dbCropType = cropTypeMapping[cropType];
+
+      if (!dbCropType) {
+        throw new Error(`Type de culture invalide: ${cropType}`);
       }
 
       const variety = await prisma.variety.create({
         data: {
-          code: data.code,
+          code: data.code.toUpperCase(), // Toujours en majuscules
           name: data.name,
-          cropType: transformedCropType,
+          cropType: dbCropType,
           description: data.description,
           maturityDays: data.maturityDays,
           yieldPotential: data.yieldPotential,
@@ -34,7 +50,7 @@ export class VarietyService {
         },
       });
 
-      // ✅ TRANSFORMATION : Transformer les données pour le frontend
+      // Transformer pour le frontend
       return DataTransformer.transformVariety(variety);
     } catch (error) {
       logger.error("Erreur lors de la création de la variété:", error);
@@ -73,10 +89,18 @@ export class VarietyService {
       }
 
       if (cropType) {
-        // ✅ TRANSFORMATION : Transformer le type de culture UI vers DB
-        where.cropType = DataTransformer.transformCropTypeUIToDB(
-          cropType
-        ) as CropType;
+        // Transformer le cropType UI vers DB
+        const cropTypeMapping: Record<string, CropType> = {
+          rice: CropType.RICE,
+          maize: CropType.MAIZE,
+          peanut: CropType.PEANUT,
+          sorghum: CropType.SORGHUM,
+          cowpea: CropType.COWPEA,
+          millet: CropType.MILLET,
+          wheat: CropType.WHEAT,
+        };
+
+        where.cropType = cropTypeMapping[cropType] || cropType;
       }
 
       const [varieties, total] = await Promise.all([
@@ -100,7 +124,7 @@ export class VarietyService {
 
       const totalPages = Math.ceil(total / pageSizeNum);
 
-      // ✅ TRANSFORMATION : Transformer toutes les variétés pour le frontend
+      // Transformer les variétés pour le frontend
       const transformedVarieties = varieties.map((variety) =>
         DataTransformer.transformVariety(variety)
       );
@@ -130,7 +154,6 @@ export class VarietyService {
       // Essayer d'abord de parser comme nombre
       const parsedId = parseInt(id);
       if (!isNaN(parsedId)) {
-        // Recherche par ID numérique
         variety = await prisma.variety.findUnique({
           where: { id: parsedId, isActive: true },
           include: {
@@ -155,10 +178,13 @@ export class VarietyService {
         });
       }
 
-      // Si non trouvé par ID ou si ce n'est pas un nombre, chercher par code
+      // Si non trouvé par ID, chercher par code
       if (!variety) {
         variety = await prisma.variety.findFirst({
-          where: { code: id, isActive: true },
+          where: {
+            code: id.toUpperCase(), // Chercher avec le code en majuscules
+            isActive: true,
+          },
           include: {
             seedLots: {
               where: { isActive: true },
@@ -185,7 +211,7 @@ export class VarietyService {
         return null;
       }
 
-      // ✅ TRANSFORMATION : Transformer la variété et ses lots associés
+      // Transformer la variété et ses relations
       const transformedVariety = DataTransformer.transformVariety(variety);
 
       if (transformedVariety.seedLots) {
@@ -203,20 +229,32 @@ export class VarietyService {
 
   static async updateVariety(id: string, data: any): Promise<any> {
     try {
-      // ✅ TRANSFORMATION : Valider et transformer le type de culture si fourni
-      let transformedCropType: CropType | undefined;
+      // Transformer le cropType si fourni
       if (data.cropType) {
-        transformedCropType = DataTransformer.transformCropTypeUIToDB(
-          data.cropType
-        ) as CropType;
-        if (!Object.values(CropType).includes(transformedCropType)) {
+        const cropTypeMapping: Record<string, CropType> = {
+          rice: CropType.RICE,
+          maize: CropType.MAIZE,
+          peanut: CropType.PEANUT,
+          sorghum: CropType.SORGHUM,
+          cowpea: CropType.COWPEA,
+          millet: CropType.MILLET,
+          wheat: CropType.WHEAT,
+        };
+
+        const dbCropType = cropTypeMapping[data.cropType] || data.cropType;
+
+        if (!Object.values(CropType).includes(dbCropType)) {
           throw new Error(`Type de culture invalide: ${data.cropType}`);
         }
+
+        data.cropType = dbCropType;
       }
 
       // Déterminer si c'est un ID ou un code
       const parsedId = parseInt(id);
-      const where = !isNaN(parsedId) ? { id: parsedId } : { code: id };
+      const where = !isNaN(parsedId)
+        ? { id: parsedId }
+        : { code: id.toUpperCase() };
 
       const updateData: any = {
         ...data,
@@ -226,17 +264,11 @@ export class VarietyService {
       // Le code ne peut pas être modifié
       delete updateData.code;
 
-      // Appliquer la transformation si nécessaire
-      if (transformedCropType) {
-        updateData.cropType = transformedCropType;
-      }
-
       const variety = await prisma.variety.update({
         where,
         data: updateData,
       });
 
-      // ✅ TRANSFORMATION : Transformer les données pour le frontend
       return DataTransformer.transformVariety(variety);
     } catch (error) {
       logger.error("Erreur lors de la mise à jour de la variété:", error);
@@ -246,9 +278,10 @@ export class VarietyService {
 
   static async deleteVariety(id: string): Promise<void> {
     try {
-      // Déterminer si c'est un ID ou un code
       const parsedId = parseInt(id);
-      const where = !isNaN(parsedId) ? { id: parsedId } : { code: id };
+      const where = !isNaN(parsedId)
+        ? { id: parsedId }
+        : { code: id.toUpperCase() };
 
       await prisma.variety.update({
         where,

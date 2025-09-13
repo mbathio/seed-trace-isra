@@ -1,5 +1,6 @@
 // frontend/src/pages/varieties/Varieties.tsx
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   Filter,
@@ -9,36 +10,68 @@ import {
   Plus,
   Edit,
   Trash2,
+  Loader2,
 } from "lucide-react";
 
 // Configuration de l'API
-const API_BASE_URL = "http://localhost:3001/api";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 // Types
 interface Variety {
-  id: string;
+  id: number;
+  code: string;
   name: string;
-  description: string;
+  description?: string;
   maturityDays: number;
-  yieldPotential: number;
-  resistances: string[];
-  origin: string;
-  releaseYear: number;
-  cropType?: string;
-  status: "ACTIVE" | "DISCONTINUED" | "EXPERIMENTAL";
+  yieldPotential?: number;
+  resistances?: string[];
+  origin?: string;
+  releaseYear?: number;
+  cropType: string;
+  isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  _count?: {
+    seedLots: number;
+  };
 }
 
 interface PaginatedResponse {
+  success: boolean;
+  message: string;
   data: Variety[];
   meta: {
     page: number;
     pageSize: number;
     totalCount: number;
     totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
   };
 }
+
+// Labels pour les types de cultures
+const cropTypeLabels: Record<string, string> = {
+  rice: "Riz",
+  maize: "Maïs",
+  peanut: "Arachide",
+  sorghum: "Sorgho",
+  cowpea: "Niébé",
+  millet: "Mil",
+  wheat: "Blé",
+};
+
+// Couleurs pour les types de cultures
+const cropTypeColors: Record<string, string> = {
+  rice: "bg-green-100 text-green-800",
+  maize: "bg-yellow-100 text-yellow-800",
+  peanut: "bg-orange-100 text-orange-800",
+  sorghum: "bg-red-100 text-red-800",
+  cowpea: "bg-purple-100 text-purple-800",
+  millet: "bg-blue-100 text-blue-800",
+  wheat: "bg-amber-100 text-amber-800",
+};
 
 // Service API pour les variétés
 const varietyService = {
@@ -81,19 +114,10 @@ const varietyService = {
     }
 
     const data = await response.json();
-
-    return {
-      data: data.data || [],
-      meta: data.meta || {
-        page: 1,
-        pageSize: 10,
-        totalCount: 0,
-        totalPages: 0,
-      },
-    };
+    return data;
   },
 
-  getById: async (id: string): Promise<Variety> => {
+  getById: async (id: string | number): Promise<Variety> => {
     const token = localStorage.getItem("accessToken");
     const response = await fetch(`${API_BASE_URL}/varieties/${id}`, {
       headers: {
@@ -109,12 +133,29 @@ const varietyService = {
     const data = await response.json();
     return data.data;
   },
+
+  delete: async (id: number): Promise<void> => {
+    const token = localStorage.getItem("accessToken");
+    const response = await fetch(`${API_BASE_URL}/varieties/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Erreur lors de la suppression de la variété");
+    }
+  },
 };
 
 const Varieties: React.FC = () => {
+  const navigate = useNavigate();
   const [varieties, setVarieties] = useState<Variety[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -123,8 +164,12 @@ const Varieties: React.FC = () => {
 
   // Filtres
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCropType, setSelectedCropType] = useState<string>("");
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // État pour le filtre dropdown
+  const [showFilters, setShowFilters] = useState(false);
 
   // Fonction pour charger les variétés
   const loadVarieties = async () => {
@@ -132,7 +177,7 @@ const Varieties: React.FC = () => {
     setError(null);
 
     try {
-      const params = {
+      const params: any = {
         page: currentPage,
         pageSize: pageSize,
         sortBy: sortBy,
@@ -141,12 +186,18 @@ const Varieties: React.FC = () => {
 
       // N'ajouter le paramètre search que s'il y a une valeur
       if (searchTerm && searchTerm.trim() !== "") {
-        (params as any).search = searchTerm.trim();
+        params.search = searchTerm.trim();
+      }
+
+      // Ajouter le filtre de type de culture si sélectionné
+      if (selectedCropType) {
+        params.cropType = selectedCropType;
       }
 
       const response = await varietyService.getAll(params);
-      setVarieties(response.data);
-      setTotalPages(response.meta.totalPages);
+      setVarieties(response.data || []);
+      setTotalPages(response.meta?.totalPages || 1);
+      setTotalCount(response.meta?.totalCount || 0);
     } catch (err) {
       console.error("Erreur lors du chargement des variétés:", err);
       setError(err instanceof Error ? err.message : "Une erreur est survenue");
@@ -158,7 +209,7 @@ const Varieties: React.FC = () => {
   // Charger les variétés au montage et lors des changements de filtres
   useEffect(() => {
     loadVarieties();
-  }, [currentPage, pageSize, sortBy, sortOrder]);
+  }, [currentPage, pageSize, sortBy, sortOrder, selectedCropType]);
 
   // Recherche avec debounce
   useEffect(() => {
@@ -201,6 +252,65 @@ const Varieties: React.FC = () => {
     setCurrentPage(1); // Retourner à la première page
   };
 
+  // Gestion des actions
+  const handleView = (variety: Variety) => {
+    navigate(`/dashboard/varieties/${variety.id}`);
+  };
+
+  const handleEdit = (variety: Variety) => {
+    navigate(`/dashboard/varieties/${variety.id}/edit`);
+  };
+
+  const handleDelete = async (variety: Variety) => {
+    if (
+      window.confirm(
+        `Êtes-vous sûr de vouloir supprimer la variété ${variety.name} ?`
+      )
+    ) {
+      try {
+        await varietyService.delete(variety.id);
+        loadVarieties(); // Recharger la liste
+      } catch (err) {
+        console.error("Erreur lors de la suppression:", err);
+        alert("Erreur lors de la suppression de la variété");
+      }
+    }
+  };
+
+  const handleCreateNew = () => {
+    navigate("/dashboard/varieties/create");
+  };
+
+  // Rendu des numéros de page
+  const renderPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+            currentPage === i
+              ? "z-10 bg-green-50 border-green-500 text-green-600"
+              : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+          }`}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    return pages;
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -226,12 +336,48 @@ const Varieties: React.FC = () => {
             />
           </div>
 
-          <button className="btn btn-secondary flex items-center gap-2">
-            <Filter className="h-4 w-4" />
-            Filtres
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-2"
+            >
+              <Filter className="h-4 w-4" />
+              Filtres
+            </button>
 
-          <button className="btn btn-primary flex items-center gap-2">
+            {/* Dropdown des filtres */}
+            {showFilters && (
+              <div className="absolute top-full mt-2 right-0 bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[200px] z-10">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Type de culture
+                    </label>
+                    <select
+                      value={selectedCropType}
+                      onChange={(e) => {
+                        setSelectedCropType(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                    >
+                      <option value="">Tous</option>
+                      {Object.entries(cropTypeLabels).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={handleCreateNew}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+          >
             <Plus className="h-4 w-4" />
             Nouvelle variété
           </button>
@@ -241,7 +387,7 @@ const Varieties: React.FC = () => {
       {/* État de chargement */}
       {loading && (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+          <Loader2 className="h-12 w-12 animate-spin text-green-500" />
         </div>
       )}
 
@@ -291,7 +437,7 @@ const Varieties: React.FC = () => {
                     Rendement potentiel
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Statut
+                    Lots de semences
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -312,13 +458,22 @@ const Varieties: React.FC = () => {
                   varieties.map((variety) => (
                     <tr key={variety.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {variety.id || "-"}
+                        {variety.code}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {variety.name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {variety.cropType || "-"}
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            cropTypeColors[variety.cropType] ||
+                            "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {cropTypeLabels[variety.cropType] ||
+                            variety.cropType ||
+                            "-"}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {variety.maturityDays}
@@ -328,27 +483,31 @@ const Varieties: React.FC = () => {
                           ? `${variety.yieldPotential} T/ha`
                           : "-"}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            variety.status === "ACTIVE"
-                              ? "bg-green-100 text-green-800"
-                              : variety.status === "DISCONTINUED"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {variety.status}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {variety._count?.seedLots || 0}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button className="text-green-600 hover:text-green-900 mr-3">
+                        <button
+                          onClick={() => handleView(variety)}
+                          className="text-green-600 hover:text-green-900 mr-3"
+                          title="Voir les détails"
+                        >
                           <Eye className="h-4 w-4" />
                         </button>
-                        <button className="text-blue-600 hover:text-blue-900 mr-3">
+                        <button
+                          onClick={() => handleEdit(variety)}
+                          className="text-blue-600 hover:text-blue-900 mr-3"
+                          title="Modifier"
+                        >
                           <Edit className="h-4 w-4" />
                         </button>
-                        <button className="text-red-600 hover:text-red-900">
+                        <button
+                          onClick={() => handleDelete(variety)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Supprimer"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </td>
@@ -365,14 +524,14 @@ const Varieties: React.FC = () => {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Précédent
               </button>
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Suivant
               </button>
@@ -383,12 +542,15 @@ const Varieties: React.FC = () => {
                 <p className="text-sm text-gray-700">
                   Affichage de{" "}
                   <span className="font-medium">
-                    {(currentPage - 1) * pageSize + 1}
+                    {varieties.length === 0
+                      ? 0
+                      : (currentPage - 1) * pageSize + 1}
                   </span>{" "}
                   à{" "}
                   <span className="font-medium">
-                    {Math.min(currentPage * pageSize, varieties.length)}
+                    {Math.min(currentPage * pageSize, totalCount)}
                   </span>{" "}
+                  sur <span className="font-medium">{totalCount}</span>{" "}
                   résultats
                 </p>
               </div>
@@ -402,7 +564,7 @@ const Varieties: React.FC = () => {
                     id="pageSize"
                     value={pageSize}
                     onChange={handlePageSizeChange}
-                    className="border-gray-300 rounded-md text-sm"
+                    className="border border-gray-300 rounded-md text-sm px-3 py-1 focus:ring-green-500 focus:border-green-500"
                   >
                     <option value={10}>10</option>
                     <option value={25}>25</option>
@@ -414,33 +576,17 @@ const Varieties: React.FC = () => {
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
 
-                  {/* Numéros de page */}
-                  {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                    const pageNumber = i + 1;
-                    return (
-                      <button
-                        key={pageNumber}
-                        onClick={() => handlePageChange(pageNumber)}
-                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                          currentPage === pageNumber
-                            ? "z-10 bg-green-50 border-green-500 text-green-600"
-                            : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                        }`}
-                      >
-                        {pageNumber}
-                      </button>
-                    );
-                  })}
+                  {renderPageNumbers()}
 
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>

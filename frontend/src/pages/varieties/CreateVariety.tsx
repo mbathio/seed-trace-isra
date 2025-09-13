@@ -208,10 +208,12 @@ const CreateVariety: React.FC = () => {
     // Nettoyer les données avant envoi
     const cleanData = {
       ...formData,
+      code: formData.code.toUpperCase(), // Envoyer le code en majuscules
       description: formData.description?.trim() || undefined,
       origin: formData.origin?.trim() || undefined,
       yieldPotential: formData.yieldPotential || undefined,
       releaseYear: formData.releaseYear || undefined,
+      resistances: formData.resistances.filter((r) => r.trim().length > 0),
     };
 
     createVarietyMutation.mutate(cleanData);

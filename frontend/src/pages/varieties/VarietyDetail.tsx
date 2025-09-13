@@ -97,7 +97,7 @@ const VarietyDetail: React.FC = () => {
     error,
     refetch,
   } = useApiQuery<Variety>(
-    ["variety", id],
+    ["variety", id ?? ""],
     `/varieties/${id}`,
     {},
     { enabled: !!id }

@@ -71,11 +71,23 @@ export default class DataTransformer {
   static transformVariety(variety: any): any {
     if (!variety) return null;
 
+    // Mapping DB vers UI pour cropType
+    const cropTypeMapping: Record<string, string> = {
+      RICE: "rice",
+      MAIZE: "maize",
+      PEANUT: "peanut",
+      SORGHUM: "sorghum",
+      COWPEA: "cowpea",
+      MILLET: "millet",
+      WHEAT: "wheat",
+    };
+
     return {
       id: variety.id,
       code: variety.code,
       name: variety.name,
-      cropType: this.transformCropTypeDBToUI(variety.cropType),
+      cropType:
+        cropTypeMapping[variety.cropType] || variety.cropType.toLowerCase(),
       description: variety.description,
       maturityDays: variety.maturityDays,
       yieldPotential: variety.yieldPotential,
@@ -85,8 +97,13 @@ export default class DataTransformer {
       isActive: variety.isActive,
       createdAt: variety.createdAt,
       updatedAt: variety.updatedAt,
-      // Comptes si inclus
+      // Inclure les compteurs si présents
       _count: variety._count,
+      // Transformer les relations si présentes
+      seedLots: variety.seedLots?.map((lot: any) => this.transformSeedLot(lot)),
+      contracts: variety.contracts?.map((contract: any) =>
+        this.transformContract(contract)
+      ),
     };
   }
 
