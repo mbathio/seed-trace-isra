@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/EditSeedLot.tsx
+// frontend/src/pages/seeds/EditSeedLot.tsx - VERSION CORRIGÉE FINALE
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
@@ -102,8 +102,16 @@ const EditSeedLot: React.FC = () => {
 
   useEffect(() => {
     if (seedLot) {
-      const safeDate = (value?: string) =>
-        value && value.includes("T") ? value.split("T")[0] : "";
+      const safeDate = (value?: string) => {
+        if (!value) return "";
+        // Si c'est déjà une date ISO, on prend juste la partie date
+        if (value.includes("T")) {
+          return value.split("T")[0];
+        }
+        // Sinon, on convertit la date en format YYYY-MM-DD
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? "" : date.toISOString().split("T")[0];
+      };
 
       reset({
         varietyId: seedLot.varietyId,
@@ -123,7 +131,39 @@ const EditSeedLot: React.FC = () => {
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<EditSeedLotForm>) => {
       if (!id) throw new Error("ID manquant");
-      const response = await seedLotService.update(id, data);
+
+      // ✅ CORRECTION : Préparer les données en s'assurant qu'elles sont conformes
+      const updateData: any = {};
+
+      // Ajouter seulement les champs modifiables
+      if (data.quantity !== undefined) {
+        updateData.quantity = Number(data.quantity);
+      }
+
+      if (data.status !== undefined && data.status !== "") {
+        updateData.status = data.status;
+      }
+
+      if (data.notes !== undefined) {
+        updateData.notes = data.notes || null;
+      }
+
+      if (data.expiryDate !== undefined) {
+        updateData.expiryDate = data.expiryDate || null;
+      }
+
+      if (data.batchNumber !== undefined) {
+        updateData.batchNumber = data.batchNumber || null;
+      }
+
+      // ✅ CORRECTION : Gérer le multiplicateur correctement
+      if (data.multiplierId !== undefined) {
+        updateData.multiplierId = data.multiplierId || null;
+      }
+
+      console.log("📤 Données envoyées au backend:", updateData);
+
+      const response = await seedLotService.update(id, updateData);
       return response.data;
     },
     onSuccess: () => {
@@ -131,17 +171,34 @@ const EditSeedLot: React.FC = () => {
       navigate(`/dashboard/seed-lots/${id}`);
     },
     onError: (error: any) => {
-      const errorMessage =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Erreur lors de la mise à jour du lot";
-      console.error("Erreur backend:", error?.response?.data);
+      console.error("❌ Erreur complète:", error);
+      console.error("📋 Réponse du serveur:", error?.response?.data);
+
+      let errorMessage = "Erreur lors de la mise à jour du lot";
+
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      // Afficher les détails de validation si disponibles
+      if (error?.response?.data?.details) {
+        console.error("🔍 Détails de validation:", error.response.data.details);
+        errorMessage += ` - ${JSON.stringify(error.response.data.details)}`;
+      }
+
       toast.error(errorMessage);
     },
   });
 
   const onSubmit = async (data: EditSeedLotForm) => {
-    const payload = {
+    console.log("📝 Données du formulaire:", data);
+
+    // ✅ CORRECTION : Préparer seulement les champs modifiables
+    const updatePayload = {
       quantity: data.quantity,
       status: data.status,
       notes: data.notes,
@@ -152,7 +209,7 @@ const EditSeedLot: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      await updateMutation.mutateAsync(payload);
+      await updateMutation.mutateAsync(updatePayload);
     } finally {
       setIsSubmitting(false);
     }
@@ -212,65 +269,33 @@ const EditSeedLot: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* ✅ CORRECTION : Champs en lecture seule */}
               <div className="space-y-2">
-                <Label htmlFor="varietyId">Variété *</Label>
-                <Controller
-                  name="varietyId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      value={field.value?.toString()}
-                      onValueChange={(value) => field.onChange(parseInt(value))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une variété" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {varieties.map((variety) => (
-                          <SelectItem
-                            key={variety.id}
-                            value={variety.id.toString()}
-                          >
-                            {variety.name} ({variety.code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.varietyId && (
-                  <p className="text-sm text-red-500">
-                    {errors.varietyId.message}
-                  </p>
-                )}
+                <Label>ID du lot</Label>
+                <Input value={seedLot.id} disabled className="bg-muted" />
+                <p className="text-sm text-muted-foreground">
+                  L'ID du lot ne peut pas être modifié
+                </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="level">Niveau *</Label>
-                <Controller
-                  name="level"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      value={field.value ?? ""}
-                      onValueChange={field.onChange}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un niveau" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SEED_LEVELS.map((level) => (
-                          <SelectItem key={level.value} value={level.value}>
-                            {level.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                <Label>Variété</Label>
+                <Input
+                  value={`${seedLot.variety?.name} (${seedLot.variety?.code})`}
+                  disabled
+                  className="bg-muted"
                 />
-                {errors.level && (
-                  <p className="text-sm text-red-500">{errors.level.message}</p>
-                )}
+                <p className="text-sm text-muted-foreground">
+                  La variété ne peut pas être modifiée
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Niveau</Label>
+                <Input value={seedLot.level} disabled className="bg-muted" />
+                <p className="text-sm text-muted-foreground">
+                  Le niveau ne peut pas être modifié
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -353,17 +378,17 @@ const EditSeedLot: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="productionDate">Date de production *</Label>
-                <Controller
-                  name="productionDate"
-                  control={control}
-                  render={({ field }) => <Input type="date" {...field} />}
+                <Label>Date de production</Label>
+                <Input
+                  value={new Date(seedLot.productionDate).toLocaleDateString(
+                    "fr-FR"
+                  )}
+                  disabled
+                  className="bg-muted"
                 />
-                {errors.productionDate && (
-                  <p className="text-sm text-red-500">
-                    {errors.productionDate.message}
-                  </p>
-                )}
+                <p className="text-sm text-muted-foreground">
+                  La date de production ne peut pas être modifiée
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -380,6 +405,7 @@ const EditSeedLot: React.FC = () => {
                 )}
               </div>
 
+              {/* ✅ CORRECTION FINALE : Multiplicateur avec __none */}
               <div className="space-y-2">
                 <Label htmlFor="multiplierId">Multiplicateur</Label>
                 <Controller
@@ -387,10 +413,10 @@ const EditSeedLot: React.FC = () => {
                   control={control}
                   render={({ field }) => (
                     <Select
-                      value={field.value?.toString() || "0"} // Au lieu de "__none"
+                      value={field.value?.toString() || "__none"}
                       onValueChange={(value) =>
                         field.onChange(
-                          value === "0" ? undefined : parseInt(value) // Au lieu de "__none"
+                          value === "__none" ? undefined : parseInt(value)
                         )
                       }
                     >
@@ -398,8 +424,9 @@ const EditSeedLot: React.FC = () => {
                         <SelectValue placeholder="Sélectionner un multiplicateur" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="0">Aucun</SelectItem> // ✅
-                        CORRECTION
+                        <SelectItem value="__none">
+                          Aucun multiplicateur
+                        </SelectItem>
                         {multipliers.map((multiplier) => (
                           <SelectItem
                             key={multiplier.id}
@@ -420,13 +447,11 @@ const EditSeedLot: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="parentLotId">Lot parent (optionnel)</Label>
-                <Controller
-                  name="parentLotId"
-                  control={control}
-                  render={({ field }) => (
-                    <Input placeholder="ID du lot parent" {...field} disabled />
-                  )}
+                <Label>Lot parent</Label>
+                <Input
+                  value={seedLot.parentLotId || "Aucun"}
+                  disabled
+                  className="bg-muted"
                 />
                 <p className="text-sm text-muted-foreground">
                   Le lot parent ne peut pas être modifié
