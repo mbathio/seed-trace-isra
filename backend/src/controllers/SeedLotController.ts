@@ -1,16 +1,15 @@
-// backend/src/controllers/SeedLotController.ts - VERSION CORRIGÉE
+// backend/src/controllers/SeedLotController.ts - VERSION CORRIGÉE COMPLÈTE
 
 import { Request, Response, NextFunction } from "express";
 import { SeedLotService } from "../services/SeedLotService";
 import { ResponseHandler } from "../utils/response";
-import { logger, LoggerUtils } from "../utils/logger"; // Import corrigé
+import { logger, LoggerUtils } from "../utils/logger";
 import { AuthenticatedRequest } from "../middleware/auth";
 import QRCode from "qrcode";
 
 export class SeedLotController {
   /**
-   * POST /api/seed-lots
-   * Créer un nouveau lot
+   * ✅ CORRECTION: POST /api/seed-lots - Créer un nouveau lot
    */
   static async createSeedLot(
     req: AuthenticatedRequest,
@@ -23,9 +22,9 @@ export class SeedLotController {
         data: req.body,
       });
 
+      // ✅ CORRECTION: Les données arrivent déjà transformées par le middleware
       const seedLot = await SeedLotService.createSeedLot(req.body);
 
-      // Log d'audit - Utiliser LoggerUtils au lieu de logger.audit
       LoggerUtils.audit("Seed lot created", req.user?.userId, {
         seedLotId: seedLot.id,
         varietyId: seedLot.varietyId,
@@ -44,43 +43,36 @@ export class SeedLotController {
   }
 
   /**
-   * GET /api/seed-lots
-   * Récupérer la liste des lots avec pagination et filtres
+   * ✅ CORRECTION: GET /api/seed-lots - Récupérer la liste avec pagination
    */
-
   static async getSeedLots(
     req: Request,
     res: Response,
     next: NextFunction
   ): Promise<Response | void> {
     try {
-      // Conversion des paramètres avec gestion des types
+      // ✅ CORRECTION: Utiliser les paramètres déjà transformés par le middleware
       const filters = {
-        page: req.query.page ? parseInt(String(req.query.page)) : 1,
-        pageSize: req.query.pageSize
-          ? parseInt(String(req.query.pageSize))
-          : 10,
+        page: req.query.page as number | undefined,
+        pageSize: req.query.pageSize as number | undefined,
         search: req.query.search as string,
         level: req.query.level as string,
-        status: req.query.status as string,
-        varietyId: req.query.varietyId
-          ? parseInt(String(req.query.varietyId))
-          : undefined,
-        multiplierId: req.query.multiplierId
-          ? parseInt(String(req.query.multiplierId))
-          : undefined,
+        status: req.query.status as string, // Déjà transformé UI -> DB par middleware
+        varietyId: req.query.varietyId as number | undefined,
+        multiplierId: req.query.multiplierId as number | undefined,
         startDate: req.query.startDate as string,
         endDate: req.query.endDate as string,
         sortBy: (req.query.sortBy as string) || "createdAt",
         sortOrder: (req.query.sortOrder as "asc" | "desc") || "desc",
-        includeRelations: req.query.includeRelations !== "false",
+        includeRelations: req.query.includeRelations as boolean,
       };
 
-      console.log("Transformed filters:", filters);
+      logger.info("Getting seed lots with filters", { filters });
 
+      // ✅ CORRECTION: Le service retourne déjà les données transformées
       const result = await SeedLotService.getSeedLots(filters);
 
-      // Retourner directement le résultat qui contient déjà data, message et meta
+      // Le résultat contient déjà la structure success/message/data/meta
       return res.json(result);
     } catch (error) {
       next(error);
@@ -88,8 +80,7 @@ export class SeedLotController {
   }
 
   /**
-   * GET /api/seed-lots/:id
-   * Récupérer un lot par son ID
+   * ✅ CORRECTION: GET /api/seed-lots/:id - Récupérer un lot par ID
    */
   static async getSeedLotById(
     req: Request,
@@ -100,6 +91,7 @@ export class SeedLotController {
       const { id } = req.params;
       const includeFullDetails = req.query.full !== "false";
 
+      // ✅ CORRECTION: Le service retourne déjà les données transformées
       const seedLot = await SeedLotService.getSeedLotById(
         id,
         includeFullDetails
@@ -112,8 +104,7 @@ export class SeedLotController {
   }
 
   /**
-   * PUT /api/seed-lots/:id
-   * Mettre à jour un lot
+   * ✅ CORRECTION: PUT /api/seed-lots/:id - Mettre à jour un lot
    */
   static async updateSeedLot(
     req: AuthenticatedRequest,
@@ -129,9 +120,9 @@ export class SeedLotController {
         updates: req.body,
       });
 
+      // ✅ CORRECTION: Les données sont déjà transformées par le middleware
       const seedLot = await SeedLotService.updateSeedLot(id, req.body);
 
-      // Log d'audit - Utiliser LoggerUtils
       LoggerUtils.audit("Seed lot updated", req.user?.userId, {
         seedLotId: id,
         changes: Object.keys(req.body),
@@ -148,8 +139,7 @@ export class SeedLotController {
   }
 
   /**
-   * DELETE /api/seed-lots/:id
-   * Supprimer un lot
+   * ✅ CORRECTION: DELETE /api/seed-lots/:id - Supprimer un lot
    */
   static async deleteSeedLot(
     req: AuthenticatedRequest,
@@ -168,7 +158,6 @@ export class SeedLotController {
 
       await SeedLotService.deleteSeedLot(id, hardDelete);
 
-      // Log d'audit - Utiliser LoggerUtils
       LoggerUtils.audit("Seed lot deleted", req.user?.userId, {
         seedLotId: id,
         hardDelete,
@@ -181,8 +170,7 @@ export class SeedLotController {
   }
 
   /**
-   * POST /api/seed-lots/bulk-update
-   * Mise à jour en masse
+   * ✅ CORRECTION: POST /api/seed-lots/bulk-update - Mise à jour en masse
    */
   static async bulkUpdateSeedLots(
     req: AuthenticatedRequest,
@@ -200,7 +188,7 @@ export class SeedLotController {
 
       LoggerUtils.audit("Bulk seed lots update", req.user?.userId, {
         count: result.count,
-        ids: ids.slice(0, 10), // Log seulement les 10 premiers
+        ids: ids.slice(0, 10),
       });
 
       return ResponseHandler.success(res, result, result.message);
@@ -210,8 +198,7 @@ export class SeedLotController {
   }
 
   /**
-   * GET /api/seed-lots/search
-   * Recherche avancée
+   * ✅ CORRECTION: GET /api/seed-lots/search - Recherche avancée
    */
   static async searchSeedLots(
     req: Request,
@@ -244,8 +231,7 @@ export class SeedLotController {
   }
 
   /**
-   * GET /api/seed-lots/export
-   * Export des données
+   * ✅ CORRECTION: GET /api/seed-lots/export - Export des données
    */
   static async exportSeedLots(
     req: Request,
@@ -256,7 +242,7 @@ export class SeedLotController {
       const format = (req.query.format as string) || "csv";
       const filters = {
         ...req.query,
-        format: undefined, // Retirer format des filtres
+        format: undefined,
       };
 
       const data = await SeedLotService.exportSeedLots(
@@ -299,8 +285,7 @@ export class SeedLotController {
   }
 
   /**
-   * GET /api/seed-lots/:id/qr-code
-   * Générer le QR Code d'un lot
+   * ✅ CORRECTION: GET /api/seed-lots/:id/qr-code - Générer le QR Code
    */
   static async getQRCode(
     req: Request,
@@ -311,28 +296,24 @@ export class SeedLotController {
       const { id } = req.params;
       const size = parseInt(req.query.size as string) || 300;
 
+      // ✅ CORRECTION: Le service retourne déjà les données transformées
       const seedLot = await SeedLotService.getSeedLotById(id, false);
 
-      // Vérifier que le lot a les propriétés nécessaires
       if (!seedLot || typeof seedLot !== "object") {
         return ResponseHandler.notFound(res, "Lot non trouvé");
       }
 
-      // Créer un type safe pour le lot
-      const safeSeedLot = seedLot as any;
-
-      // Données à encoder dans le QR Code
+      // ✅ CORRECTION: Les données sont déjà transformées (format UI)
       const qrData = {
-        id: safeSeedLot.id,
-        variety: safeSeedLot.variety?.code || "N/A",
-        level: safeSeedLot.level,
-        quantity: safeSeedLot.quantity,
-        productionDate: safeSeedLot.productionDate,
-        status: safeSeedLot.status,
+        id: seedLot.id,
+        variety: seedLot.varietyCode || "N/A",
+        level: seedLot.level,
+        quantity: seedLot.quantity,
+        productionDate: seedLot.productionDate,
+        status: seedLot.status, // Déjà en format UI
         url: `${process.env.CLIENT_URL}/seed-lots/${id}`,
       };
 
-      // Options de génération
       const qrOptions = {
         width: size,
         margin: 2,
@@ -342,7 +323,6 @@ export class SeedLotController {
         },
       };
 
-      // Générer selon le format demandé
       const format = req.query.format || "dataurl";
 
       if (format === "png") {
@@ -366,8 +346,7 @@ export class SeedLotController {
   }
 
   /**
-   * GET /api/seed-lots/:id/genealogy
-   * Récupérer l'arbre généalogique
+   * ✅ CORRECTION: GET /api/seed-lots/:id/genealogy - Arbre généalogique
    */
   static async getGenealogyTree(
     req: Request,
@@ -378,6 +357,7 @@ export class SeedLotController {
       const { id } = req.params;
       const maxDepth = parseInt(req.query.maxDepth as string) || 10;
 
+      // ✅ CORRECTION: Le service retourne déjà les données transformées
       const genealogyTree = await SeedLotService.getGenealogyTree(id, maxDepth);
 
       return ResponseHandler.success(
@@ -391,8 +371,7 @@ export class SeedLotController {
   }
 
   /**
-   * POST /api/seed-lots/:id/child-lots
-   * Créer un lot enfant
+   * ✅ CORRECTION: POST /api/seed-lots/:id/child-lots - Créer un lot enfant
    */
   static async createChildLot(
     req: AuthenticatedRequest,
@@ -407,6 +386,7 @@ export class SeedLotController {
         parentLotId: id,
       };
 
+      // ✅ CORRECTION: Le service gère la transformation
       const childLot = await SeedLotService.createChildLot(id, childLotData);
 
       LoggerUtils.audit("Child lot created", req.user?.userId, {
@@ -426,8 +406,7 @@ export class SeedLotController {
   }
 
   /**
-   * POST /api/seed-lots/:id/transfer
-   * Transférer un lot
+   * ✅ CORRECTION: POST /api/seed-lots/:id/transfer - Transférer un lot
    */
   static async transferLot(
     req: AuthenticatedRequest,
@@ -458,8 +437,7 @@ export class SeedLotController {
   }
 
   /**
-   * GET /api/seed-lots/:id/stats
-   * Récupérer les statistiques d'un lot
+   * ✅ CORRECTION: GET /api/seed-lots/:id/stats - Statistiques d'un lot
    */
   static async getSeedLotStats(
     req: Request,
@@ -482,8 +460,7 @@ export class SeedLotController {
   }
 
   /**
-   * GET /api/seed-lots/:id/history
-   * Récupérer l'historique des modifications
+   * ✅ CORRECTION: GET /api/seed-lots/:id/history - Historique des modifications
    */
   static async getSeedLotHistory(
     req: Request,
@@ -506,8 +483,7 @@ export class SeedLotController {
   }
 
   /**
-   * POST /api/seed-lots/:id/validate
-   * Valider un lot
+   * ✅ CORRECTION: POST /api/seed-lots/:id/validate - Valider un lot
    */
   static async validateSeedLot(
     req: AuthenticatedRequest,

@@ -1,8 +1,12 @@
+// backend/src/services/GenealogyService.ts - VERSION CORRIGÉE COMPLÈTE
+
 import { PrismaClient, Prisma } from "@prisma/client";
 import { logger } from "../utils/logger";
+import DataTransformer from "../utils/transformers";
 
 const prisma = new PrismaClient();
 
+// ✅ CORRECTION: Interface mise à jour avec parentLotId optionnel
 export interface GenealogyNode {
   id: string;
   level: string;
@@ -13,12 +17,12 @@ export interface GenealogyNode {
   };
   quantity: number;
   productionDate: Date;
-  status: string;
+  status: string; // ✅ Format UI (transformé)
   multiplier?: {
     id: number;
     name: string;
   };
-  parentLotId?: string; // ✅ AJOUT de parentLotId
+  parentLotId?: string | null; // ✅ CORRECTION: Accepter null
   children: GenealogyNode[];
   _depth?: number;
   _path?: string[];
@@ -34,7 +38,7 @@ export interface GenealogyRelation {
 
 export class GenealogyService {
   /**
-   * Récupère l'arbre généalogique complet d'un lot
+   * ✅ CORRECTION: Récupère l'arbre généalogique complet avec transformation
    */
   static async getGenealogyTree(
     lotId: string,
@@ -43,7 +47,6 @@ export class GenealogyService {
     try {
       logger.info(`Getting genealogy tree for lot: ${lotId}`);
 
-      // Fonction récursive pour construire l'arbre
       const buildTree = async (
         currentLotId: string,
         depth: number = 0,
@@ -56,7 +59,6 @@ export class GenealogyService {
           return null;
         }
 
-        // Éviter les cycles
         if (path.includes(currentLotId)) {
           logger.warn(`Circular reference detected for lot ${currentLotId}`);
           return null;
@@ -66,26 +68,15 @@ export class GenealogyService {
           where: { id: currentLotId },
           include: {
             variety: {
-              select: {
-                id: true,
-                name: true,
-                code: true,
-              },
+              select: { id: true, name: true, code: true },
             },
             multiplier: {
-              select: {
-                id: true,
-                name: true,
-              },
+              select: { id: true, name: true },
             },
             childLots: {
               include: {
                 variety: {
-                  select: {
-                    id: true,
-                    name: true,
-                    code: true,
-                  },
+                  select: { id: true, name: true, code: true },
                 },
               },
             },
@@ -97,7 +88,6 @@ export class GenealogyService {
           return null;
         }
 
-        // Construire le chemin actuel
         const currentPath = [...path, currentLotId];
 
         // Construire récursivement les enfants
@@ -113,6 +103,10 @@ export class GenealogyService {
           }
         }
 
+        // ✅ CORRECTION: Transformer le statut pour UI
+        const transformedStatus =
+          DataTransformer.transformLotStatusDBToUI(lot.status) || lot.status;
+
         return {
           id: lot.id,
           level: lot.level,
@@ -123,14 +117,14 @@ export class GenealogyService {
           },
           quantity: lot.quantity,
           productionDate: lot.productionDate,
-          status: lot.status,
+          status: transformedStatus, // ✅ Status transformé pour UI
           multiplier: lot.multiplier
             ? {
                 id: lot.multiplier.id,
                 name: lot.multiplier.name,
               }
             : undefined,
-          parentLotId: lot.parentLotId || undefined, // ✅ CORRECTION: Convertir null en undefined
+          parentLotId: lot.parentLotId, // ✅ CORRECTION: Gérer null
           children,
           _depth: depth,
           _path: currentPath,
@@ -146,7 +140,7 @@ export class GenealogyService {
   }
 
   /**
-   * Récupère tous les ancêtres d'un lot (chemin vers la racine)
+   * ✅ CORRECTION: Récupère tous les ancêtres avec transformation
    */
   static async getAncestors(lotId: string): Promise<any[]> {
     try {
@@ -155,7 +149,6 @@ export class GenealogyService {
       const visitedLots = new Set<string>();
 
       while (currentLotId) {
-        // Éviter les cycles
         if (visitedLots.has(currentLotId)) {
           logger.warn(
             `Circular reference detected in ancestors for lot ${currentLotId}`
@@ -164,38 +157,47 @@ export class GenealogyService {
         }
         visitedLots.add(currentLotId);
 
-        const lot: any = await prisma.seedLot.findUnique({
-          where: { id: lotId },
+        const lot: Prisma.SeedLotGetPayload<{
+          include: {
+            childLots: true;
+            variety: true;
+            multiplier: true;
+            parentLot: {
+              include: { variety: true };
+            };
+          };
+        }> | null = await prisma.seedLot.findUnique({
+          where: { id: currentLotId },
           include: {
             childLots: true,
-
             variety: true,
             multiplier: true,
             parentLot: {
-              include: {
-                variety: true,
-              },
+              include: { variety: true },
             },
           },
         });
 
         if (!lot) break;
 
-        ancestors.push({
+        // ✅ CORRECTION: Transformer avant d'ajouter
+        const transformedLot = {
           id: lot.id,
           level: lot.level,
           variety: lot.variety,
           quantity: lot.quantity,
           productionDate: lot.productionDate,
-          status: lot.status,
+          status:
+            DataTransformer.transformLotStatusDBToUI(lot.status) || lot.status,
           multiplier: lot.multiplier,
-          parentLotId: lot.parentLotId || undefined, // ✅ CORRECTION: Convertir null en undefined
-        });
+          parentLotId: lot.parentLotId,
+        };
 
+        ancestors.push(transformedLot);
         currentLotId = lot.parentLotId;
       }
 
-      return ancestors.reverse(); // Retourner de la racine vers le lot actuel
+      return ancestors.reverse();
     } catch (error) {
       logger.error("Error getting ancestors:", error);
       throw error;
@@ -203,7 +205,7 @@ export class GenealogyService {
   }
 
   /**
-   * Récupère tous les descendants d'un lot (aplati)
+   * ✅ CORRECTION: Récupère tous les descendants avec transformation
    */
   static async getDescendants(lotId: string): Promise<any[]> {
     try {
@@ -214,7 +216,6 @@ export class GenealogyService {
       while (queue.length > 0) {
         const currentLotId = queue.shift()!;
 
-        // Éviter les cycles
         if (visitedLots.has(currentLotId)) continue;
         visitedLots.add(currentLotId);
 
@@ -227,16 +228,21 @@ export class GenealogyService {
         });
 
         for (const child of childLots) {
-          descendants.push({
+          // ✅ CORRECTION: Transformer avant d'ajouter
+          const transformedChild = {
             id: child.id,
             level: child.level,
             variety: child.variety,
             quantity: child.quantity,
             productionDate: child.productionDate,
-            status: child.status,
+            status:
+              DataTransformer.transformLotStatusDBToUI(child.status) ||
+              child.status,
             multiplier: child.multiplier,
-            parentLotId: child.parentLotId || undefined, // ✅ CORRECTION: Convertir null en undefined
-          });
+            parentLotId: child.parentLotId,
+          };
+
+          descendants.push(transformedChild);
           queue.push(child.id);
         }
       }
@@ -249,7 +255,7 @@ export class GenealogyService {
   }
 
   /**
-   * Récupère les relations directes (parent et enfants) d'un lot
+   * ✅ CORRECTION: Relations directes avec transformation
    */
   static async getDirectRelations(lotId: string) {
     try {
@@ -284,9 +290,11 @@ export class GenealogyService {
         variety: seedLot.variety,
         quantity: seedLot.quantity,
         productionDate: seedLot.productionDate,
-        status: seedLot.status,
+        status:
+          DataTransformer.transformLotStatusDBToUI(seedLot.status) ||
+          seedLot.status,
         multiplier: seedLot.multiplier,
-        parentLotId: seedLot.parentLotId || undefined,
+        parentLotId: seedLot.parentLotId,
       });
 
       return {
@@ -301,7 +309,7 @@ export class GenealogyService {
   }
 
   /**
-   * Crée une relation parent-enfant entre deux lots
+   * ✅ CORRECTION: Crée une relation parent-enfant avec validation
    */
   static async createRelation(
     parentId: string,
@@ -321,7 +329,6 @@ export class GenealogyService {
       if (!parent) throw new Error(`Parent lot not found: ${parentId}`);
       if (!child) throw new Error(`Child lot not found: ${childId}`);
 
-      // Vérifier que le child n'a pas déjà un parent
       if (child.parentLotId) {
         throw new Error(
           `Child lot ${childId} already has a parent: ${child.parentLotId}`
@@ -358,9 +365,7 @@ export class GenealogyService {
           variety: true,
           multiplier: true,
           parentLot: {
-            include: {
-              variety: true,
-            },
+            include: { variety: true },
           },
         },
       });
@@ -376,7 +381,9 @@ export class GenealogyService {
       }
 
       logger.info(`Created relation: ${parentId} -> ${childId}`);
-      return updatedChild;
+
+      // ✅ CORRECTION: Transformer avant de retourner
+      return DataTransformer.transformSeedLot(updatedChild);
     } catch (error) {
       logger.error("Error creating relation:", error);
       throw error;
@@ -384,7 +391,7 @@ export class GenealogyService {
   }
 
   /**
-   * Supprime une relation parent-enfant
+   * ✅ CORRECTION: Supprime une relation parent-enfant
    */
   static async removeRelation(childId: string) {
     try {
@@ -412,7 +419,9 @@ export class GenealogyService {
       });
 
       logger.info(`Removed parent relation from lot: ${childId}`);
-      return updatedChild;
+
+      // ✅ CORRECTION: Transformer avant de retourner
+      return DataTransformer.transformSeedLot(updatedChild);
     } catch (error) {
       logger.error("Error removing relation:", error);
       throw error;
@@ -420,7 +429,7 @@ export class GenealogyService {
   }
 
   /**
-   * Met à jour une relation existante
+   * ✅ CORRECTION: Met à jour une relation existante
    */
   static async updateRelation(
     childId: string,
@@ -441,7 +450,6 @@ export class GenealogyService {
       const updateData: Prisma.SeedLotUpdateInput = {};
 
       if (data.newParentId) {
-        // Vérifier le nouveau parent
         const newParent = await prisma.seedLot.findUnique({
           where: { id: data.newParentId },
         });
@@ -461,7 +469,6 @@ export class GenealogyService {
           );
         }
 
-        // ✅ CORRECTION: Utiliser parentLot au lieu de parentLotId
         updateData.parentLot = {
           connect: { id: data.newParentId },
         };
@@ -478,15 +485,15 @@ export class GenealogyService {
           variety: true,
           multiplier: true,
           parentLot: {
-            include: {
-              variety: true,
-            },
+            include: { variety: true },
           },
         },
       });
 
       logger.info(`Updated relation for lot: ${childId}`);
-      return updatedChild;
+
+      // ✅ CORRECTION: Transformer avant de retourner
+      return DataTransformer.transformSeedLot(updatedChild);
     } catch (error) {
       logger.error("Error updating relation:", error);
       throw error;
@@ -494,7 +501,7 @@ export class GenealogyService {
   }
 
   /**
-   * Récupère les statistiques de généalogie
+   * ✅ CORRECTION: Statistiques de généalogie avec transformation
    */
   static async getGenealogyStats(lotId: string) {
     try {
@@ -505,7 +512,7 @@ export class GenealogyService {
       ]);
 
       const stats = {
-        totalAncestors: ancestors.length - 1, // Exclure le lot lui-même
+        totalAncestors: ancestors.length - 1,
         totalDescendants: descendants.length,
         totalDirectChildren: directRelations.children.length,
         hasParent: !!directRelations.parent,
@@ -545,7 +552,7 @@ export class GenealogyService {
   }
 
   /**
-   * Vérifie la cohérence de la généalogie
+   * ✅ CORRECTION: Vérification de cohérence avec transformation
    */
   static async checkGenealogyConsistency(lotId: string) {
     try {
@@ -629,7 +636,7 @@ export class GenealogyService {
   }
 
   /**
-   * Exporte la généalogie dans différents formats
+   * ✅ CORRECTION: Export de généalogie avec transformation
    */
   static async exportGenealogy(
     lotId: string,
@@ -675,9 +682,9 @@ export class GenealogyService {
           const addNodes = (node: GenealogyNode) => {
             const label = `${node.id}\\n${node.level}\\n${node.quantity}kg`;
             const color =
-              node.status === "CERTIFIED"
+              node.status === "certified"
                 ? "green"
-                : node.status === "REJECTED"
+                : node.status === "rejected"
                 ? "red"
                 : "black";
             dotLines.push(

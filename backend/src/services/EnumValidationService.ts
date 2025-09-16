@@ -1,281 +1,146 @@
-// backend/src/services/EnumValidationService.ts
-import { ENUM_MAPPINGS } from "../config/enumMappings";
+// backend/src/services/EnumValidationService.ts - NOUVEAU SERVICE
 
+import { 
+  Role,
+  SeedLevel,
+  CropType,
+  LotStatus,
+  ParcelStatus,
+  ProductionStatus,
+  ActivityType,
+  IssueType,
+  IssueSeverity,
+  TestResult,
+  CertificationLevel,
+  MultiplierStatus,
+  ContractStatus,
+  ReportType
+} from "@prisma/client";
+
+/**
+ * ✅ NOUVEAU: Service centralisé de validation des enums
+ * Valide que les valeurs sont correctes avant transformation
+ */
 export class EnumValidationService {
-  // Valider une valeur d'enum (accepte UI ou DB)
-  static isValidEnumValue(
-    value: string,
-    enumType: keyof typeof ENUM_MAPPINGS
-  ): boolean {
-    if (!value || !ENUM_MAPPINGS[enumType]) return false;
+  
+  // ✅ Mapping des valeurs UI valides
+  private static readonly UI_ENUM_VALUES = {
+    ROLE: ["admin", "manager", "inspector", "multiplier", "guest", "technician", "researcher"],
+    SEED_LEVEL: ["GO", "G1", "G2", "G3", "G4", "R1", "R2"],
+    CROP_TYPE: ["rice", "maize", "peanut", "sorghum", "cowpea", "millet", "wheat"],
+    LOT_STATUS: ["pending", "certified", "rejected", "in-stock", "sold", "active", "distributed"],
+    PARCEL_STATUS: ["available", "in-use", "resting"],
+    PRODUCTION_STATUS: ["planned", "in-progress", "completed", "cancelled"],
+    ACTIVITY_TYPE: ["soil-preparation", "sowing", "fertilization", "irrigation", "weeding", "pest-control", "harvest", "other"],
+    ISSUE_TYPE: ["disease", "pest", "weather", "management", "other"],
+    ISSUE_SEVERITY: ["low", "medium", "high"],
+    TEST_RESULT: ["pass", "fail"],
+    CERTIFICATION_LEVEL: ["beginner", "intermediate", "expert"],
+    MULTIPLIER_STATUS: ["active", "inactive"],
+    CONTRACT_STATUS: ["draft", "active", "completed", "cancelled"],
+    REPORT_TYPE: ["production", "quality", "inventory", "multiplier-performance", "custom"]
+  } as const;
 
-    const mapping = ENUM_MAPPINGS[enumType];
-    // Cast explicite pour éviter l'erreur TypeScript
-    const uiToDb = mapping.UI_TO_DB as Record<string, string>;
-    const dbToUi = mapping.DB_TO_UI as Record<string, string>;
+  // ✅ Mapping des valeurs DB valides
+  private static readonly DB_ENUM_VALUES = {
+    ROLE: Object.values(Role),
+    SEED_LEVEL: Object.values(SeedLevel),
+    CROP_TYPE: Object.values(CropType),
+    LOT_STATUS: Object.values(LotStatus),
+    PARCEL_STATUS: Object.values(ParcelStatus),
+    PRODUCTION_STATUS: Object.values(ProductionStatus),
+    ACTIVITY_TYPE: Object.values(ActivityType),
+    ISSUE_TYPE: Object.values(IssueType),
+    ISSUE_SEVERITY: Object.values(IssueSeverity),
+    TEST_RESULT: Object.values(TestResult),
+    CERTIFICATION_LEVEL: Object.values(CertificationLevel),
+    MULTIPLIER_STATUS: Object.values(MultiplierStatus),
+    CONTRACT_STATUS: Object.values(ContractStatus),
+    REPORT_TYPE: Object.values(ReportType)
+  } as const;
 
-    return !!(uiToDb[value] || dbToUi[value]);
+  /**
+   * ✅ Valide qu'une valeur UI est correcte pour un enum donné
+   */
+  static isValidUIEnumValue(value: string, enumType: keyof typeof EnumValidationService.UI_ENUM_VALUES): boolean {
+    if (!value || typeof value !== "string") return false;
+    return this.UI_ENUM_VALUES[enumType].includes(value as any);
   }
 
-  // Obtenir toutes les valeurs valides pour un enum (UI)
-  static getValidUIValues(enumType: keyof typeof ENUM_MAPPINGS): string[] {
-    const mapping = ENUM_MAPPINGS[enumType];
-    if (!mapping) return [];
-    return Object.keys(mapping.UI_TO_DB);
+  /**
+   * ✅ Valide qu'une valeur DB est correcte pour un enum donné
+   */
+  static isValidDBEnumValue(value: string, enumType: keyof typeof EnumValidationService.DB_ENUM_VALUES): boolean {
+    if (!value || typeof value !== "string") return false;
+    return (this.DB_ENUM_VALUES[enumType] as readonly string[]).includes(value);
   }
 
-  // Obtenir toutes les valeurs valides pour un enum (DB)
-  static getValidDBValues(enumType: keyof typeof ENUM_MAPPINGS): string[] {
-    const mapping = ENUM_MAPPINGS[enumType];
-    if (!mapping) return [];
-    return Object.keys(mapping.DB_TO_UI);
+  /**
+   * ✅ Valide qu'une valeur est correcte (UI ou DB) pour un enum donné
+   */
+  static isValidEnumValue(value: string, enumType: keyof typeof EnumValidationService.UI_ENUM_VALUES): boolean {
+    if (!value || typeof value !== "string") return false;
+    
+    return this.isValidUIEnumValue(value, enumType) || 
+           this.isValidDBEnumValue(value, enumType as keyof typeof EnumValidationService.DB_ENUM_VALUES);
   }
 
-  // Valider un objet complet
-  static validateObject(
-    data: any,
-    schema: Record<string, keyof typeof ENUM_MAPPINGS>
-  ): {
-    isValid: boolean;
-    errors: string[];
-  } {
+  /**
+   * ✅ Obtient toutes les valeurs UI valides pour un enum
+   */
+  static getValidUIValues(enumType: keyof typeof EnumValidationService.UI_ENUM_VALUES): readonly string[] {
+    return this.UI_ENUM_VALUES[enumType];
+  }
+
+  /**
+   * ✅ Obtient toutes les valeurs DB valides pour un enum
+   */
+  static getValidDBValues(enumType: keyof typeof EnumValidationService.DB_ENUM_VALUES): readonly string[] {
+    return this.DB_ENUM_VALUES[enumType];
+  }
+
+  /**
+   * ✅ Valide un objet complet avec ses enums
+   */
+  static validateObjectEnums(data: any): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
 
-    for (const [field, enumType] of Object.entries(schema)) {
-      if (data[field] && !this.isValidEnumValue(data[field], enumType)) {
-        errors.push(`Valeur invalide pour ${field}: ${data[field]}`);
+    if (!data || typeof data !== "object") {
+      return { isValid: true, errors: [] };
+    }
+
+    // ✅ Mapping des champs vers leurs types d'enum
+    const fieldToEnumMapping: Record<string, keyof typeof EnumValidationService.UI_ENUM_VALUES> = {
+      role: "ROLE",
+      level: "SEED_LEVEL",
+      seedLevel: "SEED_LEVEL",
+      cropType: "CROP_TYPE",
+      status: "LOT_STATUS", // Par défaut LOT_STATUS, peut être surchargé
+      result: "TEST_RESULT",
+      testResult: "TEST_RESULT",
+      severity: "ISSUE_SEVERITY",
+      issueSeverity: "ISSUE_SEVERITY",
+      type: "ACTIVITY_TYPE", // Par défaut ACTIVITY_TYPE, peut être surchargé
+      activityType: "ACTIVITY_TYPE",
+      issueType: "ISSUE_TYPE",
+      reportType: "REPORT_TYPE",
+      certificationLevel: "CERTIFICATION_LEVEL"
+    };
+
+    // ✅ Validation contextuelle du status selon le contexte
+    if (data.status) {
+      let enumType: keyof typeof EnumValidationService.UI_ENUM_VALUES = "LOT_STATUS";
+      
+      // Détecter le contexte pour déterminer le bon type de status
+      if (data.parcelId !== undefined || data.area !== undefined) {
+        enumType = "PARCEL_STATUS";
+      } else if (data.startDate !== undefined || data.endDate !== undefined) {
+        enumType = "PRODUCTION_STATUS";
+      } else if (data.multiplierId !== undefined && data.address !== undefined) {
+        enumType = "MULTIPLIER_STATUS";
+      } else if (data.contractId !== undefined || data.expectedQuantity !== undefined) {
+        enumType = "CONTRACT_STATUS";
       }
-    }
 
-    return {
-      isValid: errors.length === 0,
-      errors,
-    };
-  }
-
-  // Transformer une valeur d'enum
-  static transformValue(
-    value: string | undefined,
-    enumType: keyof typeof ENUM_MAPPINGS,
-    direction: "UI_TO_DB" | "DB_TO_UI"
-  ): string | undefined {
-    if (!value || !ENUM_MAPPINGS[enumType]) return value;
-
-    const mapping = ENUM_MAPPINGS[enumType];
-    const transformMap =
-      direction === "UI_TO_DB"
-        ? (mapping.UI_TO_DB as Record<string, string>)
-        : (mapping.DB_TO_UI as Record<string, string>);
-
-    return transformMap[value] || value;
-  }
-
-  // Valider et transformer une valeur
-  static validateAndTransform(
-    value: string,
-    enumType: keyof typeof ENUM_MAPPINGS,
-    targetFormat: "UI" | "DB"
-  ): {
-    isValid: boolean;
-    value: string | undefined;
-    error?: string;
-  } {
-    if (!this.isValidEnumValue(value, enumType)) {
-      return {
-        isValid: false,
-        value: undefined,
-        error: `Valeur invalide pour ${enumType}: ${value}`,
-      };
-    }
-
-    const direction = targetFormat === "DB" ? "UI_TO_DB" : "DB_TO_UI";
-    const transformed = this.transformValue(value, enumType, direction);
-
-    return {
-      isValid: true,
-      value: transformed,
-    };
-  }
-
-  // Obtenir le format actuel d'une valeur (UI ou DB)
-  static getValueFormat(
-    value: string,
-    enumType: keyof typeof ENUM_MAPPINGS
-  ): "UI" | "DB" | "UNKNOWN" {
-    if (!value || !ENUM_MAPPINGS[enumType]) return "UNKNOWN";
-
-    const mapping = ENUM_MAPPINGS[enumType];
-    const uiToDb = mapping.UI_TO_DB as Record<string, string>;
-    const dbToUi = mapping.DB_TO_UI as Record<string, string>;
-
-    if (uiToDb[value]) return "UI";
-    if (dbToUi[value]) return "DB";
-    return "UNKNOWN";
-  }
-
-  // Normaliser une valeur vers un format spécifique
-  static normalize(
-    value: string,
-    enumType: keyof typeof ENUM_MAPPINGS,
-    targetFormat: "UI" | "DB"
-  ): string | undefined {
-    const currentFormat = this.getValueFormat(value, enumType);
-
-    if (currentFormat === "UNKNOWN") return undefined;
-    if (currentFormat === targetFormat) return value;
-
-    const direction = targetFormat === "DB" ? "UI_TO_DB" : "DB_TO_UI";
-    return this.transformValue(value, enumType, direction);
-  }
-
-  // Valider un tableau de valeurs
-  static validateArray(
-    values: string[],
-    enumType: keyof typeof ENUM_MAPPINGS
-  ): {
-    isValid: boolean;
-    invalidValues: string[];
-  } {
-    const invalidValues = values.filter(
-      (value) => !this.isValidEnumValue(value, enumType)
-    );
-
-    return {
-      isValid: invalidValues.length === 0,
-      invalidValues,
-    };
-  }
-
-  // Transformer un tableau de valeurs
-  static transformArray(
-    values: string[],
-    enumType: keyof typeof ENUM_MAPPINGS,
-    direction: "UI_TO_DB" | "DB_TO_UI"
-  ): string[] {
-    return values.map(
-      (value) => this.transformValue(value, enumType, direction) || value
-    );
-  }
-
-  // Obtenir toutes les valeurs possibles (UI et DB)
-  static getAllValidValues(enumType: keyof typeof ENUM_MAPPINGS): {
-    ui: string[];
-    db: string[];
-  } {
-    return {
-      ui: this.getValidUIValues(enumType),
-      db: this.getValidDBValues(enumType),
-    };
-  }
-
-  // Créer un mapping inversé pour un type d'enum
-  static getMapping(
-    enumType: keyof typeof ENUM_MAPPINGS,
-    direction: "UI_TO_DB" | "DB_TO_UI"
-  ): Record<string, string> {
-    const mapping = ENUM_MAPPINGS[enumType];
-    if (!mapping) return {};
-
-    return direction === "UI_TO_DB"
-      ? (mapping.UI_TO_DB as Record<string, string>)
-      : (mapping.DB_TO_UI as Record<string, string>);
-  }
-
-  // Valider la cohérence des mappings (utile pour les tests)
-  static validateMappingConsistency(enumType: keyof typeof ENUM_MAPPINGS): {
-    isConsistent: boolean;
-    issues: string[];
-  } {
-    const mapping = ENUM_MAPPINGS[enumType];
-    if (!mapping) {
-      return { isConsistent: false, issues: [`Mapping ${enumType} not found`] };
-    }
-
-    const issues: string[] = [];
-    const uiToDb = mapping.UI_TO_DB as Record<string, string>;
-    const dbToUi = mapping.DB_TO_UI as Record<string, string>;
-
-    // Vérifier que chaque valeur UI a une correspondance DB
-    for (const [uiValue, dbValue] of Object.entries(uiToDb)) {
-      if (!dbToUi[dbValue]) {
-        issues.push(
-          `UI value "${uiValue}" maps to DB value "${dbValue}" but reverse mapping is missing`
-        );
-      } else if (dbToUi[dbValue] !== uiValue) {
-        issues.push(
-          `Inconsistent mapping: UI "${uiValue}" -> DB "${dbValue}" -> UI "${dbToUi[dbValue]}"`
-        );
-      }
-    }
-
-    // Vérifier que chaque valeur DB a une correspondance UI
-    for (const [dbValue, uiValue] of Object.entries(dbToUi)) {
-      if (!uiToDb[uiValue]) {
-        issues.push(
-          `DB value "${dbValue}" maps to UI value "${uiValue}" but reverse mapping is missing`
-        );
-      }
-    }
-
-    return {
-      isConsistent: issues.length === 0,
-      issues,
-    };
-  }
-
-  // Obtenir des suggestions pour une valeur invalide
-  static getSuggestions(
-    invalidValue: string,
-    enumType: keyof typeof ENUM_MAPPINGS,
-    maxSuggestions: number = 3
-  ): string[] {
-    const allValues = [
-      ...this.getValidUIValues(enumType),
-      ...this.getValidDBValues(enumType),
-    ];
-
-    // Simple algorithme de distance de Levenshtein pour trouver les valeurs similaires
-    const suggestions = allValues
-      .map((value) => ({
-        value,
-        distance: this.levenshteinDistance(
-          invalidValue.toLowerCase(),
-          value.toLowerCase()
-        ),
-      }))
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, maxSuggestions)
-      .map((item) => item.value);
-
-    return suggestions;
-  }
-
-  // Calcul de la distance de Levenshtein (pour les suggestions)
-  private static levenshteinDistance(a: string, b: string): number {
-    const matrix: number[][] = [];
-
-    for (let i = 0; i <= b.length; i++) {
-      matrix[i] = [i];
-    }
-
-    for (let j = 0; j <= a.length; j++) {
-      matrix[0][j] = j;
-    }
-
-    for (let i = 1; i <= b.length; i++) {
-      for (let j = 1; j <= a.length; j++) {
-        if (b.charAt(i - 1) === a.charAt(j - 1)) {
-          matrix[i][j] = matrix[i - 1][j - 1];
-        } else {
-          matrix[i][j] = Math.min(
-            matrix[i - 1][j - 1] + 1,
-            matrix[i][j - 1] + 1,
-            matrix[i - 1][j] + 1
-          );
-        }
-      }
-    }
-
-    return matrix[b.length][a.length];
-  }
-}
+      if (!this.isValidEnumValue(data.status, enumType)) {
+        errors.push(`Invalid status "${data.status}" for context. Valid values: ${this.getValidUIValues(enumType).join(", ")}`);
