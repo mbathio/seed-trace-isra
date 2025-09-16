@@ -1,141 +1,187 @@
-// frontend/src/services/seedLotService.ts - VERSION AVEC GESTION DES PARAMÈTRES CORRIGÉE
+// frontend/src/services/seedLotService.ts - MÉTHODE UPDATE CORRIGÉE
 
 import { api } from "./api";
 import { SeedLot } from "../types/entities";
 import { ApiResponse, PaginationParams, SeedLotFilters } from "../types/api";
 import { DataTransformer } from "../utils/transformers";
+import { formatDateForAPI } from "../utils/formatters";
 import { toast } from "react-toastify";
-
-// Interface pour les données de création d'un lot
-export interface CreateSeedLotData {
-  varietyId: number;
-  level: "GO" | "G1" | "G2" | "G3" | "G4" | "R1" | "R2";
-  quantity: number;
-  productionDate: string;
-  expiryDate?: string;
-  status?: string;
-  batchNumber?: string;
-  multiplierId?: number;
-  parcelId?: number;
-  parentLotId?: string;
-  notes?: string;
-}
 
 // Interface pour les données de mise à jour d'un lot
 export interface UpdateSeedLotData {
   quantity?: number;
   status?: string;
   notes?: string;
-  multiplierId?: number;
-  parcelId?: number;
-  expiryDate?: string;
-  batchNumber?: string;
+  multiplierId?: number | null;
+  parcelId?: number | null;
+  expiryDate?: string | null;
+  batchNumber?: string | null;
 }
 
-// Interface pour le transfert de lot
-export interface TransferSeedLotData {
-  targetMultiplierId: number;
-  quantity: number;
-  notes?: string;
-}
-
-// Interface pour la création d'un lot enfant
-export interface CreateChildLotData {
-  varietyId: number;
-  quantity: number;
-  productionDate: string;
-  multiplierId?: number;
-  parcelId?: number;
-  notes?: string;
-  batchNumber?: string;
-}
-
-// Interface pour l'arbre généalogique
-export interface GenealogyNode {
-  id: string;
-  varietyName: string;
-  level: string;
-  quantity: number;
-  productionDate: Date;
-  status: string;
-  multiplierName?: string;
-  parentLotId?: string;
-  children: GenealogyNode[];
-  depth: number;
-  isCurrentLot: boolean;
-}
-
-// Fonction utilitaire pour nettoyer les paramètres
-
-// Mise à jour de la fonction cleanParams
-// Mise à jour de la fonction cleanParams
-const cleanParams = (params: any): any => {
-  if (!params) return {};
-
-  const cleaned: any = {};
-
-  Object.entries(params).forEach(([key, value]) => {
-    // Ne pas inclure les valeurs undefined, null ou chaînes vides (sauf pour search)
-    if (
-      value !== undefined &&
-      value !== null &&
-      (value !== "" || key === "search")
-    ) {
-      // Gérer les cas spéciaux
-      if (key === "page" || key === "pageSize") {
-        const numValue = Number(value);
-        if (!isNaN(numValue) && numValue > 0) {
-          cleaned[key] = numValue;
-        }
-      } else if (
-        key === "includeRelations" ||
-        key === "includeExpired" ||
-        key === "includeInactive"
-      ) {
-        // Envoyer comme string, le backend convertira
-        cleaned[key] = value === true || value === "true" ? "true" : "false";
-      } else if (key === "sortOrder" && (value === "asc" || value === "desc")) {
-        cleaned[key] = value;
-      } else if (key === "level" && typeof value === "string") {
-        cleaned[key] = value.toUpperCase();
-      } else if (
-        key === "varietyId" ||
-        key === "multiplierId" ||
-        key === "parcelId"
-      ) {
-        const numValue = Number(value);
-        if (!isNaN(numValue) && numValue > 0) {
-          cleaned[key] = numValue;
-        }
-      } else {
-        cleaned[key] = value;
-      }
-    }
-  });
-
-  // Ajouter des valeurs par défaut si nécessaire
-  if (!cleaned.page) cleaned.page = 1;
-  if (!cleaned.pageSize) cleaned.pageSize = 10;
-  if (!cleaned.hasOwnProperty("includeRelations"))
-    cleaned.includeRelations = "true";
-
-  return cleaned;
-};
-
-// Service principal pour les lots de semences
 export const seedLotService = {
+  // ... autres méthodes ...
+
+  /**
+   * Met à jour un lot existant
+   */
+  async update(
+    id: string,
+    data: UpdateSeedLotData
+  ): Promise<ApiResponse<SeedLot>> {
+    try {
+      console.log("Updating seed lot with ID:", id);
+      console.log("Update data received:", data);
+
+      // Préparer les données pour l'API
+      const updatePayload: any = {};
+
+      // Copier seulement les champs définis
+      if (data.quantity !== undefined) {
+        updatePayload.quantity = data.quantity;
+      }
+
+      if (data.status !== undefined) {
+        updatePayload.status = data.status;
+      }
+
+      if (data.notes !== undefined) {
+        updatePayload.notes = data.notes || null;
+      }
+
+      if (data.batchNumber !== undefined) {
+        updatePayload.batchNumber = data.batchNumber || null;
+      }
+
+      if (data.multiplierId !== undefined) {
+        updatePayload.multiplierId = data.multiplierId;
+      }
+
+      if (data.parcelId !== undefined) {
+        updatePayload.parcelId = data.parcelId;
+      }
+
+      // Gérer spécialement la date d'expiration
+      if (data.expiryDate !== undefined) {
+        if (data.expiryDate && data.expiryDate.trim() !== "") {
+          // Convertir la date au format ISO pour l'API
+          updatePayload.expiryDate = formatDateForAPI(data.expiryDate);
+        } else {
+          updatePayload.expiryDate = null;
+        }
+      }
+
+      console.log("Final update payload:", updatePayload);
+
+      // Envoyer la requête de mise à jour
+      const response = await api.put<ApiResponse<SeedLot>>(
+        `/seed-lots/${id}`,
+        updatePayload
+      );
+
+      console.log("Update response:", response.data);
+
+      // Transformer les données de réponse si nécessaire
+      if (response.data?.data) {
+        response.data.data = DataTransformer.transformSeedLotFromAPI(
+          response.data.data
+        );
+      }
+
+      return response.data;
+    } catch (error: any) {
+      console.error("Error updating seed lot:", error);
+
+      // Gestion détaillée des erreurs
+      if (error.response?.status === 422) {
+        const validationErrors = error.response.data?.errors || [];
+        const errorMessage =
+          validationErrors.length > 0
+            ? validationErrors
+                .map((e: any) => `${e.field}: ${e.message}`)
+                .join("\n")
+            : "Erreur de validation des données";
+
+        toast.error(errorMessage);
+      } else if (error.response?.status === 404) {
+        toast.error("Lot de semences non trouvé");
+      } else if (error.response?.status === 403) {
+        toast.error("Vous n'avez pas les permissions pour modifier ce lot");
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      }
+
+      throw error;
+    }
+  },
+
+  // Fonction utilitaire pour nettoyer les paramètres
+  cleanParams: (params: any): any => {
+    if (!params) return {};
+
+    const cleaned: any = {};
+
+    Object.entries(params).forEach(([key, value]) => {
+      // Ne pas inclure les valeurs undefined, null ou chaînes vides (sauf pour search)
+      if (
+        value !== undefined &&
+        value !== null &&
+        (value !== "" || key === "search")
+      ) {
+        // Gérer les cas spéciaux
+        if (key === "page" || key === "pageSize") {
+          const numValue = Number(value);
+          if (!isNaN(numValue) && numValue > 0) {
+            cleaned[key] = numValue;
+          }
+        } else if (
+          key === "includeRelations" ||
+          key === "includeExpired" ||
+          key === "includeInactive"
+        ) {
+          // Envoyer comme string, le backend convertira
+          cleaned[key] = value === true || value === "true" ? "true" : "false";
+        } else if (
+          key === "sortOrder" &&
+          (value === "asc" || value === "desc")
+        ) {
+          cleaned[key] = value;
+        } else if (key === "level" && typeof value === "string") {
+          cleaned[key] = value.toUpperCase();
+        } else if (
+          key === "varietyId" ||
+          key === "multiplierId" ||
+          key === "parcelId"
+        ) {
+          const numValue = Number(value);
+          if (!isNaN(numValue) && numValue > 0) {
+            cleaned[key] = numValue;
+          }
+        } else {
+          cleaned[key] = value;
+        }
+      }
+    });
+
+    // Ajouter des valeurs par défaut si nécessaire
+    if (!cleaned.page) cleaned.page = 1;
+    if (!cleaned.pageSize) cleaned.pageSize = 10;
+    if (!cleaned.hasOwnProperty("includeRelations"))
+      cleaned.includeRelations = "true";
+
+    return cleaned;
+  },
+
   /**
    * Récupère la liste des lots avec pagination et filtres
    */
-
   async getAll(
     params?: Partial<SeedLotFilters> & PaginationParams
   ): Promise<ApiResponse<SeedLot[]>> {
     try {
       // Nettoyer et valider les paramètres
-      const validParams = cleanParams(params);
+      const validParams = this.cleanParams(params);
 
-      // ✅ AJOUT: Toujours inclure les relations par défaut
+      // Toujours inclure les relations par défaut
       validParams.includeRelations = true;
 
       console.log("Fetching seed lots with params:", validParams);
@@ -202,17 +248,25 @@ export const seedLotService = {
   /**
    * Crée un nouveau lot de semences
    */
-  async create(data: CreateSeedLotData): Promise<ApiResponse<SeedLot>> {
+  async create(data: any): Promise<ApiResponse<SeedLot>> {
     try {
-      // Nettoyer les données avant envoi
-      const cleanedData = {
+      // Préparer les données avec formatage des dates
+      const createPayload = {
         ...data,
-        level: data.level.toUpperCase() as any, // S'assurer que le niveau est en majuscules
+        productionDate: data.productionDate
+          ? formatDateForAPI(data.productionDate)
+          : undefined,
+        expiryDate: data.expiryDate
+          ? formatDateForAPI(data.expiryDate)
+          : undefined,
+        level: data.level?.toUpperCase(), // S'assurer que le niveau est en majuscules
       };
+
+      console.log("Creating seed lot with payload:", createPayload);
 
       const response = await api.post<ApiResponse<SeedLot>>(
         "/seed-lots",
-        cleanedData
+        createPayload
       );
 
       if (response.data?.data) {
@@ -242,45 +296,6 @@ export const seedLotService = {
   },
 
   /**
-   * Met à jour un lot existant
-   */
-  async update(
-    id: string,
-    data: UpdateSeedLotData
-  ): Promise<ApiResponse<SeedLot>> {
-    try {
-      const response = await api.put<ApiResponse<SeedLot>>(
-        `/seed-lots/${id}`,
-        data
-      );
-
-      if (response.data?.data) {
-        response.data.data = DataTransformer.transformSeedLotFromAPI(
-          response.data.data
-        );
-      }
-
-      return response.data;
-    } catch (error: any) {
-      console.error("Error updating seed lot:", error);
-
-      if (error.response?.status === 422) {
-        const validationErrors = error.response.data?.errors || [];
-        const errorMessage =
-          validationErrors.length > 0
-            ? validationErrors
-                .map((e: any) => `${e.field}: ${e.message}`)
-                .join("\n")
-            : "Erreur de validation des données";
-
-        toast.error(errorMessage);
-      }
-
-      throw error;
-    }
-  },
-
-  /**
    * Supprime un lot
    */
   async delete(id: string): Promise<void> {
@@ -288,206 +303,6 @@ export const seedLotService = {
       await api.delete(`/seed-lots/${id}`);
     } catch (error) {
       console.error("Error deleting seed lot:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Récupère l'arbre généalogique d'un lot
-   */
-  async getGenealogy(id: string): Promise<ApiResponse<GenealogyNode>> {
-    try {
-      const response = await api.get<ApiResponse<GenealogyNode>>(
-        `/seed-lots/${id}/genealogy`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching genealogy:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Récupère le QR code d'un lot
-   */
-  async getQRCode(id: string): Promise<ApiResponse<{ qrCode: string }>> {
-    try {
-      const response = await api.get<ApiResponse<{ qrCode: string }>>(
-        `/seed-lots/${id}/qr-code`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching QR code:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Crée un lot enfant
-   */
-  async createChildLot(
-    parentId: string,
-    data: CreateChildLotData
-  ): Promise<ApiResponse<SeedLot>> {
-    try {
-      const response = await api.post<ApiResponse<SeedLot>>(
-        `/seed-lots/${parentId}/child-lots`,
-        data
-      );
-
-      if (response.data?.data) {
-        response.data.data = DataTransformer.transformSeedLotFromAPI(
-          response.data.data
-        );
-      }
-
-      return response.data;
-    } catch (error) {
-      console.error("Error creating child lot:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Transfère un lot vers un autre multiplicateur
-   */
-  async transferLot(
-    id: string,
-    data: TransferSeedLotData
-  ): Promise<ApiResponse<SeedLot>> {
-    try {
-      const response = await api.post<ApiResponse<SeedLot>>(
-        `/seed-lots/${id}/transfer`,
-        data
-      );
-
-      if (response.data?.data) {
-        response.data.data = DataTransformer.transformSeedLotFromAPI(
-          response.data.data
-        );
-      }
-
-      return response.data;
-    } catch (error) {
-      console.error("Error transferring lot:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Récupère les statistiques d'un lot
-   */
-  async getStats(id: string): Promise<ApiResponse<any>> {
-    try {
-      const response = await api.get<ApiResponse<any>>(
-        `/seed-lots/${id}/stats`
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching lot stats:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Récupère les statistiques globales des lots
-   */
-  async getStatistics(
-    params?: Partial<SeedLotFilters>
-  ): Promise<ApiResponse<any>> {
-    try {
-      const validParams = cleanParams(params);
-      const response = await api.get<ApiResponse<any>>(
-        `/seed-lots/statistics`,
-        { params: validParams }
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching statistics:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Récupère les lots expirant bientôt
-   */
-  async getExpiring(days: number = 30): Promise<ApiResponse<SeedLot[]>> {
-    try {
-      const response = await api.get<ApiResponse<SeedLot[]>>(
-        `/seed-lots/expiring`,
-        { params: { days } }
-      );
-
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        response.data.data = response.data.data.map((lot) =>
-          DataTransformer.transformSeedLotFromAPI(lot)
-        );
-      }
-
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching expiring lots:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Recherche des lots
-   */
-  async search(
-    query: string,
-    params?: Partial<SeedLotFilters>
-  ): Promise<ApiResponse<SeedLot[]>> {
-    try {
-      const validParams = cleanParams({ ...params, q: query });
-      const response = await api.get<ApiResponse<SeedLot[]>>(
-        `/seed-lots/search`,
-        { params: validParams }
-      );
-
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        response.data.data = response.data.data.map((lot) =>
-          DataTransformer.transformSeedLotFromAPI(lot)
-        );
-      }
-
-      return response.data;
-    } catch (error) {
-      console.error("Error searching seed lots:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Exporte les lots
-   */
-  async export(
-    format: "csv" | "xlsx" | "json",
-    filters?: Partial<SeedLotFilters>
-  ): Promise<Blob> {
-    try {
-      const validParams = cleanParams({ ...filters, format });
-      const response = await api.get(`/seed-lots/export`, {
-        params: validParams,
-        responseType: "blob",
-      });
-
-      // Créer un lien de téléchargement
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute(
-        "download",
-        `seed-lots-export-${new Date().toISOString().split("T")[0]}.${format}`
-      );
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      return response.data;
-    } catch (error) {
-      console.error("Error exporting seed lots:", error);
       throw error;
     }
   },
@@ -519,75 +334,86 @@ export const seedLotService = {
     }
   },
 
-  /**
-   * Récupère les lots d'une variété
-   */
-  async getByVariety(varietyId: number): Promise<ApiResponse<SeedLot[]>> {
+  // Autres méthodes du service (getGenealogy, getQRCode, etc.)
+  async getGenealogy(id: string): Promise<ApiResponse<any>> {
     try {
-      const response = await api.get<ApiResponse<SeedLot[]>>(
-        `/seed-lots/variety/${varietyId}`
+      const response = await api.get<ApiResponse<any>>(
+        `/seed-lots/${id}/genealogy`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching genealogy:", error);
+      throw error;
+    }
+  },
+
+  async getQRCode(id: string): Promise<ApiResponse<{ qrCode: string }>> {
+    try {
+      const response = await api.get<ApiResponse<{ qrCode: string }>>(
+        `/seed-lots/${id}/qr-code`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching QR code:", error);
+      throw error;
+    }
+  },
+
+  async getStats(id: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await api.get<ApiResponse<any>>(
+        `/seed-lots/${id}/stats`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching lot stats:", error);
+      throw error;
+    }
+  },
+
+  async transferLot(id: string, data: any): Promise<ApiResponse<SeedLot>> {
+    try {
+      const response = await api.post<ApiResponse<SeedLot>>(
+        `/seed-lots/${id}/transfer`,
+        data
       );
 
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        response.data.data = response.data.data.map((lot) =>
-          DataTransformer.transformSeedLotFromAPI(lot)
+      if (response.data?.data) {
+        response.data.data = DataTransformer.transformSeedLotFromAPI(
+          response.data.data
         );
       }
 
       return response.data;
     } catch (error) {
-      console.error("Error fetching lots by variety:", error);
+      console.error("Error transferring lot:", error);
       throw error;
     }
   },
 
-  /**
-   * Récupère les lots d'un multiplicateur
-   */
-  async getByMultiplier(multiplierId: number): Promise<ApiResponse<SeedLot[]>> {
+  async createChildLot(
+    parentId: string,
+    data: any
+  ): Promise<ApiResponse<SeedLot>> {
     try {
-      const response = await api.get<ApiResponse<SeedLot[]>>(
-        `/seed-lots/multiplier/${multiplierId}`
+      const response = await api.post<ApiResponse<SeedLot>>(
+        `/seed-lots/${parentId}/child-lots`,
+        data
       );
 
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        response.data.data = response.data.data.map((lot) =>
-          DataTransformer.transformSeedLotFromAPI(lot)
+      if (response.data?.data) {
+        response.data.data = DataTransformer.transformSeedLotFromAPI(
+          response.data.data
         );
       }
 
       return response.data;
     } catch (error) {
-      console.error("Error fetching lots by multiplier:", error);
+      console.error("Error creating child lot:", error);
       throw error;
     }
   },
 
-  /**
-   * Récupère les lots d'une parcelle
-   */
-  async getByParcel(parcelId: number): Promise<ApiResponse<SeedLot[]>> {
-    try {
-      const response = await api.get<ApiResponse<SeedLot[]>>(
-        `/seed-lots/parcel/${parcelId}`
-      );
-
-      if (response.data?.data && Array.isArray(response.data.data)) {
-        response.data.data = response.data.data.map((lot) =>
-          DataTransformer.transformSeedLotFromAPI(lot)
-        );
-      }
-
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching lots by parcel:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Génère un rapport pour un lot
-   */
   async generateReport(
     id: string,
     type: "certificate" | "history" | "quality"
@@ -616,7 +442,35 @@ export const seedLotService = {
       throw error;
     }
   },
-};
 
-// Export par défaut pour compatibilité
-export default seedLotService;
+  async export(
+    format: "csv" | "xlsx" | "json",
+    filters?: Partial<SeedLotFilters>
+  ): Promise<Blob> {
+    try {
+      const validParams = this.cleanParams({ ...filters, format });
+      const response = await api.get(`/seed-lots/export`, {
+        params: validParams,
+        responseType: "blob",
+      });
+
+      // Créer un lien de téléchargement
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `seed-lots-export-${new Date().toISOString().split("T")[0]}.${format}`
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      return response.data;
+    } catch (error) {
+      console.error("Error exporting seed lots:", error);
+      throw error;
+    }
+  },
+};
