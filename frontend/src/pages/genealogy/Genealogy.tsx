@@ -1,4 +1,4 @@
-// frontend/src/pages/genealogy/Genealogy.tsx - VERSION CORRIGÉE
+// frontend/src/pages/genealogy/Genealogy.tsx - VERSION SÉCURISÉE
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,11 +23,35 @@ import {
   Download,
   Printer,
 } from "lucide-react";
-import { seedLotService, GenealogyNode } from "@/services/seedLotService";
+import { seedLotService } from "@/services/seedLotService";
 import { SeedLot } from "@/types/entities";
-// CORRIGÉ: Import de formatDate depuis formatters au lieu de utils
 import { formatDate } from "@/utils/formatters";
 import { toast } from "react-toastify";
+
+// Définition de l'interface GenealogyNode
+interface GenealogyNode {
+  id: string;
+  level: string;
+  variety?: {
+    id: number;
+    name: string;
+    code: string;
+  };
+  varietyName?: string;
+  quantity: number;
+  productionDate: string;
+  status: string;
+  multiplier?: {
+    id: number;
+    name: string;
+  };
+  multiplierName?: string;
+  parentLotId?: string;
+  children: GenealogyNode[];
+  depth?: number;
+  path?: string[];
+  isCurrentLot?: boolean;
+}
 
 export default function Genealogy() {
   const [seedLots, setSeedLots] = useState<SeedLot[]>([]);
@@ -78,7 +102,7 @@ export default function Genealogy() {
         const nodesToExpand = new Set<string>();
         nodesToExpand.add(response.data.id);
         if (response.data.children && response.data.children.length > 0) {
-          response.data.children.forEach((child) =>
+          response.data.children.forEach((child: GenealogyNode) =>
             nodesToExpand.add(child.id)
           );
         }
@@ -167,14 +191,15 @@ export default function Genealogy() {
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-600">
                   <div className="flex items-center gap-1">
                     <Package className="h-3 w-3" />
-                    <span>Variété: {node.varietyName}</span>
+                    {/* ✅ CORRECTION : Sécurisation avec valeur par défaut */}
+                    <span>Variété: {node.varietyName ?? "N/A"}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
                     <span>Production: {formatDate(node.productionDate)}</span>
                   </div>
-                  <div>Quantité: {node.quantity} kg</div>
-                  <div>Statut: {node.status}</div>
+                  <div>Quantité: {node.quantity ?? 0} kg</div>
+                  <div>Statut: {node.status ?? "Non défini"}</div>
                   {node.multiplierName && (
                     <div className="col-span-2">
                       Multiplicateur: {node.multiplierName}
@@ -196,7 +221,9 @@ export default function Genealogy() {
         {/* Render children if expanded */}
         {hasChildren && isExpanded && (
           <div className="mt-2 space-y-2">
-            {node.children.map((child) => renderGenealogyNode(child, false))}
+            {node.children.map((child: GenealogyNode) =>
+              renderGenealogyNode(child, false)
+            )}
           </div>
         )}
       </div>
@@ -230,12 +257,25 @@ export default function Genealogy() {
     window.print();
   };
 
-  // Filtrer les lots en fonction de la recherche
-  const filteredLots = seedLots.filter(
-    (lot) =>
-      lot.id.toLowerCase().includes(search.toLowerCase()) ||
-      lot.variety.name.toLowerCase().includes(search.toLowerCase())
-  );
+  // ✅ CORRECTION : Filtrage sécurisé des lots
+  const filteredLots = seedLots.filter((lot) => {
+    if (!search.trim()) return true;
+
+    const searchLower = search.toLowerCase();
+
+    // Vérification sécurisée de l'ID du lot
+    const idMatch = lot.id?.toLowerCase().includes(searchLower) ?? false;
+
+    // Vérification sécurisée du nom de la variété
+    const varietyMatch =
+      lot.variety?.name?.toLowerCase().includes(searchLower) ?? false;
+
+    // Vérification sécurisée du code de la variété
+    const codeMatch =
+      lot.variety?.code?.toLowerCase().includes(searchLower) ?? false;
+
+    return idMatch || varietyMatch || codeMatch;
+  });
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -293,7 +333,9 @@ export default function Genealogy() {
               <SelectContent>
                 {filteredLots.map((lot: SeedLot) => (
                   <SelectItem key={lot.id} value={lot.id}>
-                    {lot.id} - {lot.variety.name} ({lot.level})
+                    {/* ✅ CORRECTION : Affichage sécurisé */}
+                    {lot.id} - {lot.variety?.name ?? "Variété inconnue"} (
+                    {lot.level})
                   </SelectItem>
                 ))}
               </SelectContent>

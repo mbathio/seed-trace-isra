@@ -64,7 +64,7 @@ export class SeedLotController {
         endDate: req.query.endDate as string,
         sortBy: (req.query.sortBy as string) || "createdAt",
         sortOrder: (req.query.sortOrder as "asc" | "desc") || "desc",
-        includeRelations: req.query.includeRelations as boolean,
+        includeRelations: req.query.includeRelations === "true",
       };
 
       logger.info("Getting seed lots with filters", { filters });
@@ -89,8 +89,9 @@ export class SeedLotController {
   ): Promise<Response | void> {
     try {
       const { id } = req.params;
-      const includeFullDetails = req.query.full !== "false";
-
+      const includeFullDetails =
+        req.query.full === undefined ||
+        (typeof req.query.full === "string" && req.query.full !== "false");
       // ✅ CORRECTION: Le service retourne déjà les données transformées
       const seedLot = await SeedLotService.getSeedLotById(
         id,

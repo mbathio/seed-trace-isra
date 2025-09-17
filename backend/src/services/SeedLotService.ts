@@ -572,7 +572,454 @@ export class SeedLotService {
       throw error;
     }
   }
+  // À ajouter dans backend/src/services/SeedLotService.ts
 
+  /**
+   * GET - Récupérer les statistiques d'un lot
+   */
+  static async getSeedLotStats(lotId: string): Promise<any> {
+    try {
+      logger.info(`Getting stats for seed lot: ${lotId}`);
+
+      // Vérifier l'existence du lot
+      const seedLot = await prisma.seedLot.findUnique({
+        where: { id: lotId, isActive: true },
+        include: {
+          variety: true,
+          multiplier: true,
+          childLots: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              quantity: true,
+              level: true,
+              status: true,
+            },
+          },
+          qualityControls: {
+            orderBy: { controlDate: "desc" },
+            select: {
+              id: true,
+              result: true,
+              germinationRate: true,
+              varietyPurity: true,
+              controlDate: true,
+            },
+          },
+          productions: {
+            select: {
+              id: true,
+              status: true,
+              actualYield: true,
+              startDate: true,
+            },
+          },
+          _count: {
+            select: {
+              childLots: true,
+              qualityControls: true,
+              productions: true,
+            },
+          },
+        },
+      });
+
+      if (!seedLot) {
+        throw new Error(`Lot non trouvé: ${lotId}`);
+      }
+
+      // Calculer les statistiques
+      const stats = {
+        // Informations de base
+        lotId: seedLot.id,
+        varietyName: seedLot.variety.name,
+        level: seedLot.level,
+        totalQuantity: seedLot.quantity,
+
+        // Statistiques des lots enfants
+        totalChildLots: seedLot._count.childLots,
+        quantityInChildren: seedLot.childLots.reduce(
+          (sum: number, child: any) => sum + child.quantity,
+          0
+        ),
+        availableQuantity:
+          seedLot.quantity -
+          seedLot.childLots.reduce(
+            (sum: number, child: any) => sum + child.quantity,
+            0
+          ),
+
+        // Statistiques par niveau des enfants
+        childLotsByLevel: seedLot.childLots.reduce((acc: any, child: any) => {
+          acc[child.level] = (acc[child.level] || 0) + 1;
+          return acc;
+        }, {}),
+
+        // Statistiques de qualité
+        totalQualityControls: seedLot._count.qualityControls,
+        passedQualityControls: seedLot.qualityControls.filter(
+          (qc: any) => qc.result === "PASS"
+        ).length,
+        failedQualityControls: seedLot.qualityControls.filter(
+          (qc: any) => qc.result === "FAIL"
+        ).length,
+
+        // Dernier contrôle qualité
+        lastQualityControl: seedLot.qualityControls[0] || null,
+        qualityStatus:
+          seedLot.qualityControls.length > 0
+            ? seedLot.qualityControls[0].result
+            : "Non testé",
+
+        // Moyennes de qualité
+        averageGerminationRate:
+          seedLot.qualityControls.length > 0
+            ? seedLot.qualityControls.reduce(
+                (sum: number, qc: any) => sum + (qc.germinationRate || 0),
+                0
+              ) / seedLot.qualityControls.length
+            : null,
+
+        averageVarietyPurity:
+          seedLot.qualityControls.length > 0
+            ? seedLot.qualityControls.reduce(
+                (sum: number, qc: any) => sum + (qc.varietyPurity || 0),
+                0
+              ) / seedLot.qualityControls.length
+            : null,
+
+        // Statistiques de production
+        totalProductions: seedLot._count.productions,
+        completedProductions: seedLot.productions.filter(
+          (p: any) => p.status === "COMPLETED"
+        ).length,
+        inProgressProductions: seedLot.productions.filter(
+          (p: any) => p.status === "IN_PROGRESS"
+        ).length,
+
+        // Rendement moyen
+        averageYield:
+          seedLot.productions.length > 0
+            ? seedLot.productions
+                .filter((p: any) => p.actualYield)
+                .reduce(
+                  (sum: number, p: any) => sum + (p.actualYield || 0),
+                  0
+                ) / seedLot.productions.filter((p: any) => p.actualYield).length
+            : null,
+
+        // Taux d'utilisation
+        utilizationRate:
+          seedLot.quantity > 0
+            ? ((seedLot.quantity -
+                (seedLot.quantity -
+                  seedLot.childLots.reduce(
+                    (sum: number, child: any) => sum + child.quantity,
+                    0
+                  ))) /
+                seedLot.quantity) *
+              100
+            : 0,
+
+        // Informations sur l'âge du lot
+        ageInDays: Math.floor(
+          (Date.now() - new Date(seedLot.productionDate).getTime()) /
+            (1000 * 60 * 60 * 24)
+        ),
+
+        // Statut d'expiration
+        isExpired: seedLot.expiryDate
+          ? new Date(seedLot.expiryDate) < new Date()
+          : false,
+        daysUntilExpiry: seedLot.expiryDate
+          ? Math.floor(
+              (new Date(seedLot.expiryDate).getTime() - Date.now()) /
+                (1000 * 60 * 60 * 24)
+            )
+          : null,
+
+        // Multiplicateur
+        multiplierName: seedLot.multiplier?.name || "ISRA",
+
+        // Timestamps
+        createdAt: seedLot.createdAt,
+        updatedAt: seedLot.updatedAt,
+      };
+
+      logger.info(`Statistics calculated for lot ${lotId}:`, {
+        totalControls: stats.totalQualityControls,
+        childLots: stats.totalChildLots,
+        productions: stats.totalProductions,
+      });
+
+      return stats;
+    } catch (error) {
+      logger.error("Error getting seed lot statistics:", { error, lotId });
+      throw error;
+    }
+  }
+  // Ajouter ces méthodes dans backend/src/services/SeedLotService.ts
+
+  /**
+   * DELETE - Supprimer un lot de semences (soft delete)
+   */
+  static async deleteSeedLot(id: string, hardDelete = false) {
+    try {
+      logger.info(`${hardDelete ? "Hard" : "Soft"} deleting seed lot: ${id}`);
+
+      // 1. Vérifier l'existence et les dépendances
+      const seedLot = await prisma.seedLot.findUnique({
+        where: { id },
+        include: {
+          _count: {
+            select: {
+              childLots: true,
+              qualityControls: true,
+              productions: true,
+            },
+          },
+        },
+      });
+
+      if (!seedLot) {
+        throw new Error(`Lot non trouvé: ${id}`);
+      }
+
+      // 2. Vérifier les dépendances
+      if (seedLot._count.childLots > 0) {
+        throw new Error(
+          `Impossible de supprimer le lot ${id}: il a ${seedLot._count.childLots} lots enfants`
+        );
+      }
+
+      if (seedLot._count.productions > 0 && hardDelete) {
+        throw new Error(
+          `Impossible de supprimer définitivement le lot ${id}: il a ${seedLot._count.productions} productions associées`
+        );
+      }
+
+      // 3. Effectuer la suppression
+      if (hardDelete && process.env.NODE_ENV === "production") {
+        throw new Error(
+          "La suppression définitive n'est pas autorisée en production"
+        );
+      }
+
+      const result = await prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          if (hardDelete) {
+            // Supprimer d'abord les relations
+            await tx.qualityControl.deleteMany({ where: { lotId: id } });
+            await tx.production.deleteMany({ where: { lotId: id } });
+
+            // Puis supprimer le lot
+            return await tx.seedLot.delete({ where: { id } });
+          } else {
+            // Soft delete
+            return await tx.seedLot.update({
+              where: { id },
+              data: { isActive: false },
+            });
+          }
+        }
+      );
+
+      // 4. Invalider le cache
+      await CacheService.invalidate(`seedlot:${id}:*`);
+      await CacheService.invalidate("seedlots:*");
+      await CacheService.invalidate("stats:*");
+
+      logger.info(`Seed lot deleted successfully: ${id}`);
+      return { success: true, message: `Lot ${id} supprimé avec succès` };
+    } catch (error) {
+      logger.error("Error deleting seed lot", { error, id });
+      throw error;
+    }
+  }
+
+  /**
+   * Recherche avancée avec filtres complexes
+   */
+  static async searchSeedLots(searchCriteria: {
+    query?: string;
+    filters?: Record<string, any>;
+    dateRange?: { start: Date; end: Date };
+    includeExpired?: boolean;
+    includeInactive?: boolean;
+  }) {
+    try {
+      const where: any = {
+        isActive: searchCriteria.includeInactive ? undefined : true,
+      };
+
+      // Recherche textuelle globale
+      if (searchCriteria.query) {
+        where.OR = [
+          { id: { contains: searchCriteria.query, mode: "insensitive" } },
+          { notes: { contains: searchCriteria.query, mode: "insensitive" } },
+          {
+            batchNumber: {
+              contains: searchCriteria.query,
+              mode: "insensitive",
+            },
+          },
+          {
+            variety: {
+              name: { contains: searchCriteria.query, mode: "insensitive" },
+            },
+          },
+          {
+            variety: {
+              code: { contains: searchCriteria.query, mode: "insensitive" },
+            },
+          },
+          {
+            multiplier: {
+              name: { contains: searchCriteria.query, mode: "insensitive" },
+            },
+          },
+        ];
+      }
+
+      // Filtres personnalisés
+      if (searchCriteria.filters) {
+        Object.assign(where, searchCriteria.filters);
+      }
+
+      // Filtre de date
+      if (searchCriteria.dateRange) {
+        where.productionDate = {
+          gte: searchCriteria.dateRange.start,
+          lte: searchCriteria.dateRange.end,
+        };
+      }
+
+      // Filtre d'expiration
+      if (!searchCriteria.includeExpired) {
+        where.OR = [{ expiryDate: null }, { expiryDate: { gt: new Date() } }];
+      }
+
+      const results = await prisma.seedLot.findMany({
+        where,
+        include: {
+          variety: true,
+          multiplier: true,
+          qualityControls: {
+            orderBy: { controlDate: "desc" },
+            take: 1,
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100, // Limite de sécurité
+      });
+
+      return results;
+    } catch (error) {
+      logger.error("Error searching seed lots", { error, searchCriteria });
+      throw error;
+    }
+  }
+
+  /**
+   * Récupérer l'historique des modifications d'un lot
+   */
+  static async getSeedLotHistory(lotId: string): Promise<any[]> {
+    try {
+      // Pour l'instant, retourner un historique basique
+      // Dans une vraie implémentation, vous devriez avoir une table d'audit
+      const lot = await prisma.seedLot.findUnique({
+        where: { id: lotId },
+        include: {
+          qualityControls: {
+            orderBy: { controlDate: "desc" },
+          },
+          productions: {
+            orderBy: { startDate: "desc" },
+          },
+        },
+      });
+
+      if (!lot) {
+        throw new Error("Lot non trouvé");
+      }
+
+      const history = [
+        {
+          date: lot.createdAt,
+          action: "Création du lot",
+          details: { quantity: lot.quantity, status: lot.status },
+        },
+        ...lot.qualityControls.map((qc: any) => ({
+          date: qc.controlDate,
+          action: "Contrôle qualité",
+          details: { result: qc.result, germination: qc.germinationRate },
+        })),
+        ...lot.productions.map((prod: any) => ({
+          date: prod.startDate,
+          action: "Début de production",
+          details: { status: prod.status },
+        })),
+      ];
+
+      return history.sort((a, b) => b.date.getTime() - a.date.getTime());
+    } catch (error) {
+      logger.error("Error getting seed lot history", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Valider un lot de semences
+   */
+  static async validateSeedLot(lotId: string): Promise<any> {
+    try {
+      const lot = await prisma.seedLot.findUnique({
+        where: { id: lotId },
+        include: {
+          variety: true,
+          qualityControls: {
+            orderBy: { controlDate: "desc" },
+            take: 1,
+          },
+        },
+      });
+
+      if (!lot) {
+        throw new Error("Lot non trouvé");
+      }
+
+      const errors: string[] = [];
+
+      // Validations
+      if (lot.quantity <= 0) {
+        errors.push("La quantité doit être positive");
+      }
+
+      if (lot.expiryDate && new Date() > lot.expiryDate) {
+        errors.push("Le lot est expiré");
+      }
+
+      if (lot.status === "CERTIFIED" && lot.qualityControls.length === 0) {
+        errors.push("Un lot certifié doit avoir au moins un contrôle qualité");
+      }
+
+      if (
+        lot.qualityControls.length > 0 &&
+        lot.qualityControls[0].result === "FAIL"
+      ) {
+        errors.push("Le dernier contrôle qualité a échoué");
+      }
+
+      return {
+        isValid: errors.length === 0,
+        errors,
+        lot,
+      };
+    } catch (error) {
+      logger.error("Error validating seed lot", error);
+      throw error;
+    }
+  }
   /**
    * ✅ CORRECTION: Autres méthodes avec corrections similaires
    */
