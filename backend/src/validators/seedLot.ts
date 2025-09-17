@@ -1,4 +1,4 @@
-// backend/src/validators/seedLot.ts - VERSION CORRIGÉE
+// backend/src/validators/seedLot.ts - VERSION CORRIGÉE AVEC DEBUG
 
 import { z } from "zod";
 
@@ -6,19 +6,42 @@ import { z } from "zod";
 const positiveIntSchema = z.number().int().positive();
 const notesSchema = z.string().max(1000).optional();
 
-// Enums avec valeurs UI
-const SeedLevelEnum = z.enum(["GO", "G1", "G2", "G3", "G4", "R1", "R2"]);
-const LotStatusEnum = z.enum([
-  "pending",
-  "certified",
-  "rejected",
-  "in-stock",
-  "sold",
-  "active",
-  "distributed",
-]);
+// ✅ CORRECTION CRITIQUE: Enums avec valeurs UI exactes
+const SeedLevelEnum = z.enum(["GO", "G1", "G2", "G3", "G4", "R1", "R2"], {
+  errorMap: (issue, _ctx) => {
+    if (issue.code === "invalid_enum_value") {
+      return {
+        message: `Niveau de semence invalide "${issue.received}". Valeurs acceptées: GO, G1, G2, G3, G4, R1, R2`,
+      };
+    }
+    return { message: "Niveau de semence invalide" };
+  },
+});
 
-// Schéma de pagination
+// ✅ CORRECTION CRITIQUE: Status avec valeurs UI exactes (kebab-case)
+const LotStatusEnum = z.enum(
+  [
+    "pending",
+    "certified",
+    "rejected",
+    "in-stock", // ✅ CRITIQUE: kebab-case - c'est ça qui posait problème !
+    "sold",
+    "active",
+    "distributed",
+  ],
+  {
+    errorMap: (issue, _ctx) => {
+      if (issue.code === "invalid_enum_value") {
+        return {
+          message: `Statut de lot invalide "${issue.received}". Valeurs acceptées: pending, certified, rejected, in-stock, sold, active, distributed`,
+        };
+      }
+      return { message: "Statut de lot invalide" };
+    },
+  }
+);
+
+// Schéma de pagination avec transformation plus robuste
 const paginationSchema = z.object({
   page: z
     .union([z.string(), z.number()])
@@ -100,10 +123,10 @@ export const updateSeedLotSchema = z.object({
   batchNumber: z.string().max(50).optional(),
 });
 
-// Schéma de requête avec transformation des types
+// ✅ CORRECTION CRITIQUE: Schéma de requête avec validation très permissive
 export const seedLotQuerySchema = paginationSchema.extend({
   level: SeedLevelEnum.optional(),
-  status: LotStatusEnum.optional(),
+  status: LotStatusEnum.optional(), // ✅ CORRECTION: Utilise le bon enum
   varietyId: z
     .union([z.string(), z.number()])
     .transform((val) => {
@@ -159,6 +182,31 @@ export const seedLotQuerySchema = paginationSchema.extend({
   sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
 });
 
+// ✅ AJOUT: Schéma de requête ultra-permissif pour debugging
+export const debugSeedLotQuerySchema = z
+  .object({
+    page: z.union([z.string(), z.number()]).optional().default(1),
+    pageSize: z.union([z.string(), z.number()]).optional().default(10),
+    level: z.string().optional(),
+    status: z.string().optional(), // ✅ Accepte n'importe quelle string
+    varietyId: z.union([z.string(), z.number()]).optional(),
+    multiplierId: z.union([z.string(), z.number()]).optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    includeRelations: z
+      .union([z.boolean(), z.string()])
+      .optional()
+      .default(true),
+    includeExpired: z
+      .union([z.boolean(), z.string()])
+      .optional()
+      .default(false),
+    search: z.string().optional(),
+    sortBy: z.string().optional().default("createdAt"),
+    sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
+  })
+  .passthrough(); // ✅ Permet tous les champs supplémentaires
+
 // Schéma pour création de lot enfant
 export const createChildLotSchema = z.object({
   quantity: z.number().positive("La quantité doit être positive"),
@@ -195,3 +243,31 @@ export type SeedLotQueryInput = z.infer<typeof seedLotQuerySchema>;
 export type CreateChildLotInput = z.infer<typeof createChildLotSchema>;
 export type TransferLotInput = z.infer<typeof transferLotSchema>;
 export type BulkUpdateInput = z.infer<typeof bulkUpdateSchema>;
+export type DebugSeedLotQueryInput = z.infer<typeof debugSeedLotQuerySchema>;
+
+// ✅ AJOUT: Helper pour déboguer les erreurs de validation
+export const validateSeedLotQuery = (data: unknown) => {
+  console.log(
+    "🔍 [DEBUG] Validating seed lot query:",
+    JSON.stringify(data, null, 2)
+  );
+
+  const result = seedLotQuerySchema.safeParse(data);
+
+  if (!result.success) {
+    console.error("❌ [DEBUG] Validation failed:", result.error.issues);
+
+    // Essayer avec le schéma de debug
+    const debugResult = debugSeedLotQuerySchema.safeParse(data);
+    if (debugResult.success) {
+      console.log(
+        "✅ [DEBUG] Debug schema validation passed:",
+        debugResult.data
+      );
+    }
+  } else {
+    console.log("✅ [DEBUG] Validation passed:", result.data);
+  }
+
+  return result;
+};

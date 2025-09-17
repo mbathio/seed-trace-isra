@@ -21,7 +21,7 @@ import {
  * ✅ Service centralisé de validation des enums
  */
 export class EnumValidationService {
-  // ✅ Mapping des valeurs UI valides
+  // ✅ CORRECTION: Mapping des valeurs UI valides avec typage flexible
   private static readonly UI_ENUM_VALUES = {
     ROLE: [
       "admin",
@@ -31,8 +31,8 @@ export class EnumValidationService {
       "guest",
       "technician",
       "researcher",
-    ],
-    SEED_LEVEL: ["GO", "G1", "G2", "G3", "G4", "R1", "R2"],
+    ] as string[],
+    SEED_LEVEL: ["GO", "G1", "G2", "G3", "G4", "R1", "R2"] as string[],
     CROP_TYPE: [
       "rice",
       "maize",
@@ -41,7 +41,7 @@ export class EnumValidationService {
       "cowpea",
       "millet",
       "wheat",
-    ],
+    ] as string[],
     LOT_STATUS: [
       "pending",
       "certified",
@@ -50,9 +50,14 @@ export class EnumValidationService {
       "sold",
       "active",
       "distributed",
-    ],
-    PARCEL_STATUS: ["available", "in-use", "resting"],
-    PRODUCTION_STATUS: ["planned", "in-progress", "completed", "cancelled"],
+    ] as string[],
+    PARCEL_STATUS: ["available", "in-use", "resting"] as string[],
+    PRODUCTION_STATUS: [
+      "planned",
+      "in-progress",
+      "completed",
+      "cancelled",
+    ] as string[],
     ACTIVITY_TYPE: [
       "soil-preparation",
       "sowing",
@@ -62,64 +67,70 @@ export class EnumValidationService {
       "pest-control",
       "harvest",
       "other",
-    ],
-    ISSUE_TYPE: ["disease", "pest", "weather", "management", "other"],
-    ISSUE_SEVERITY: ["low", "medium", "high"],
-    TEST_RESULT: ["pass", "fail"],
-    CERTIFICATION_LEVEL: ["beginner", "intermediate", "expert"],
-    MULTIPLIER_STATUS: ["active", "inactive"],
-    CONTRACT_STATUS: ["draft", "active", "completed", "cancelled"],
+    ] as string[],
+    ISSUE_TYPE: [
+      "disease",
+      "pest",
+      "weather",
+      "management",
+      "other",
+    ] as string[],
+    ISSUE_SEVERITY: ["low", "medium", "high"] as string[],
+    TEST_RESULT: ["pass", "fail"] as string[],
+    CERTIFICATION_LEVEL: ["beginner", "intermediate", "expert"] as string[],
+    MULTIPLIER_STATUS: ["active", "inactive"] as string[],
+    CONTRACT_STATUS: ["draft", "active", "completed", "cancelled"] as string[],
     REPORT_TYPE: [
       "production",
       "quality",
       "inventory",
       "multiplier-performance",
       "custom",
-    ],
-  } as const;
+    ] as string[],
+  };
 
-  // ✅ Mapping des valeurs DB valides
+  // ✅ CORRECTION: Mapping des valeurs DB valides avec typage flexible
   private static readonly DB_ENUM_VALUES = {
-    ROLE: Object.values(Role),
-    SEED_LEVEL: Object.values(SeedLevel),
-    CROP_TYPE: Object.values(CropType),
-    LOT_STATUS: Object.values(LotStatus),
-    PARCEL_STATUS: Object.values(ParcelStatus),
-    PRODUCTION_STATUS: Object.values(ProductionStatus),
-    ACTIVITY_TYPE: Object.values(ActivityType),
-    ISSUE_TYPE: Object.values(IssueType),
-    ISSUE_SEVERITY: Object.values(IssueSeverity),
-    TEST_RESULT: Object.values(TestResult),
-    CERTIFICATION_LEVEL: Object.values(CertificationLevel),
-    MULTIPLIER_STATUS: Object.values(MultiplierStatus),
-    CONTRACT_STATUS: Object.values(ContractStatus),
-    REPORT_TYPE: Object.values(ReportType),
-  } as const;
+    ROLE: Object.values(Role) as string[],
+    SEED_LEVEL: Object.values(SeedLevel) as string[],
+    CROP_TYPE: Object.values(CropType) as string[],
+    LOT_STATUS: Object.values(LotStatus) as string[],
+    PARCEL_STATUS: Object.values(ParcelStatus) as string[],
+    PRODUCTION_STATUS: Object.values(ProductionStatus) as string[],
+    ACTIVITY_TYPE: Object.values(ActivityType) as string[],
+    ISSUE_TYPE: Object.values(IssueType) as string[],
+    ISSUE_SEVERITY: Object.values(IssueSeverity) as string[],
+    TEST_RESULT: Object.values(TestResult) as string[],
+    CERTIFICATION_LEVEL: Object.values(CertificationLevel) as string[],
+    MULTIPLIER_STATUS: Object.values(MultiplierStatus) as string[],
+    CONTRACT_STATUS: Object.values(ContractStatus) as string[],
+    REPORT_TYPE: Object.values(ReportType) as string[],
+  };
 
   /**
-   * ✅ Valide qu'une valeur UI est correcte pour un enum donné
+   * ✅ CORRECTION: Valide qu'une valeur UI est correcte pour un enum donné
    */
   static isValidUIEnumValue(
     value: string,
     enumType: keyof typeof EnumValidationService.UI_ENUM_VALUES
   ): boolean {
     if (!value || typeof value !== "string") return false;
-    return this.UI_ENUM_VALUES[enumType].includes(value as any);
+    return this.UI_ENUM_VALUES[enumType].includes(value);
   }
 
   /**
-   * ✅ Valide qu'une valeur DB est correcte pour un enum donné
+   * ✅ CORRECTION: Valide qu'une valeur DB est correcte pour un enum donné
    */
   static isValidDBEnumValue(
     value: string,
     enumType: keyof typeof EnumValidationService.DB_ENUM_VALUES
   ): boolean {
     if (!value || typeof value !== "string") return false;
-    return (this.DB_ENUM_VALUES[enumType] as readonly string[]).includes(value);
+    return this.DB_ENUM_VALUES[enumType].includes(value);
   }
 
   /**
-   * ✅ Valide qu'une valeur est correcte (UI ou DB) pour un enum donné
+   * ✅ CORRECTION: Valide qu'une valeur est correcte (UI ou DB) pour un enum donné
    */
   static isValidEnumValue(
     value: string,
@@ -137,21 +148,21 @@ export class EnumValidationService {
   }
 
   /**
-   * ✅ Obtient toutes les valeurs UI valides pour un enum
+   * ✅ CORRECTION: Obtient toutes les valeurs UI valides pour un enum
    */
   static getValidUIValues(
     enumType: keyof typeof EnumValidationService.UI_ENUM_VALUES
-  ): readonly string[] {
-    return this.UI_ENUM_VALUES[enumType];
+  ): string[] {
+    return [...this.UI_ENUM_VALUES[enumType]];
   }
 
   /**
-   * ✅ Obtient toutes les valeurs DB valides pour un enum
+   * ✅ CORRECTION: Obtient toutes les valeurs DB valides pour un enum
    */
   static getValidDBValues(
     enumType: keyof typeof EnumValidationService.DB_ENUM_VALUES
-  ): readonly string[] {
-    return this.DB_ENUM_VALUES[enumType];
+  ): string[] {
+    return [...this.DB_ENUM_VALUES[enumType]];
   }
 
   /**
@@ -344,12 +355,12 @@ export class EnumValidationService {
     }
 
     if (data.specialization && Array.isArray(data.specialization)) {
-      const invalidSpecializations = data.specialization.filter(
+      const invalidSpecs = data.specialization.filter(
         (spec: string) => !this.isValidEnumValue(spec, "CROP_TYPE")
       );
-      if (invalidSpecializations.length > 0) {
+      if (invalidSpecs.length > 0) {
         errors.push(
-          `Invalid specializations: ${invalidSpecializations.join(
+          `Invalid specializations: ${invalidSpecs.join(
             ", "
           )}. Valid values: ${this.getValidUIValues("CROP_TYPE").join(", ")}`
         );
