@@ -217,14 +217,14 @@ export class SeedLotService {
     filters: SeedLotFilters = {}
   ): Promise<GetSeedLotsResult> {
     try {
-      logger.info("Getting seed lots with filters", { filters });
+      console.log("🔍 [SERVICE] Getting seed lots with filters", { filters });
 
       // 1. Paramètres de pagination
-      const page = filters.page || 1;
-      const pageSize = Math.min(filters.pageSize || 10, 100);
+      const page = Math.max(1, filters.page || 1);
+      const pageSize = Math.min(Math.max(1, filters.pageSize || 10), 100);
       const skip = (page - 1) * pageSize;
 
-      // ✅ CORRECTION: Construire les conditions WHERE avec transformation
+      // ✅ CORRECTION CRITIQUE: Construction WHERE robuste
       const where: any = { isActive: true };
 
       // Recherche textuelle
@@ -253,21 +253,63 @@ export class SeedLotService {
         ];
       }
 
-      // ✅ CORRECTION: Transformer les filtres UI vers DB
-      if (filters.level) {
-        where.level = filters.level; // SeedLevel est identique UI/DB
+      // ✅ CORRECTION CRITIQUE: Filtres avec validation stricte
+      if (filters.level && filters.level.trim()) {
+        // Le middleware a déjà transformé UI → DB, mais s'assurer que c'est valide
+        const validLevels = ["GO", "G1", "G2", "G3", "G4", "R1", "R2"];
+        const levelUpper = filters.level.toUpperCase();
+        if (validLevels.includes(levelUpper)) {
+          where.level = levelUpper as SeedLevel;
+          console.log("✅ [SERVICE] Applied level filter:", where.level);
+        } else {
+          console.warn("❌ [SERVICE] Invalid level filter:", filters.level);
+        }
       }
 
-      if (filters.status) {
-        // Transformer le statut UI vers DB
-        where.status = DataTransformer.transformLotStatusUIToDB(filters.status);
+      if (filters.status && filters.status.trim()) {
+        // ✅ CORRECTION: Le middleware a transformé UI → DB (ex: "certified" → "CERTIFIED")
+        // On doit utiliser la valeur déjà transformée
+        const validStatuses = [
+          "PENDING",
+          "CERTIFIED",
+          "REJECTED",
+          "IN_STOCK",
+          "SOLD",
+          "ACTIVE",
+          "DISTRIBUTED",
+        ];
+        if (validStatuses.includes(filters.status)) {
+          where.status = filters.status as LotStatus;
+          console.log("✅ [SERVICE] Applied status filter:", where.status);
+        } else {
+          console.warn("❌ [SERVICE] Invalid status filter:", filters.status);
+          // Le filtre a peut-être déjà été transformé, essayons les valeurs UI aussi
+          const uiToDbMapping: Record<string, LotStatus> = {
+            pending: "PENDING",
+            certified: "CERTIFIED",
+            rejected: "REJECTED",
+            "in-stock": "IN_STOCK",
+            sold: "SOLD",
+            active: "ACTIVE",
+            distributed: "DISTRIBUTED",
+          };
+
+          const dbStatus = uiToDbMapping[filters.status];
+          if (dbStatus) {
+            where.status = dbStatus;
+            console.log(
+              "✅ [SERVICE] Applied transformed status filter:",
+              where.status
+            );
+          }
+        }
       }
 
-      if (filters.varietyId) {
+      if (filters.varietyId && filters.varietyId > 0) {
         where.varietyId = filters.varietyId;
       }
 
-      if (filters.multiplierId) {
+      if (filters.multiplierId && filters.multiplierId > 0) {
         where.multiplierId = filters.multiplierId;
       }
 
@@ -275,63 +317,112 @@ export class SeedLotService {
       if (filters.startDate || filters.endDate) {
         where.productionDate = {};
         if (filters.startDate) {
-          where.productionDate.gte = new Date(filters.startDate);
+          try {
+            where.productionDate.gte = new Date(filters.startDate);
+          } catch (error) {
+            console.warn("Invalid startDate:", filters.startDate);
+          }
         }
         if (filters.endDate) {
-          where.productionDate.lte = new Date(filters.endDate);
+          try {
+            where.productionDate.lte = new Date(filters.endDate);
+          } catch (error) {
+            console.warn("Invalid endDate:", filters.endDate);
+          }
         }
       }
 
       // 2. Options de tri
-      const orderBy: any = {};
-      const sortBy = filters.sortBy || "createdAt";
-      const sortOrder = filters.sortOrder || "desc";
+      const validSortFields = [
+        "id",
+        "level",
+        "quantity",
+        "productionDate",
+        "createdAt",
+        "updatedAt",
+      ];
+      const sortBy = validSortFields.includes(filters.sortBy || "")
+        ? filters.sortBy
+        : "createdAt";
+      const sortOrder = filters.sortOrder === "asc" ? "asc" : "desc";
 
-      if (sortBy.includes(".")) {
-        const [relation, field] = sortBy.split(".");
-        orderBy[relation] = { [field]: sortOrder };
-      } else {
+      const orderBy: any = {};
+      if ((sortBy || "").includes(".")) {
+        const [relation, field] = (sortBy || "").split(".");
+        if (relation && field) {
+          orderBy[relation] = { [field]: sortOrder };
+        }
+      } else if (sortBy) {
         orderBy[sortBy] = sortOrder;
       }
 
-      // 3. Exécuter les requêtes
+      console.log(
+        "🔍 [SERVICE] Final WHERE clause:",
+        JSON.stringify(where, null, 2)
+      );
+      console.log("🔍 [SERVICE] Order by:", orderBy);
+
+      // 3. Relations à inclure
+      const includeRelations = filters.includeRelations !== false;
+      // Always include childLots for availableQuantity calculation
+      const include = {
+        variety: true,
+        multiplier: true,
+        parcel: true,
+        parentLot: includeRelations
+          ? { include: { variety: true } }
+          : undefined,
+        childLots: {
+          where: { isActive: true },
+          include: { variety: true },
+          orderBy: { productionDate: Prisma.SortOrder.desc },
+        },
+        qualityControls: includeRelations
+          ? {
+              orderBy: { controlDate: Prisma.SortOrder.desc },
+              take: 3,
+            }
+          : undefined,
+        productions: includeRelations
+          ? {
+              orderBy: { startDate: Prisma.SortOrder.desc },
+              take: 3,
+            }
+          : undefined,
+        _count: includeRelations
+          ? {
+              select: {
+                childLots: true,
+                qualityControls: true,
+                productions: true,
+              },
+            }
+          : undefined,
+      };
+
+      // 4. Exécuter les requêtes
+      console.log("🚀 [SERVICE] Executing Prisma queries...");
+
       const [seedLots, totalCount] = await Promise.all([
         prisma.seedLot.findMany({
           where,
           skip,
           take: pageSize,
           orderBy,
-          include: {
-            variety: true,
-            multiplier: true,
-            parcel: true,
-            parentLot: { include: { variety: true } },
-            childLots: { include: { variety: true } },
-            qualityControls: {
-              orderBy: { controlDate: "desc" },
-              take: 1,
-            },
-            productions: {
-              orderBy: { startDate: "desc" },
-              take: 1,
-            },
-            _count: {
-              select: {
-                childLots: true,
-                qualityControls: true,
-                productions: true,
-              },
-            },
-          },
+          include,
         }),
         prisma.seedLot.count({ where }),
       ]);
 
-      // ✅ CORRECTION: Transformer chaque lot pour le frontend
+      console.log(
+        `✅ [SERVICE] Query executed successfully: ${seedLots.length}/${totalCount} results`
+      );
+
+      // ✅ CORRECTION: Transformer chaque lot pour le frontend (DB → UI)
       const transformedLots = seedLots.map((lot) => {
         const transformed = DataTransformer.transformSeedLot(lot);
 
-        // Ajouter la quantité disponible
+        // Ajouter la quantité disponible calculée
         const childLotsQuantity =
           lot.childLots?.reduce(
             (sum: number, child: any) => sum + child.quantity,
@@ -344,12 +435,12 @@ export class SeedLotService {
         };
       });
 
-      // 4. Métadonnées de pagination
+      // 5. Métadonnées de pagination
       const totalPages = Math.ceil(totalCount / pageSize);
 
       const result: GetSeedLotsResult = {
         success: true,
-        message: "Lots récupérés avec succès",
+        message: `${transformedLots.length} lots récupérés avec succès`,
         data: transformedLots,
         meta: {
           totalCount,
@@ -361,17 +452,32 @@ export class SeedLotService {
         },
       };
 
-      logger.info("Seed lots retrieved successfully", {
-        count: transformedLots.length,
-        totalCount,
-        page,
-        totalPages,
+      console.log("✅ [SERVICE] Final result prepared:", {
+        dataCount: result.data.length,
+        totalCount: result.meta.totalCount,
+        currentPage: result.meta.page,
+        totalPages: result.meta.totalPages,
       });
 
       return result;
     } catch (error) {
+      console.error("❌ [SERVICE] Error fetching seed lots:", error);
       logger.error("Error fetching seed lots", { error, filters });
-      throw error;
+
+      // Retourner un résultat d'erreur structuré
+      return {
+        success: false,
+        message: "Erreur lors de la récupération des lots",
+        data: [],
+        meta: {
+          totalCount: 0,
+          page: filters.page || 1,
+          pageSize: filters.pageSize || 10,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        },
+      };
     }
   }
 

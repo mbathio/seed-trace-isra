@@ -1,10 +1,14 @@
 // backend/src/middleware/enumTransformMiddleware.ts - VERSION CORRIGÉE FINALE
 
 import { Request, Response, NextFunction } from "express";
-import { ENUM_MAPPINGS, transformEnum } from "../config/enumMappings";
+import {
+  transformEnum,
+  ENUM_MAPPINGS,
+  debugTransformation,
+} from "../config/enumMappings";
 
 /**
- * ✅ CORRECTION: Middleware de transformation générique et robuste
+ * ✅ MIDDLEWARE DE TRANSFORMATION PRINCIPALE - CORRIGÉE
  * Transforme automatiquement les enums entre les formats UI et DB
  */
 export const enumTransformMiddleware = (
@@ -12,7 +16,9 @@ export const enumTransformMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
-  // Paramètres système à ne jamais transformer
+  console.log("🔄 [MIDDLEWARE] Starting enum transformation");
+
+  // ✅ Paramètres système à ne jamais transformer
   const systemParams = [
     "page",
     "pageSize",
@@ -28,39 +34,39 @@ export const enumTransformMiddleware = (
     "maxDepth",
   ];
 
-  // ✅ CORRECTION: Transformation robuste des données de requête (UI -> DB)
+  // ✅ SECTION 1: Transformation des données de requête (UI → DB)
   if (req.body && typeof req.body === "object") {
+    console.log("🔄 [MIDDLEWARE] Transforming request body:", req.body);
     req.body = transformRequestData(req.body);
+    console.log("✅ [MIDDLEWARE] Transformed body:", req.body);
   }
 
-  // ✅ CORRECTION: Transformation robuste des query parameters
+  // ✅ SECTION 2: Transformation des query parameters
   if (req.query && typeof req.query === "object") {
+    console.log("🔄 [MIDDLEWARE] Transforming query params:", req.query);
+
     const transformedQuery: any = {};
 
     for (const [key, value] of Object.entries(req.query)) {
       if (systemParams.includes(key)) {
-        // ✅ CORRECTION: Gérer les paramètres système spécialement
+        // Gérer les paramètres système spécialement
         transformedQuery[key] = handleSystemParam(key, value);
       } else if (
         ["varietyId", "multiplierId", "parcelId", "inspectorId"].includes(key)
       ) {
-        // ✅ CORRECTION: Convertir les IDs en nombres
-        const numValue = Array.isArray(value)
-          ? parseInt(value[0] as string, 10)
-          : parseInt(value as string, 10);
-        if (!isNaN(numValue)) {
-          transformedQuery[key] = numValue;
-        }
+        // Convertir les IDs en nombres
+        transformedQuery[key] = parseId(value);
       } else {
-        // ✅ CORRECTION: Transformer les enums seulement
-        transformedQuery[key] = transformRequestData({ [key]: value })[key];
+        // ✅ TRANSFORMATION DES ENUMS QUERY
+        transformedQuery[key] = transformQueryParam(key, value);
       }
     }
 
     req.query = transformedQuery;
+    console.log("✅ [MIDDLEWARE] Transformed query:", req.query);
   }
 
-  // ✅ CORRECTION: Intercepter la réponse pour transformer (DB -> UI)
+  // ✅ SECTION 3: Intercepter la réponse pour transformer (DB → UI)
   const originalJson = res.json.bind(res);
   res.json = function (data: any) {
     // Ne pas transformer les erreurs de validation
@@ -70,7 +76,9 @@ export const enumTransformMiddleware = (
 
     // Transformer toutes les réponses sauf les erreurs
     if (data && typeof data === "object") {
+      console.log("🔄 [MIDDLEWARE] Transforming response data");
       data = transformResponseData(data);
+      console.log("✅ [MIDDLEWARE] Transformed response data");
     }
     return originalJson(data);
   };
@@ -79,7 +87,7 @@ export const enumTransformMiddleware = (
 };
 
 /**
- * ✅ CORRECTION: Gestion spécialisée des paramètres système
+ * ✅ GESTION DES PARAMÈTRES SYSTÈME - CORRIGÉE
  */
 function handleSystemParam(key: string, value: any): any {
   switch (key) {
@@ -87,43 +95,64 @@ function handleSystemParam(key: string, value: any): any {
     case "includeExpired":
     case "includeInactive":
     case "full":
-      // ✅ CORRECTION: Conversion robuste string -> boolean
-      if (typeof value === "boolean") return value;
-      if (typeof value === "string") {
-        return value.toLowerCase() === "true";
-      }
-      if (Array.isArray(value)) {
-        return value[0] && String(value[0]).toLowerCase() === "true";
-      }
-      return Boolean(value);
+      return parseBoolean(value);
 
     case "page":
     case "pageSize":
     case "size":
     case "maxDepth":
-      // ✅ CORRECTION: Conversion robuste string/array -> number
-      const rawValue = Array.isArray(value) ? value[0] : value;
-      const numValue =
-        typeof rawValue === "string" ? parseInt(rawValue, 10) : rawValue;
-      if (key === "page") return isNaN(numValue) || numValue < 1 ? 1 : numValue;
-      if (key === "pageSize")
-        return isNaN(numValue) || numValue < 1 ? 10 : Math.min(numValue, 100);
-      if (key === "maxDepth")
-        return isNaN(numValue) || numValue < 1 ? 10 : Math.min(numValue, 20);
-      if (key === "size")
-        return isNaN(numValue) || numValue < 50
-          ? 300
-          : Math.min(numValue, 1000);
-      return isNaN(numValue) ? undefined : numValue;
+      return parseNumber(key, value);
 
     default:
-      // ✅ CORRECTION: Gérer les arrays de query params
       return Array.isArray(value) ? value[0] : value;
   }
 }
 
 /**
- * ✅ CORRECTION: Transformer les données de requête (UI -> DB) de façon récursive
+ * ✅ TRANSFORMATION DES PARAMÈTRES DE REQUÊTE - CORRIGÉE
+ */
+function transformQueryParam(key: string, value: any): any {
+  const actualValue = Array.isArray(value) ? value[0] : value;
+
+  if (!actualValue || typeof actualValue !== "string") {
+    return actualValue;
+  }
+
+  // ✅ MAPPING SPÉCIFIQUE DES CHAMPS QUERY
+  switch (key) {
+    case "status":
+      // Détecter le contexte pour le bon type de status
+      if (key === "status") {
+        // Par défaut, considérer comme LOT_STATUS
+        return transformEnum(actualValue, "LOT_STATUS", "UI_TO_DB");
+      }
+      break;
+
+    case "level":
+    case "seedLevel":
+      return actualValue.toUpperCase(); // Seed levels restent identiques
+
+    case "cropType":
+      return transformEnum(actualValue, "CROP_TYPE", "UI_TO_DB");
+
+    case "role":
+      return transformEnum(actualValue, "USER_ROLE", "UI_TO_DB");
+
+    case "result":
+    case "testResult":
+      return transformEnum(actualValue, "TEST_RESULT", "UI_TO_DB");
+
+    case "severity":
+    case "issueSeverity":
+      return transformEnum(actualValue, "ISSUE_SEVERITY", "UI_TO_DB");
+
+    default:
+      return actualValue;
+  }
+}
+
+/**
+ * ✅ TRANSFORMATION DES DONNÉES DE REQUÊTE (UI → DB) - CORRIGÉE
  */
 function transformRequestData(data: any): any {
   if (!data || typeof data !== "object") return data;
@@ -134,81 +163,79 @@ function transformRequestData(data: any): any {
 
   const transformed = { ...data };
 
-  // ✅ CORRECTION: Mapping complet des champs d'enum avec gestion d'erreurs
-  const enumFieldMappings: Record<string, string[]> = {
-    status: [
-      "LOT_STATUS",
-      "PARCEL_STATUS",
-      "PRODUCTION_STATUS",
-      "CONTRACT_STATUS",
-      "MULTIPLIER_STATUS",
-    ],
-    level: ["SEED_LEVEL"],
-    seedLevel: ["SEED_LEVEL"],
-    cropType: ["CROP_TYPE"],
-    role: ["USER_ROLE"],
-    type: ["ACTIVITY_TYPE", "ISSUE_TYPE", "REPORT_TYPE"],
-    activityType: ["ACTIVITY_TYPE"],
-    issueType: ["ISSUE_TYPE"],
-    reportType: ["REPORT_TYPE"],
-    result: ["TEST_RESULT"],
-    testResult: ["TEST_RESULT"],
-    certificationLevel: ["CERTIFICATION_LEVEL"],
-    severity: ["ISSUE_SEVERITY"],
-    issueSeverity: ["ISSUE_SEVERITY"],
+  // ✅ MAPPING COMPLET DES CHAMPS AVEC GESTION D'ERREURS
+  const fieldMappings: Record<
+    string,
+    { enumType: keyof typeof ENUM_MAPPINGS; specialHandling?: boolean }
+  > = {
+    status: { enumType: "LOT_STATUS" },
+    level: { enumType: "SEED_LEVEL", specialHandling: true },
+    seedLevel: { enumType: "SEED_LEVEL", specialHandling: true },
+    cropType: { enumType: "CROP_TYPE" },
+    role: { enumType: "USER_ROLE" },
+    type: { enumType: "ACTIVITY_TYPE" }, // Par défaut
+    activityType: { enumType: "ACTIVITY_TYPE" },
+    issueType: { enumType: "ISSUE_TYPE" },
+    reportType: { enumType: "REPORT_TYPE" },
+    result: { enumType: "TEST_RESULT" },
+    testResult: { enumType: "TEST_RESULT" },
+    certificationLevel: { enumType: "CERTIFICATION_LEVEL" },
+    severity: { enumType: "ISSUE_SEVERITY" },
+    issueSeverity: { enumType: "ISSUE_SEVERITY" },
   };
 
-  for (const [field, enumTypes] of Object.entries(enumFieldMappings)) {
+  // Appliquer les transformations
+  for (const [field, config] of Object.entries(fieldMappings)) {
     if (transformed[field] !== undefined && transformed[field] !== null) {
       const originalValue = transformed[field];
 
       try {
-        // ✅ CORRECTION: Gérer les arrays de query params
         const valueToTransform = Array.isArray(originalValue)
           ? originalValue[0]
           : originalValue;
 
         if (typeof valueToTransform === "string") {
-          // ✅ CORRECTION: Pour les seed levels, toujours en majuscules
-          if (field === "level" || field === "seedLevel") {
+          if (
+            config.specialHandling &&
+            (field === "level" || field === "seedLevel")
+          ) {
+            // Seed levels : toujours en majuscules
             transformed[field] = valueToTransform.toUpperCase();
           } else {
-            // ✅ CORRECTION: Essayer chaque type d'enum jusqu'à trouver une correspondance
-            let transformedValue = valueToTransform;
-            for (const enumType of enumTypes) {
-              const mappedValue = transformEnum(
+            // Transformation normale
+            if (process.env.NODE_ENV === "development") {
+              debugTransformation(
                 valueToTransform,
-                enumType as keyof typeof ENUM_MAPPINGS,
+                config.enumType,
                 "UI_TO_DB"
               );
-              if (mappedValue !== valueToTransform) {
-                transformedValue = mappedValue;
-                break;
-              }
             }
-            transformed[field] = transformedValue;
+
+            transformed[field] = transformEnum(
+              valueToTransform,
+              config.enumType,
+              "UI_TO_DB"
+            );
           }
         }
       } catch (error) {
-        // ✅ CORRECTION: En cas d'erreur, garder la valeur originale et logger
         console.warn(
-          `Failed to transform enum field "${field}" with value "${originalValue}":`,
+          `Failed to transform field "${field}" with value "${originalValue}":`,
           error
         );
-        transformed[field] = originalValue;
+        transformed[field] = originalValue; // Garder la valeur originale en cas d'erreur
       }
     }
   }
 
-  // ✅ CORRECTION: Gérer le cas spécial seedLevel -> level pour compatibilité
+  // ✅ Gérer les cas spéciaux
   if (transformed.seedLevel && !transformed.level) {
     transformed.level = transformed.seedLevel;
     delete transformed.seedLevel;
   }
 
-  // ✅ CORRECTION: Transformation récursive avec protection contre les cycles
-  const visitedObjects = new WeakSet();
-
+  // ✅ Transformation récursive avec protection contre les cycles
+  const visited = new WeakSet();
   for (const key in transformed) {
     const value = transformed[key];
     if (
@@ -216,9 +243,9 @@ function transformRequestData(data: any): any {
       value !== null &&
       !Array.isArray(value) &&
       !(value instanceof Date) &&
-      !visitedObjects.has(value)
+      !visited.has(value)
     ) {
-      visitedObjects.add(value);
+      visited.add(value);
       transformed[key] = transformRequestData(value);
     }
   }
@@ -227,7 +254,7 @@ function transformRequestData(data: any): any {
 }
 
 /**
- * ✅ CORRECTION: Transformer les données de réponse (DB -> UI) de façon récursive
+ * ✅ TRANSFORMATION DES DONNÉES DE RÉPONSE (DB → UI) - CORRIGÉE
  */
 function transformResponseData(data: any): any {
   if (!data || typeof data !== "object") return data;
@@ -238,11 +265,11 @@ function transformResponseData(data: any): any {
 
   const transformed = { ...data };
 
-  // ✅ CORRECTION: Transformer spécifiquement la structure de réponse API
+  // ✅ Transformer la structure de réponse API
   if (transformed.data !== undefined) {
     if (Array.isArray(transformed.data)) {
-      transformed.data = (transformed.data as Record<string, any>[]).map(
-        (item: Record<string, any>) => transformResponseData(item)
+      transformed.data = transformed.data.map((item: any) =>
+        transformResponseData(item)
       );
     } else if (
       typeof transformed.data === "object" &&
@@ -252,60 +279,52 @@ function transformResponseData(data: any): any {
     }
   }
 
-  // ✅ CORRECTION: Mapping complet des champs d'enum pour les réponses
-  const enumFieldMappings: Record<string, string[]> = {
-    status: [
-      "LOT_STATUS",
-      "PARCEL_STATUS",
-      "PRODUCTION_STATUS",
-      "CONTRACT_STATUS",
-      "MULTIPLIER_STATUS",
-    ],
-    level: ["SEED_LEVEL"],
-    seedLevel: ["SEED_LEVEL"],
-    cropType: ["CROP_TYPE"],
-    role: ["USER_ROLE"],
-    type: ["ACTIVITY_TYPE", "ISSUE_TYPE", "REPORT_TYPE"],
-    activityType: ["ACTIVITY_TYPE"],
-    issueType: ["ISSUE_TYPE"],
-    reportType: ["REPORT_TYPE"],
-    result: ["TEST_RESULT"],
-    testResult: ["TEST_RESULT"],
-    certificationLevel: ["CERTIFICATION_LEVEL"],
-    severity: ["ISSUE_SEVERITY"],
-    issueSeverity: ["ISSUE_SEVERITY"],
+  // ✅ MAPPING COMPLET DES CHAMPS DE RÉPONSE
+  const responseFieldMappings: Record<
+    string,
+    { enumType: keyof typeof ENUM_MAPPINGS; specialHandling?: boolean }
+  > = {
+    status: { enumType: "LOT_STATUS" },
+    level: { enumType: "SEED_LEVEL", specialHandling: true },
+    seedLevel: { enumType: "SEED_LEVEL", specialHandling: true },
+    cropType: { enumType: "CROP_TYPE" },
+    role: { enumType: "USER_ROLE" },
+    type: { enumType: "ACTIVITY_TYPE" }, // Par défaut
+    activityType: { enumType: "ACTIVITY_TYPE" },
+    issueType: { enumType: "ISSUE_TYPE" },
+    reportType: { enumType: "REPORT_TYPE" },
+    result: { enumType: "TEST_RESULT" },
+    testResult: { enumType: "TEST_RESULT" },
+    certificationLevel: { enumType: "CERTIFICATION_LEVEL" },
+    severity: { enumType: "ISSUE_SEVERITY" },
+    issueSeverity: { enumType: "ISSUE_SEVERITY" },
   };
 
-  for (const [field, enumTypes] of Object.entries(enumFieldMappings)) {
+  // Appliquer les transformations de réponse
+  for (const [field, config] of Object.entries(responseFieldMappings)) {
     if (transformed[field] !== undefined && transformed[field] !== null) {
       const originalValue = transformed[field];
 
       try {
         if (typeof originalValue === "string") {
-          // ✅ CORRECTION: Les seed levels restent identiques (déjà corrects)
-          if (field === "level" || field === "seedLevel") {
+          if (
+            config.specialHandling &&
+            (field === "level" || field === "seedLevel")
+          ) {
+            // Seed levels restent identiques (déjà en majuscules)
             transformed[field] = originalValue;
           } else {
-            // ✅ CORRECTION: Essayer chaque type d'enum jusqu'à trouver une correspondance
-            let transformedValue = originalValue;
-            for (const enumType of enumTypes) {
-              const mappedValue = transformEnum(
-                originalValue,
-                enumType as keyof typeof ENUM_MAPPINGS,
-                "DB_TO_UI"
-              );
-              if (mappedValue !== originalValue) {
-                transformedValue = mappedValue;
-                break;
-              }
-            }
-            transformed[field] = transformedValue;
+            // Transformation normale DB → UI
+            transformed[field] = transformEnum(
+              originalValue,
+              config.enumType,
+              "DB_TO_UI"
+            );
           }
         }
       } catch (error) {
-        // ✅ CORRECTION: En cas d'erreur, garder la valeur originale et logger
         console.warn(
-          `Failed to transform response enum field "${field}" with value "${originalValue}":`,
+          `Failed to transform response field "${field}" with value "${originalValue}":`,
           error
         );
         transformed[field] = originalValue;
@@ -313,20 +332,19 @@ function transformResponseData(data: any): any {
     }
   }
 
-  // ✅ CORRECTION: Transformation récursive avec protection contre les cycles
-  const visitedObjects = new WeakSet();
-
+  // ✅ Transformation récursive des objets imbriqués
+  const visited = new WeakSet();
   for (const key in transformed) {
     const value = transformed[key];
     if (
       typeof value === "object" &&
       value !== null &&
-      key !== "data" && // Éviter la double transformation de data
+      key !== "data" && // Éviter la double transformation
       !Array.isArray(value) &&
       !(value instanceof Date) &&
-      !visitedObjects.has(value)
+      !visited.has(value)
     ) {
-      visitedObjects.add(value);
+      visited.add(value);
       transformed[key] = transformResponseData(value);
     }
   }
@@ -334,7 +352,62 @@ function transformResponseData(data: any): any {
   return transformed;
 }
 
-// ✅ CORRECTION: Exports spécialisés pour chaque module (alias pour compatibilité)
+/**
+ * ✅ FONCTIONS UTILITAIRES - CORRIGÉES
+ */
+function parseBoolean(value: any): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    return value.toLowerCase() === "true";
+  }
+  if (Array.isArray(value)) {
+    return value[0] && String(value[0]).toLowerCase() === "true";
+  }
+  return Boolean(value);
+}
+
+function parseNumber(key: string, value: any): number {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  const numValue =
+    typeof rawValue === "string" ? parseInt(rawValue, 10) : rawValue;
+
+  // Valeurs par défaut selon le type
+  const defaults: Record<string, number> = {
+    page: 1,
+    pageSize: 10,
+    size: 300,
+    maxDepth: 10,
+  };
+
+  if (isNaN(numValue)) {
+    return defaults[key] || 1;
+  }
+
+  // Contraintes spécifiques
+  switch (key) {
+    case "page":
+      return Math.max(1, numValue);
+    case "pageSize":
+      return Math.min(Math.max(1, numValue), 100);
+    case "size":
+      return Math.min(Math.max(50, numValue), 1000);
+    case "maxDepth":
+      return Math.min(Math.max(1, numValue), 20);
+    default:
+      return numValue;
+  }
+}
+
+function parseId(value: any): number | undefined {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  const numValue =
+    typeof rawValue === "string" ? parseInt(rawValue, 10) : rawValue;
+  return isNaN(numValue) || numValue <= 0 ? undefined : numValue;
+}
+
+/**
+ * ✅ EXPORTS SPÉCIALISÉS
+ */
 export const seedLotTransformMiddleware = enumTransformMiddleware;
 export const varietyTransformMiddleware = enumTransformMiddleware;
 export const multiplierTransformMiddleware = enumTransformMiddleware;
@@ -344,20 +417,21 @@ export const qualityControlTransformMiddleware = enumTransformMiddleware;
 export const userTransformMiddleware = enumTransformMiddleware;
 export const fullTransformation = enumTransformMiddleware;
 
-// ✅ CORRECTION: Middleware de debug pour le développement
+/**
+ * ✅ MIDDLEWARE DE DEBUG POUR LE DÉVELOPPEMENT
+ */
 export const debugTransformMiddleware = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   if (process.env.NODE_ENV === "development") {
-    console.log("🔄 [Transform Debug] Original Query:", req.query);
-    console.log("🔄 [Transform Debug] Original Body:", req.body);
+    console.log("🔍 [DEBUG] Original Query:", req.query);
+    console.log("🔍 [DEBUG] Original Body:", req.body);
 
-    // Appliquer la transformation
     enumTransformMiddleware(req, res, () => {
-      console.log("✅ [Transform Debug] Transformed Query:", req.query);
-      console.log("✅ [Transform Debug] Transformed Body:", req.body);
+      console.log("✅ [DEBUG] Transformed Query:", req.query);
+      console.log("✅ [DEBUG] Transformed Body:", req.body);
       next();
     });
   } else {
