@@ -1,231 +1,136 @@
-// backend/src/validators/common.ts - VERSION CORRIGÉE AVEC DEBUG
+// backend/src/validators/common.ts - VERSION UNIFIÉE (utilise directement les enums Prisma)
 import { z } from "zod";
+import {
+  Role,
+  SeedLevel,
+  CropType,
+  LotStatus,
+  MultiplierStatus,
+  CertificationLevel,
+  ParcelStatus,
+  ContractStatus,
+  ProductionStatus,
+  ActivityType,
+  IssueType,
+  IssueSeverity,
+  TestResult,
+  ReportType,
+} from "@prisma/client";
 
-// ✅ CORRECTION CRITIQUE: Enums avec validation stricte - VALEURS UI (format frontend)
-// Ces valeurs doivent EXACTEMENT correspondre à ce que le frontend envoie
-
-export const RoleEnum = z.enum(
-  [
-    "admin",
-    "manager",
-    "inspector",
-    "multiplier",
-    "guest",
-    "technician",
-    "researcher",
-  ],
-  {
-    errorMap: (issue, _ctx) => {
-      if (issue.code === "invalid_enum_value") {
-        return {
-          message: `Rôle invalide. Valeurs acceptées: admin, manager, inspector, multiplier, guest, technician, researcher. Reçu: ${issue.received}`,
-        };
-      }
-      return { message: "Rôle invalide" };
-    },
-  }
-);
-
-export const SeedLevelEnum = z.enum(
-  ["GO", "G1", "G2", "G3", "G4", "R1", "R2"],
-  {
-    errorMap: (issue, _ctx) => {
-      if (issue.code === "invalid_enum_value") {
-        return {
-          message: `Niveau de semence invalide. Valeurs acceptées: GO, G1, G2, G3, G4, R1, R2. Reçu: ${issue.received}`,
-        };
-      }
-      return { message: "Niveau de semence invalide" };
-    },
-  }
-);
-
-export const CropTypeEnum = z.enum(
-  ["rice", "maize", "peanut", "sorghum", "cowpea", "millet", "wheat"],
-  {
-    errorMap: (issue, _ctx) => {
-      if (issue.code === "invalid_enum_value") {
-        return {
-          message: `Type de culture invalide. Valeurs acceptées: rice, maize, peanut, sorghum, cowpea, millet, wheat. Reçu: ${issue.received}`,
-        };
-      }
-      return { message: "Type de culture invalide" };
-    },
-  }
-);
-
-// ✅ CORRECTION CRITIQUE: LotStatusEnum avec valeurs UI exactes
-export const LotStatusEnum = z.enum(
-  [
-    "pending",
-    "certified",
-    "rejected",
-    "in-stock", // ✅ CORRECTION: kebab-case pour UI
-    "sold",
-    "active",
-    "distributed",
-  ],
-  {
-    errorMap: (issue, _ctx) => {
-      if (issue.code === "invalid_enum_value") {
-        return {
-          message: `Statut de lot invalide. Valeurs acceptées: pending, certified, rejected, in-stock, sold, active, distributed. Reçu: ${issue.received}`,
-        };
-      }
-      return { message: "Statut de lot invalide" };
-    },
-  }
-);
-
-export const MultiplierStatusEnum = z.enum(["active", "inactive"], {
-  errorMap: (issue, _ctx) => {
-    if (issue.code === "invalid_enum_value") {
-      return {
-        message: `Statut multiplicateur invalide. Valeurs acceptées: active, inactive. Reçu: ${issue.received}`,
-      };
-    }
-    return { message: "Statut multiplicateur invalide" };
-  },
+// ✅ NOUVEAUX ENUMS : Utilisent directement les valeurs Prisma
+export const RoleEnum = z.nativeEnum(Role, {
+  errorMap: (issue, _ctx) => ({
+    message: `Rôle invalide. Valeurs acceptées: ${Object.values(Role).join(
+      ", "
+    )}.`,
+  }),
 });
 
-export const CertificationLevelEnum = z.enum(
-  ["beginner", "intermediate", "expert"],
-  {
-    errorMap: (issue, _ctx) => {
-      if (issue.code === "invalid_enum_value") {
-        return {
-          message: `Niveau de certification invalide. Valeurs acceptées: beginner, intermediate, expert. Reçu: ${issue.received}`,
-        };
-      }
-      return { message: "Niveau de certification invalide" };
-    },
-  }
-);
-
-export const ParcelStatusEnum = z.enum(["available", "in-use", "resting"], {
-  errorMap: (issue, _ctx) => {
-    if (issue.code === "invalid_enum_value") {
-      return {
-        message: `Statut de parcelle invalide. Valeurs acceptées: available, in-use, resting. Reçu: ${issue.received}`,
-      };
-    }
-    return { message: "Statut de parcelle invalide" };
-  },
-}); // ✅ CORRECTION: kebab-case
-
-export const ContractStatusEnum = z.enum(
-  ["draft", "active", "completed", "cancelled"],
-  {
-    errorMap: (issue, _ctx) => {
-      if (issue.code === "invalid_enum_value") {
-        return {
-          message: `Statut de contrat invalide. Valeurs acceptées: draft, active, completed, cancelled. Reçu: ${issue.received}`,
-        };
-      }
-      return { message: "Statut de contrat invalide" };
-    },
-  }
-);
-
-export const ProductionStatusEnum = z.enum(
-  [
-    "planned",
-    "in-progress", // ✅ CORRECTION: kebab-case
-    "completed",
-    "cancelled",
-  ],
-  {
-    errorMap: (issue, _ctx) => {
-      if (issue.code === "invalid_enum_value") {
-        return {
-          message: `Statut de production invalide. Valeurs acceptées: planned, in-progress, completed, cancelled. Reçu: ${issue.received}`,
-        };
-      }
-      return { message: "Statut de production invalide" };
-    },
-  }
-);
-
-export const ActivityTypeEnum = z.enum(
-  [
-    "soil-preparation", // ✅ CORRECTION: kebab-case pour tous
-    "sowing",
-    "fertilization",
-    "irrigation",
-    "weeding",
-    "pest-control",
-    "harvest",
-    "other",
-  ],
-  {
-    errorMap: (issue, _ctx) => {
-      if (issue.code === "invalid_enum_value") {
-        return {
-          message: `Type d'activité invalide. Valeurs acceptées: soil-preparation, sowing, fertilization, irrigation, weeding, pest-control, harvest, other. Reçu: ${issue.received}`,
-        };
-      }
-      return { message: "Type d'activité invalide" };
-    },
-  }
-);
-
-export const IssueTypeEnum = z.enum(
-  ["disease", "pest", "weather", "management", "other"],
-  {
-    errorMap: (issue, _ctx) => {
-      if (issue.code === "invalid_enum_value") {
-        return {
-          message: `Type de problème invalide. Valeurs acceptées: disease, pest, weather, management, other. Reçu: ${issue.received}`,
-        };
-      }
-      return { message: "Type de problème invalide" };
-    },
-  }
-);
-
-export const IssueSeverityEnum = z.enum(["low", "medium", "high"], {
-  errorMap: (issue, _ctx) => {
-    if (issue.code === "invalid_enum_value") {
-      return {
-        message: `Sévérité invalide. Valeurs acceptées: low, medium, high. Reçu: ${issue.received}`,
-      };
-    }
-    return { message: "Sévérité invalide" };
-  },
+export const SeedLevelEnum = z.nativeEnum(SeedLevel, {
+  errorMap: (issue, _ctx) => ({
+    message: `Niveau de semence invalide. Valeurs acceptées: ${Object.values(
+      SeedLevel
+    ).join(", ")}.`,
+  }),
 });
 
-export const TestResultEnum = z.enum(["pass", "fail"], {
-  errorMap: (issue, _ctx) => {
-    if (issue.code === "invalid_enum_value") {
-      return {
-        message: `Résultat de test invalide. Valeurs acceptées: pass, fail. Reçu: ${issue.received}`,
-      };
-    }
-    return { message: "Résultat de test invalide" };
-  },
+export const CropTypeEnum = z.nativeEnum(CropType, {
+  errorMap: (issue, _ctx) => ({
+    message: `Type de culture invalide. Valeurs acceptées: ${Object.values(
+      CropType
+    ).join(", ")}.`,
+  }),
 });
 
-export const ReportTypeEnum = z.enum(
-  [
-    "production",
-    "quality",
-    "inventory",
-    "multiplier-performance", // ✅ CORRECTION: kebab-case
-    "custom",
-  ],
-  {
-    errorMap: (issue, _ctx) => {
-      if (issue.code === "invalid_enum_value") {
-        return {
-          message: `Type de rapport invalide. Valeurs acceptées: production, quality, inventory, multiplier-performance, custom. Reçu: ${issue.received}`,
-        };
-      }
-      return { message: "Type de rapport invalide" };
-    },
-  }
-);
+export const LotStatusEnum = z.nativeEnum(LotStatus, {
+  errorMap: (issue, _ctx) => ({
+    message: `Statut de lot invalide. Valeurs acceptées: ${Object.values(
+      LotStatus
+    ).join(", ")}.`,
+  }),
+});
 
-// Schémas de base réutilisables
+export const MultiplierStatusEnum = z.nativeEnum(MultiplierStatus, {
+  errorMap: (issue, _ctx) => ({
+    message: `Statut multiplicateur invalide. Valeurs acceptées: ${Object.values(
+      MultiplierStatus
+    ).join(", ")}.`,
+  }),
+});
+
+export const CertificationLevelEnum = z.nativeEnum(CertificationLevel, {
+  errorMap: (issue, _ctx) => ({
+    message: `Niveau de certification invalide. Valeurs acceptées: ${Object.values(
+      CertificationLevel
+    ).join(", ")}.`,
+  }),
+});
+
+export const ParcelStatusEnum = z.nativeEnum(ParcelStatus, {
+  errorMap: (issue, _ctx) => ({
+    message: `Statut de parcelle invalide. Valeurs acceptées: ${Object.values(
+      ParcelStatus
+    ).join(", ")}.`,
+  }),
+});
+
+export const ContractStatusEnum = z.nativeEnum(ContractStatus, {
+  errorMap: (issue, _ctx) => ({
+    message: `Statut de contrat invalide. Valeurs acceptées: ${Object.values(
+      ContractStatus
+    ).join(", ")}.`,
+  }),
+});
+
+export const ProductionStatusEnum = z.nativeEnum(ProductionStatus, {
+  errorMap: (issue, _ctx) => ({
+    message: `Statut de production invalide. Valeurs acceptées: ${Object.values(
+      ProductionStatus
+    ).join(", ")}.`,
+  }),
+});
+
+export const ActivityTypeEnum = z.nativeEnum(ActivityType, {
+  errorMap: (issue, _ctx) => ({
+    message: `Type d'activité invalide. Valeurs acceptées: ${Object.values(
+      ActivityType
+    ).join(", ")}.`,
+  }),
+});
+
+export const IssueTypeEnum = z.nativeEnum(IssueType, {
+  errorMap: (issue, _ctx) => ({
+    message: `Type de problème invalide. Valeurs acceptées: ${Object.values(
+      IssueType
+    ).join(", ")}.`,
+  }),
+});
+
+export const IssueSeverityEnum = z.nativeEnum(IssueSeverity, {
+  errorMap: (issue, _ctx) => ({
+    message: `Sévérité invalide. Valeurs acceptées: ${Object.values(
+      IssueSeverity
+    ).join(", ")}.`,
+  }),
+});
+
+export const TestResultEnum = z.nativeEnum(TestResult, {
+  errorMap: (issue, _ctx) => ({
+    message: `Résultat de test invalide. Valeurs acceptées: ${Object.values(
+      TestResult
+    ).join(", ")}.`,
+  }),
+});
+
+export const ReportTypeEnum = z.nativeEnum(ReportType, {
+  errorMap: (issue, _ctx) => ({
+    message: `Type de rapport invalide. Valeurs acceptées: ${Object.values(
+      ReportType
+    ).join(", ")}.`,
+  }),
+});
+
+// Schémas de base réutilisables (inchangés)
 export const paginationSchema = z.object({
   page: z.union([z.string(), z.number()]).transform((val) => {
     const num = typeof val === "string" ? parseInt(val, 10) : val;
@@ -350,6 +255,24 @@ export const ValidationUtils = {
     return lat >= 12.0 && lat <= 16.7 && lng >= -17.6 && lng <= -11.3;
   },
 
+  isValidCoordinates: (lat: number, lng: number): boolean => {
+    return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+  },
+
+  isValidPhoneNumber: (phone: string): boolean => {
+    const phoneRegex = /^(\+221)?[0-9]{8,9}$/;
+    return phoneRegex.test(phone.replace(/\s+/g, ""));
+  },
+
+  isValidEmail: (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  },
+
+  isValidSeedLevel: (level: string): boolean => {
+    return Object.values(SeedLevel).includes(level as SeedLevel);
+  },
+
   sanitizeText: (text: string): string => {
     return text
       .trim()
@@ -357,13 +280,3 @@ export const ValidationUtils = {
       .replace(/[<>'"]/g, "");
   },
 };
-
-// ✅ AJOUT: Schéma pour déboguer les paramètres de requête
-export const debugSchema = z
-  .object({
-    status: LotStatusEnum.optional(),
-    level: SeedLevelEnum.optional(),
-    cropType: CropTypeEnum.optional(),
-    role: RoleEnum.optional(),
-  })
-  .passthrough();

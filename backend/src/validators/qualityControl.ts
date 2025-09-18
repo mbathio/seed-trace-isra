@@ -1,14 +1,14 @@
+// backend/src/validators/qualityControl.ts - VERSION UNIFIÉE
+
 import { z } from "zod";
 import {
+  TestResultEnum,
   percentageSchema,
   notesSchema,
   paginationSchema,
   positiveIdSchema,
   varietyIdSchema,
 } from "./common";
-
-// Test results en format UI (minuscules)
-export const TestResultEnum = z.enum(["pass", "fail"]);
 
 // Schéma de base pour réutilisation
 const baseQualityControlSchema = z.object({
@@ -52,12 +52,12 @@ export const createQualityControlSchema = baseQualityControlSchema.refine(
 export const updateQualityControlSchema = baseQualityControlSchema
   .partial()
   .extend({
-    result: TestResultEnum.optional(), // Valeurs UI "pass"/"fail"
+    result: TestResultEnum.optional(), // ✅ Utilise directement l'enum Prisma
   });
 
 // Schéma de requête
 export const qualityControlQuerySchema = paginationSchema.extend({
-  result: TestResultEnum.optional(), // Valeurs UI "pass"/"fail"
+  result: TestResultEnum.optional(), // ✅ Utilise directement l'enum Prisma
   lotId: z.string().optional(),
   inspectorId: positiveIdSchema.optional(),
   varietyId: varietyIdSchema.optional(),
