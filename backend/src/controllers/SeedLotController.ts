@@ -1,4 +1,4 @@
-// backend/src/controllers/SeedLotController.ts - VERSION CORRIGÉE COMPLÈTE
+// backend/src/controllers/SeedLotController.ts - VERSION UNIFIÉE (sans transformation)
 
 import { Request, Response, NextFunction } from "express";
 import { SeedLotService } from "../services/SeedLotService";
@@ -9,7 +9,7 @@ import QRCode from "qrcode";
 
 export class SeedLotController {
   /**
-   * ✅ CORRECTION: POST /api/seed-lots - Créer un nouveau lot
+   * ✅ POST /api/seed-lots - Créer un nouveau lot (sans transformation)
    */
   static async createSeedLot(
     req: AuthenticatedRequest,
@@ -22,7 +22,7 @@ export class SeedLotController {
         data: req.body,
       });
 
-      // ✅ CORRECTION: Les données arrivent déjà transformées par le middleware
+      // ✅ Les données arrivent déjà validées par Zod et contiennent les enums Prisma
       const seedLot = await SeedLotService.createSeedLot(req.body);
 
       LoggerUtils.audit("Seed lot created", req.user?.userId, {
@@ -34,7 +34,7 @@ export class SeedLotController {
 
       return ResponseHandler.created(
         res,
-        seedLot,
+        seedLot, // ✅ Données Prisma directes
         "Lot de semences créé avec succès"
       );
     } catch (error) {
@@ -43,7 +43,7 @@ export class SeedLotController {
   }
 
   /**
-   * ✅ CORRECTION: GET /api/seed-lots - Récupérer la liste avec pagination
+   * ✅ GET /api/seed-lots - Récupérer la liste avec pagination (sans transformation)
    */
   static async getSeedLots(
     req: Request,
@@ -51,13 +51,13 @@ export class SeedLotController {
     next: NextFunction
   ): Promise<Response | void> {
     try {
-      // ✅ CORRECTION: Utiliser les paramètres déjà transformés par le middleware
+      // ✅ Les paramètres arrivent déjà validés par Zod
       const filters = {
         page: req.query.page as number | undefined,
         pageSize: req.query.pageSize as number | undefined,
         search: req.query.search as string,
-        level: req.query.level as string,
-        status: req.query.status as string, // Déjà transformé UI -> DB par middleware
+        level: req.query.level as any, // ✅ Enum Prisma direct
+        status: req.query.status as any, // ✅ Enum Prisma direct
         varietyId: req.query.varietyId as number | undefined,
         multiplierId: req.query.multiplierId as number | undefined,
         startDate: req.query.startDate as string,
@@ -69,10 +69,10 @@ export class SeedLotController {
 
       logger.info("Getting seed lots with filters", { filters });
 
-      // ✅ CORRECTION: Le service retourne déjà les données transformées
+      // ✅ Le service retourne déjà les données au bon format
       const result = await SeedLotService.getSeedLots(filters);
 
-      // Le résultat contient déjà la structure success/message/data/meta
+      // ✅ Retourne directement le résultat (données Prisma)
       return res.json(result);
     } catch (error) {
       next(error);
@@ -80,7 +80,7 @@ export class SeedLotController {
   }
 
   /**
-   * ✅ CORRECTION: GET /api/seed-lots/:id - Récupérer un lot par ID
+   * ✅ GET /api/seed-lots/:id - Récupérer un lot par ID (sans transformation)
    */
   static async getSeedLotById(
     req: Request,
@@ -92,20 +92,25 @@ export class SeedLotController {
       const includeFullDetails =
         req.query.full === undefined ||
         (typeof req.query.full === "string" && req.query.full !== "false");
-      // ✅ CORRECTION: Le service retourne déjà les données transformées
+
+      // ✅ Le service retourne déjà les données au bon format (Prisma)
       const seedLot = await SeedLotService.getSeedLotById(
         id,
         includeFullDetails
       );
 
-      return ResponseHandler.success(res, seedLot, "Lot récupéré avec succès");
+      return ResponseHandler.success(
+        res,
+        seedLot, // ✅ Données Prisma directes
+        "Lot récupéré avec succès"
+      );
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * ✅ CORRECTION: PUT /api/seed-lots/:id - Mettre à jour un lot
+   * ✅ PUT /api/seed-lots/:id - Mettre à jour un lot (sans transformation)
    */
   static async updateSeedLot(
     req: AuthenticatedRequest,
@@ -121,7 +126,7 @@ export class SeedLotController {
         updates: req.body,
       });
 
-      // ✅ CORRECTION: Les données sont déjà transformées par le middleware
+      // ✅ Les données arrivent déjà validées avec les enums Prisma
       const seedLot = await SeedLotService.updateSeedLot(id, req.body);
 
       LoggerUtils.audit("Seed lot updated", req.user?.userId, {
@@ -129,9 +134,9 @@ export class SeedLotController {
         changes: Object.keys(req.body),
       });
 
-      return ResponseHandler.updated(
+      return ResponseHandler.success(
         res,
-        seedLot,
+        seedLot, // ✅ Données Prisma directes
         "Lot mis à jour avec succès"
       );
     } catch (error) {
@@ -140,7 +145,7 @@ export class SeedLotController {
   }
 
   /**
-   * ✅ CORRECTION: DELETE /api/seed-lots/:id - Supprimer un lot
+   * ✅ DELETE /api/seed-lots/:id - Supprimer un lot (sans transformation)
    */
   static async deleteSeedLot(
     req: AuthenticatedRequest,
@@ -171,7 +176,7 @@ export class SeedLotController {
   }
 
   /**
-   * ✅ CORRECTION: POST /api/seed-lots/bulk-update - Mise à jour en masse
+   * ✅ POST /api/seed-lots/bulk-update - Mise à jour en masse (sans transformation)
    */
   static async bulkUpdateSeedLots(
     req: AuthenticatedRequest,
@@ -199,7 +204,7 @@ export class SeedLotController {
   }
 
   /**
-   * ✅ CORRECTION: GET /api/seed-lots/search - Recherche avancée
+   * ✅ GET /api/seed-lots/search - Recherche avancée (sans transformation)
    */
   static async searchSeedLots(
     req: Request,
@@ -223,7 +228,7 @@ export class SeedLotController {
 
       return ResponseHandler.success(
         res,
-        results,
+        results, // ✅ Données Prisma directes
         `${results.length} lots trouvés`
       );
     } catch (error) {
@@ -232,7 +237,7 @@ export class SeedLotController {
   }
 
   /**
-   * ✅ CORRECTION: GET /api/seed-lots/export - Export des données
+   * ✅ GET /api/seed-lots/export - Export des données (sans transformation)
    */
   static async exportSeedLots(
     req: Request,
@@ -286,7 +291,7 @@ export class SeedLotController {
   }
 
   /**
-   * ✅ CORRECTION: GET /api/seed-lots/:id/qr-code - Générer le QR Code
+   * ✅ GET /api/seed-lots/:id/qr-code - Générer le QR Code (sans transformation)
    */
   static async getQRCode(
     req: Request,
@@ -297,21 +302,21 @@ export class SeedLotController {
       const { id } = req.params;
       const size = parseInt(req.query.size as string) || 300;
 
-      // ✅ CORRECTION: Le service retourne déjà les données transformées
+      // ✅ Le service retourne déjà les données au bon format (Prisma)
       const seedLot = await SeedLotService.getSeedLotById(id, false);
 
       if (!seedLot || typeof seedLot !== "object") {
         return ResponseHandler.notFound(res, "Lot non trouvé");
       }
 
-      // ✅ CORRECTION: Les données sont déjà transformées (format UI)
+      // ✅ Utilise directement les données Prisma
       const qrData = {
         id: seedLot.id,
-        variety: seedLot.varietyCode || "N/A",
-        level: seedLot.level,
+        variety: seedLot.variety?.code || "N/A",
+        level: seedLot.level, // ✅ Valeur Prisma directe
         quantity: seedLot.quantity,
         productionDate: seedLot.productionDate,
-        status: seedLot.status, // Déjà en format UI
+        status: seedLot.status, // ✅ Valeur Prisma directe
         url: `${process.env.CLIENT_URL}/seed-lots/${id}`,
       };
 
@@ -347,7 +352,7 @@ export class SeedLotController {
   }
 
   /**
-   * ✅ CORRECTION: GET /api/seed-lots/:id/genealogy - Arbre généalogique
+   * ✅ GET /api/seed-lots/:id/genealogy - Arbre généalogique (sans transformation)
    */
   static async getGenealogyTree(
     req: Request,
@@ -358,12 +363,12 @@ export class SeedLotController {
       const { id } = req.params;
       const maxDepth = parseInt(req.query.maxDepth as string) || 10;
 
-      // ✅ CORRECTION: Le service retourne déjà les données transformées
+      // ✅ Le service retourne déjà les données au bon format (Prisma)
       const genealogyTree = await SeedLotService.getGenealogyTree(id, maxDepth);
 
       return ResponseHandler.success(
         res,
-        genealogyTree,
+        genealogyTree, // ✅ Données Prisma directes
         "Arbre généalogique récupéré avec succès"
       );
     } catch (error) {
@@ -372,7 +377,7 @@ export class SeedLotController {
   }
 
   /**
-   * ✅ CORRECTION: POST /api/seed-lots/:id/child-lots - Créer un lot enfant
+   * ✅ POST /api/seed-lots/:id/child-lots - Créer un lot enfant (sans transformation)
    */
   static async createChildLot(
     req: AuthenticatedRequest,
@@ -387,7 +392,7 @@ export class SeedLotController {
         parentLotId: id,
       };
 
-      // ✅ CORRECTION: Le service gère la transformation
+      // ✅ Le service gère directement les données Prisma
       const childLot = await SeedLotService.createChildLot(id, childLotData);
 
       LoggerUtils.audit("Child lot created", req.user?.userId, {
@@ -398,7 +403,7 @@ export class SeedLotController {
 
       return ResponseHandler.created(
         res,
-        childLot,
+        childLot, // ✅ Données Prisma directes
         "Lot enfant créé avec succès"
       );
     } catch (error) {
@@ -407,7 +412,7 @@ export class SeedLotController {
   }
 
   /**
-   * ✅ CORRECTION: POST /api/seed-lots/:id/transfer - Transférer un lot
+   * ✅ POST /api/seed-lots/:id/transfer - Transférer un lot (sans transformation)
    */
   static async transferLot(
     req: AuthenticatedRequest,
@@ -431,14 +436,18 @@ export class SeedLotController {
         quantity,
       });
 
-      return ResponseHandler.success(res, result, "Lot transféré avec succès");
+      return ResponseHandler.success(
+        res,
+        result, // ✅ Données Prisma directes
+        "Lot transféré avec succès"
+      );
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * ✅ CORRECTION: GET /api/seed-lots/:id/stats - Statistiques d'un lot
+   * ✅ GET /api/seed-lots/:id/stats - Statistiques d'un lot (sans transformation)
    */
   static async getSeedLotStats(
     req: Request,
@@ -452,7 +461,7 @@ export class SeedLotController {
 
       return ResponseHandler.success(
         res,
-        stats,
+        stats, // ✅ Données directes
         "Statistiques récupérées avec succès"
       );
     } catch (error) {
@@ -461,7 +470,7 @@ export class SeedLotController {
   }
 
   /**
-   * ✅ CORRECTION: GET /api/seed-lots/:id/history - Historique des modifications
+   * ✅ GET /api/seed-lots/:id/history - Historique des modifications (sans transformation)
    */
   static async getSeedLotHistory(
     req: Request,
@@ -475,7 +484,7 @@ export class SeedLotController {
 
       return ResponseHandler.success(
         res,
-        history,
+        history, // ✅ Données directes
         "Historique récupéré avec succès"
       );
     } catch (error) {
@@ -484,7 +493,7 @@ export class SeedLotController {
   }
 
   /**
-   * ✅ CORRECTION: POST /api/seed-lots/:id/validate - Valider un lot
+   * ✅ POST /api/seed-lots/:id/validate - Valider un lot (sans transformation)
    */
   static async validateSeedLot(
     req: AuthenticatedRequest,
@@ -504,7 +513,11 @@ export class SeedLotController {
         );
       }
 
-      return ResponseHandler.success(res, validation, "Lot valide");
+      return ResponseHandler.success(
+        res,
+        validation, // ✅ Données directes
+        "Lot valide"
+      );
     } catch (error) {
       next(error);
     }

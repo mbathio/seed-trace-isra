@@ -1,8 +1,9 @@
+// backend/src/routes/auth.ts - VERSION UNIFIÉE (sans transformation)
+
 import { Router } from "express";
 import { AuthController } from "../controllers/AuthController";
 import { validateRequest } from "../middleware/validation";
 import { authMiddleware } from "../middleware/auth";
-import { fullTransformation } from "../middleware/transformationMiddleware";
 import {
   loginSchema,
   registerSchema,
@@ -11,8 +12,8 @@ import {
 
 const router = Router();
 
-// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
-router.use(fullTransformation);
+// ✅ CORRECTION: Plus de middleware de transformation
+// router.use(fullTransformation); // ❌ SUPPRIMÉ
 
 // Routes d'authentification
 router.post(
@@ -23,7 +24,7 @@ router.post(
 
 router.post(
   "/register",
-  validateRequest({ body: registerSchema }),
+  validateRequest({ body: registerSchema }), // ✅ Utilise les enums Prisma directement
   AuthController.register
 );
 

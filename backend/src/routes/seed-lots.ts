@@ -1,11 +1,10 @@
-// backend/src/routes/seed-lots.ts - VERSION CORRIGÉE AVEC LOGS
+// backend/src/routes/seed-lots.ts - VERSION UNIFIÉE (sans transformation)
 
 import { Router } from "express";
 import { SeedLotController } from "../controllers/SeedLotController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole, authMiddleware } from "../middleware/auth";
 import { parseQueryParams } from "../middleware/queryParser";
-import { fullTransformation } from "../middleware/transformationMiddleware";
 import {
   createSeedLotSchema,
   updateSeedLotSchema,
@@ -17,8 +16,8 @@ import {
 
 const router = Router();
 
-// Appliquer le middleware de transformation
-router.use(fullTransformation);
+// ✅ CORRECTION: Plus de middleware de transformation
+// router.use(fullTransformation); // ❌ SUPPRIMÉ
 
 // Middleware de debug pour les requêtes
 if (process.env.NODE_ENV === "development") {

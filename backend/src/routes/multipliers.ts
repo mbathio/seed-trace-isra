@@ -1,29 +1,35 @@
+// ===== backend/src/routes/multipliers.ts - VERSION SIMPLIFIÉE =====
 import { Router } from "express";
 import { MultiplierController } from "../controllers/MultiplierController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole } from "../middleware/auth";
-import { fullTransformation } from "../middleware/transformationMiddleware";
+// ❌ SUPPRIMÉ: import { fullTransformation } from "../middleware/transformationMiddleware";
 import { z } from "zod";
+import {
+  MultiplierStatusEnum,
+  CertificationLevelEnum,
+  CropTypeEnum,
+  SeedLevelEnum,
+  ContractStatusEnum,
+} from "../validators/common";
 
 const router = Router();
 
-// ✅ Appliquer le middleware de transformation
-router.use(fullTransformation);
+// ✅ CORRECTION: Plus de middleware de transformation
+// router.use(fullTransformation); // ❌ SUPPRIMÉ
 
-// Schémas de validation avec valeurs UI
+// Schémas de validation avec enums Prisma
 const createMultiplierSchema = z.object({
   name: z.string().min(1),
   address: z.string().min(1),
   latitude: z.number(),
   longitude: z.number(),
   yearsExperience: z.number().min(0),
-  certificationLevel: z.enum(["beginner", "intermediate", "expert"]), // Valeurs UI
-  specialization: z.array(
-    z.enum(["rice", "maize", "peanut", "sorghum", "cowpea", "millet", "wheat"])
-  ), // Valeurs UI
+  certificationLevel: CertificationLevelEnum, // ✅ Enum Prisma direct
+  specialization: z.array(CropTypeEnum), // ✅ Enum Prisma direct
   phone: z.string().optional(),
   email: z.string().email().optional(),
-  status: z.enum(["active", "inactive"]).optional(), // Valeurs UI
+  status: MultiplierStatusEnum.optional(), // ✅ Enum Prisma direct
 });
 
 const updateMultiplierSchema = createMultiplierSchema.partial();
@@ -32,15 +38,15 @@ const contractSchema = z.object({
   varietyId: z.union([z.number().positive(), z.string()]),
   startDate: z.string().refine((date: string) => !isNaN(Date.parse(date))),
   endDate: z.string().refine((date: string) => !isNaN(Date.parse(date))),
-  seedLevel: z.enum(["GO", "G1", "G2", "G3", "G4", "R1", "R2"]),
+  seedLevel: SeedLevelEnum, // ✅ Enum Prisma direct
   expectedQuantity: z.number().positive(),
   parcelId: z.number().optional(),
   paymentTerms: z.string().optional(),
   notes: z.string().optional(),
-  status: z.enum(["draft", "active", "completed", "cancelled"]).optional(), // Valeurs UI
+  status: ContractStatusEnum.optional(), // ✅ Enum Prisma direct
 });
 
-// Routes
+// Routes (inchangées)
 router.get("/", MultiplierController.getMultipliers);
 router.get("/:id", MultiplierController.getMultiplierById);
 router.post(

@@ -1,4 +1,4 @@
-// backend/src/middleware/validation.ts (VERSION SIMPLIFIÉE)
+// backend/src/middleware/validation.ts - VERSION SIMPLIFIÉE (sans transformation)
 import { Request, Response, NextFunction } from "express";
 import { z, ZodSchema } from "zod";
 import { ResponseHandler } from "../utils/response";
