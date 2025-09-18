@@ -1,22 +1,20 @@
-// backend/src/routes/parcels.ts - VERSION COMPLÈTE AVEC TOUTES LES ROUTES
+// backend/src/routes/parcels.ts - VERSION NETTOYÉE
+
 import { Router } from "express";
 import { ParcelController } from "../controllers/ParcelController";
 import { validateRequest } from "../middleware/validation";
-import { requireRole } from "../middleware/auth";
-import { fullTransformation } from "../middleware/transformationMiddleware";
+import { requireRole, authMiddleware } from "../middleware/auth";
 import { z } from "zod";
+import { ParcelStatusEnum } from "../validators/common";
 
 const router = Router();
-
-// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
-router.use(fullTransformation);
 
 const createParcelSchema = z.object({
   name: z.string().optional(),
   area: z.number().positive(),
   latitude: z.number(),
   longitude: z.number(),
-  status: z.enum(["available", "in-use", "resting"]).optional(),
+  status: ParcelStatusEnum.optional(), // Enum Prisma direct
   soilType: z.string().optional(),
   irrigationSystem: z.string().optional(),
   address: z.string().optional(),
@@ -35,23 +33,9 @@ const soilAnalysisSchema = z.object({
   notes: z.string().optional(),
 });
 
-const checkAvailabilitySchema = z.object({
-  startDate: z.string().refine((date: string) => !isNaN(Date.parse(date))),
-  endDate: z.string().refine((date: string) => !isNaN(Date.parse(date))),
-});
-
-const assignMultiplierSchema = z.object({
-  multiplierId: z.number().positive(),
-});
-
-// Routes publiques (avec authentification mais sans restriction de rôle)
+// Routes publiques
 router.get("/", ParcelController.getParcels);
 router.get("/statistics", ParcelController.getStatistics);
-router.get(
-  "/export",
-  requireRole("MANAGER", "ADMIN"),
-  ParcelController.exportParcels
-);
 router.get("/:id", ParcelController.getParcelById);
 router.get("/:id/soil-analyses", ParcelController.getSoilAnalyses);
 router.get("/:id/history", ParcelController.getHistory);
@@ -59,6 +43,7 @@ router.get("/:id/history", ParcelController.getHistory);
 // Routes protégées
 router.post(
   "/",
+  authMiddleware,
   requireRole("MANAGER", "ADMIN"),
   validateRequest({ body: createParcelSchema }),
   ParcelController.createParcel
@@ -66,31 +51,25 @@ router.post(
 
 router.put(
   "/:id",
+  authMiddleware,
   requireRole("MANAGER", "ADMIN"),
   validateRequest({ body: updateParcelSchema }),
   ParcelController.updateParcel
 );
 
-router.delete("/:id", requireRole("ADMIN"), ParcelController.deleteParcel);
+router.delete(
+  "/:id",
+  authMiddleware,
+  requireRole("ADMIN"),
+  ParcelController.deleteParcel
+);
 
 router.post(
   "/:id/soil-analysis",
+  authMiddleware,
   requireRole("TECHNICIAN", "INSPECTOR", "ADMIN"),
   validateRequest({ body: soilAnalysisSchema }),
   ParcelController.addSoilAnalysis
-);
-
-router.post(
-  "/:id/check-availability",
-  validateRequest({ body: checkAvailabilitySchema }),
-  ParcelController.checkAvailability
-);
-
-router.post(
-  "/:id/assign-multiplier",
-  requireRole("MANAGER", "ADMIN"),
-  validateRequest({ body: assignMultiplierSchema }),
-  ParcelController.assignMultiplier
 );
 
 export default router;

@@ -1,15 +1,13 @@
-// ===== 7. backend/src/routes/users.ts - AVEC TRANSFORMATION =====
+// backend/src/routes/users.ts - VERSION NETTOYÉE
+
 import { Router } from "express";
 import { UserController } from "../controllers/UserController";
 import { validateRequest } from "../middleware/validation";
-import { requireRole } from "../middleware/auth";
-import { fullTransformation } from "../middleware/transformationMiddleware";
+import { requireRole, authMiddleware } from "../middleware/auth";
 import { z } from "zod";
+import { RoleEnum } from "../validators/common";
 
 const router = Router();
-
-// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
-router.use(fullTransformation);
 
 const createUserSchema = z.object({
   name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
@@ -17,15 +15,7 @@ const createUserSchema = z.object({
   password: z
     .string()
     .min(6, "Le mot de passe doit contenir au moins 6 caractères"),
-  role: z.enum([
-    "admin",
-    "manager",
-    "inspector",
-    "multiplier",
-    "guest",
-    "technician",
-    "researcher",
-  ]), // ✅ VALEURS UI
+  role: RoleEnum, // Enum Prisma direct
   avatar: z.string().optional(),
   isActive: z.boolean().optional(),
 });
@@ -33,17 +23,7 @@ const createUserSchema = z.object({
 const updateUserSchema = z.object({
   name: z.string().min(2).optional(),
   email: z.string().email().optional(),
-  role: z
-    .enum([
-      "admin",
-      "manager",
-      "inspector",
-      "multiplier",
-      "guest",
-      "technician",
-      "researcher",
-    ])
-    .optional(), // ✅ VALEURS UI
+  role: RoleEnum.optional(), // Enum Prisma direct
   avatar: z.string().optional(),
   isActive: z.boolean().optional(),
 });
@@ -55,24 +35,41 @@ const updatePasswordSchema = z.object({
     .min(6, "Le nouveau mot de passe doit contenir au moins 6 caractères"),
 });
 
-// Routes...
-router.get("/", requireRole("MANAGER", "ADMIN"), UserController.getUsers);
-router.get("/:id", UserController.getUserById);
+// Routes
+router.get(
+  "/",
+  authMiddleware,
+  requireRole("MANAGER", "ADMIN"),
+  UserController.getUsers
+);
+router.get("/:id", authMiddleware, UserController.getUserById);
+
 router.post(
   "/",
+  authMiddleware,
   requireRole("ADMIN"),
   validateRequest({ body: createUserSchema }),
   UserController.createUser
 );
+
 router.put(
   "/:id",
+  authMiddleware,
   requireRole("MANAGER", "ADMIN"),
   validateRequest({ body: updateUserSchema }),
   UserController.updateUser
 );
-router.delete("/:id", requireRole("ADMIN"), UserController.deleteUser);
+
+router.delete(
+  "/:id",
+  authMiddleware,
+  requireRole("ADMIN"),
+  UserController.deleteUser
+);
+
 router.put(
   "/:id/password",
+  authMiddleware,
   validateRequest({ body: updatePasswordSchema }),
   UserController.updatePassword
 );

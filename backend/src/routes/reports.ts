@@ -1,45 +1,41 @@
-// ===== 8. backend/src/routes/reports.ts - AVEC TRANSFORMATION =====
+// backend/src/routes/reports.ts - VERSION NETTOYÉE
+
 import { Router } from "express";
 import { ReportController } from "../controllers/ReportController";
 import { validateRequest } from "../middleware/validation";
-import { requireRole } from "../middleware/auth";
-import { fullTransformation } from "../middleware/transformationMiddleware"; // ✅ AJOUTÉ
+import { requireRole, authMiddleware } from "../middleware/auth";
 import { z } from "zod";
+import { ReportTypeEnum } from "../validators/common";
 
 const router = Router();
 
-// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
-router.use(fullTransformation);
-
 const createReportSchema = z.object({
   title: z.string().min(1),
-  type: z.enum([
-    "production",
-    "quality",
-    "inventory",
-    "multiplier-performance",
-    "custom",
-  ]), // ✅ VALEURS UI
+  type: ReportTypeEnum, // Enum Prisma direct
   description: z.string().optional(),
   parameters: z.any().optional(),
   data: z.any().optional(),
   isPublic: z.boolean().optional(),
 });
 
-// Routes...
-router.get("/", ReportController.getReports);
-router.get("/:id", ReportController.getReportById);
+// Routes
+router.get("/", authMiddleware, ReportController.getReports);
+router.get("/:id", authMiddleware, ReportController.getReportById);
+
 router.post(
   "/",
+  authMiddleware,
   requireRole("MANAGER", "ADMIN"),
   validateRequest({ body: createReportSchema }),
   ReportController.createReport
 );
-router.get("/production", ReportController.getProductionReport);
-router.get("/quality", ReportController.getQualityReport);
-router.get("/inventory", ReportController.getInventoryReport);
+
+router.get("/production", authMiddleware, ReportController.getProductionReport);
+router.get("/quality", authMiddleware, ReportController.getQualityReport);
+router.get("/inventory", authMiddleware, ReportController.getInventoryReport);
 router.get(
   "/multiplier-performance",
+  authMiddleware,
   ReportController.getMultiplierPerformanceReport
 );
 

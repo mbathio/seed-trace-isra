@@ -1,4 +1,4 @@
-// backend/src/routes/seed-lots.ts - VERSION UNIFIÉE (sans transformation)
+// backend/src/routes/seed-lots.ts - VERSION NETTOYÉE
 
 import { Router } from "express";
 import { SeedLotController } from "../controllers/SeedLotController";
@@ -15,9 +15,6 @@ import {
 } from "../validators/seedLot";
 
 const router = Router();
-
-// ✅ CORRECTION: Plus de middleware de transformation
-// router.use(fullTransformation); // ❌ SUPPRIMÉ
 
 // Middleware de debug pour les requêtes
 if (process.env.NODE_ENV === "development") {

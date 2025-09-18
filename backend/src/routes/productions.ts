@@ -1,15 +1,17 @@
-// ===== 5. backend/src/routes/productions.ts - AVEC TRANSFORMATION =====
+// backend/src/routes/productions.ts - VERSION NETTOYÉE
+
 import { Router } from "express";
 import { ProductionController } from "../controllers/ProductionController";
 import { validateRequest } from "../middleware/validation";
-import { requireRole } from "../middleware/auth";
-import { fullTransformation } from "../middleware/transformationMiddleware";
+import { requireRole, authMiddleware } from "../middleware/auth";
 import { z } from "zod";
+import {
+  ActivityTypeEnum,
+  IssueTypeEnum,
+  IssueSeverityEnum,
+} from "../validators/common";
 
 const router = Router();
-
-// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
-router.use(fullTransformation);
 
 const createProductionSchema = z.object({
   lotId: z.string().min(1),
@@ -40,16 +42,7 @@ const updateProductionSchema = createProductionSchema.partial().omit({
 });
 
 const activitySchema = z.object({
-  type: z.enum([
-    "soil-preparation", // ✅ VALEURS UI (kebab-case)
-    "sowing",
-    "fertilization",
-    "irrigation",
-    "weeding",
-    "pest-control",
-    "harvest",
-    "other",
-  ]),
+  type: ActivityTypeEnum, // Enum Prisma direct
   activityDate: z.string().refine((date) => !isNaN(Date.parse(date))),
   description: z.string().min(1),
   personnel: z.array(z.string()).optional(),
@@ -68,9 +61,9 @@ const activitySchema = z.object({
 
 const issueSchema = z.object({
   issueDate: z.string().refine((date) => !isNaN(Date.parse(date))),
-  type: z.enum(["disease", "pest", "weather", "management", "other"]), // ✅ VALEURS UI
+  type: IssueTypeEnum, // Enum Prisma direct
   description: z.string().min(1),
-  severity: z.enum(["low", "medium", "high"]), // ✅ VALEURS UI
+  severity: IssueSeverityEnum, // Enum Prisma direct
   actions: z.string().min(1),
   cost: z.number().optional(),
 });
@@ -85,40 +78,52 @@ const weatherDataSchema = z.object({
   source: z.string().optional(),
 });
 
-// Routes...
+// Routes
 router.get("/", ProductionController.getProductions);
 router.get("/:id", ProductionController.getProductionById);
+
 router.post(
   "/",
+  authMiddleware,
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: createProductionSchema }),
   ProductionController.createProduction
 );
+
 router.put(
   "/:id",
+  authMiddleware,
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: updateProductionSchema }),
   ProductionController.updateProduction
 );
+
 router.delete(
   "/:id",
+  authMiddleware,
   requireRole("ADMIN"),
   ProductionController.deleteProduction
 );
+
 router.post(
   "/:id/activities",
+  authMiddleware,
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: activitySchema }),
   ProductionController.addActivity
 );
+
 router.post(
   "/:id/issues",
+  authMiddleware,
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: issueSchema }),
   ProductionController.addIssue
 );
+
 router.post(
   "/:id/weather-data",
+  authMiddleware,
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: weatherDataSchema }),
   ProductionController.addWeatherData

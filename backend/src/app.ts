@@ -23,7 +23,6 @@ import exportRoutes from "./routes/export";
 // Import des middlewares
 import { errorHandler } from "./middleware/errorHandler";
 import { parseQueryParams } from "./middleware/queryParser";
-import { enumTransformMiddleware } from "./middleware/enumTransformMiddleware";
 
 // Import des middlewares
 
@@ -53,7 +52,6 @@ app.use(
 app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use(enumTransformMiddleware);
 
 // Logging en développement
 if (process.env.NODE_ENV === "development") {

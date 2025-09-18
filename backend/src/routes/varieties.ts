@@ -1,52 +1,19 @@
-// backend/src/routes/varieties.ts - VERSION CORRIGÉE
+// backend/src/routes/varieties.ts - VERSION NETTOYÉE
+
 import { Router } from "express";
 import { VarietyController } from "../controllers/VarietyController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole, authMiddleware } from "../middleware/auth";
 import { z } from "zod";
+import { CropTypeEnum } from "../validators/common";
 
 const router = Router();
 
-// Schema de création avec transformation automatique
+// Schema de création avec enums Prisma directs
 const createVarietySchema = z.object({
-  code: z.string().min(1).toUpperCase(), // Transformer en majuscules
+  code: z.string().min(1).toUpperCase(),
   name: z.string().min(1),
-  cropType: z
-    .string()
-    .transform((val) => {
-      // Accepter les deux formats et transformer en format DB
-      const mapping: Record<string, string> = {
-        rice: "RICE",
-        maize: "MAIZE",
-        peanut: "PEANUT",
-        sorghum: "SORGHUM",
-        cowpea: "COWPEA",
-        millet: "MILLET",
-        wheat: "WHEAT",
-        // Accepter aussi les majuscules
-        RICE: "RICE",
-        MAIZE: "MAIZE",
-        PEANUT: "PEANUT",
-        SORGHUM: "SORGHUM",
-        COWPEA: "COWPEA",
-        MILLET: "MILLET",
-        WHEAT: "WHEAT",
-      };
-      return mapping[val] || val;
-    })
-    .refine(
-      (val) =>
-        [
-          "RICE",
-          "MAIZE",
-          "PEANUT",
-          "SORGHUM",
-          "COWPEA",
-          "MILLET",
-          "WHEAT",
-        ].includes(val),
-      { message: "Type de culture invalide" }
-    ),
+  cropType: CropTypeEnum, // Enum Prisma direct
   description: z.string().optional(),
   maturityDays: z.number().positive(),
   yieldPotential: z.number().positive().optional(),
@@ -57,10 +24,11 @@ const createVarietySchema = z.object({
 
 const updateVarietySchema = createVarietySchema.partial().omit({ code: true });
 
-// Routes
+// Routes publiques
 router.get("/", VarietyController.getVarieties);
 router.get("/:id", VarietyController.getVarietyById);
 
+// Routes protégées
 router.post(
   "/",
   authMiddleware,

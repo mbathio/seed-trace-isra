@@ -1,9 +1,9 @@
-// backend/src/routes/quality-controls.ts - VERSION UNIFIÉE (sans transformation)
+// backend/src/routes/quality-controls.ts - VERSION NETTOYÉE
 
 import { Router } from "express";
 import { QualityControlController } from "../controllers/QualityControlController";
 import { validateRequest } from "../middleware/validation";
-import { requireRole } from "../middleware/auth";
+import { requireRole, authMiddleware } from "../middleware/auth";
 import {
   createQualityControlSchema,
   updateQualityControlSchema,
@@ -12,34 +12,35 @@ import {
 
 const router = Router();
 
-// ✅ CORRECTION: Plus de middleware de transformation
-// router.use(fullTransformation); // ❌ SUPPRIMÉ
-
-// Routes
+// Routes publiques
 router.get(
   "/",
-  validateRequest({ query: qualityControlQuerySchema }), // ✅ Utilise les enums Prisma directement
+  validateRequest({ query: qualityControlQuerySchema }),
   QualityControlController.getQualityControls
 );
 
 router.get("/:id", QualityControlController.getQualityControlById);
 
+// Routes protégées
 router.post(
   "/",
+  authMiddleware,
   requireRole("TECHNICIAN", "INSPECTOR", "ADMIN"),
-  validateRequest({ body: createQualityControlSchema }), // ✅ Utilise les enums Prisma directement
+  validateRequest({ body: createQualityControlSchema }),
   QualityControlController.createQualityControl
 );
 
 router.put(
   "/:id",
+  authMiddleware,
   requireRole("TECHNICIAN", "INSPECTOR", "ADMIN"),
-  validateRequest({ body: updateQualityControlSchema }), // ✅ Utilise les enums Prisma directement
+  validateRequest({ body: updateQualityControlSchema }),
   QualityControlController.updateQualityControl
 );
 
 router.delete(
   "/:id",
+  authMiddleware,
   requireRole("ADMIN"),
   QualityControlController.deleteQualityControl
 );
