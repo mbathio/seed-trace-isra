@@ -548,7 +548,28 @@ export const getSeedLevelConfig = (level: string | undefined): LevelConfig => {
 };
 
 // ===== MAPPINGS UI <-> DB =====
-
+export const LOT_STATUS_MAPPING = {
+  // UI → Backend
+  UI_TO_BACKEND: {
+    pending: "PENDING",
+    certified: "CERTIFIED",
+    rejected: "REJECTED",
+    "in-stock": "IN_STOCK",
+    sold: "SOLD",
+    active: "ACTIVE",
+    distributed: "DISTRIBUTED",
+  },
+  // Backend → UI
+  BACKEND_TO_UI: {
+    PENDING: "pending",
+    CERTIFIED: "certified",
+    REJECTED: "rejected",
+    IN_STOCK: "in-stock",
+    SOLD: "sold",
+    ACTIVE: "active",
+    DISTRIBUTED: "distributed",
+  },
+};
 // Mappings UI vers DB
 export const UI_TO_DB_MAPPINGS = {
   lotStatus: {

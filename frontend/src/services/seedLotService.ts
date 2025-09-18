@@ -127,8 +127,24 @@ export const seedLotService = {
         value !== null &&
         (value !== "" || key === "search")
       ) {
-        // Gérer les cas spéciaux
-        if (key === "page" || key === "pageSize") {
+        // ✅ CORRECTION MAJEURE: Transformer les ENUMS UI vers DB
+        if (key === "status") {
+          // Transformer le statut UI (certified, pending, rejected) vers DB (CERTIFIED, PENDING, REJECTED)
+          const statusMapping = {
+            pending: "PENDING",
+            certified: "CERTIFIED",
+            rejected: "REJECTED",
+            "in-stock": "IN_STOCK",
+            sold: "SOLD",
+            active: "ACTIVE",
+            distributed: "DISTRIBUTED",
+          };
+          cleaned[key] =
+            statusMapping[value as keyof typeof statusMapping] || value;
+        } else if (key === "level") {
+          // Les niveaux doivent être en MAJUSCULES pour le backend
+          cleaned[key] = value.toString().toUpperCase();
+        } else if (key === "page" || key === "pageSize") {
           const numValue = Number(value);
           if (!isNaN(numValue) && numValue > 0) {
             cleaned[key] = numValue;
@@ -138,15 +154,13 @@ export const seedLotService = {
           key === "includeExpired" ||
           key === "includeInactive"
         ) {
-          // Envoyer comme string, le backend convertira
-          cleaned[key] = value === true || value === "true" ? "true" : "false";
+          // ✅ CORRECTION: Envoyer comme boolean ou string selon ce qu'attend le backend
+          cleaned[key] = value === true || value === "true";
         } else if (
           key === "sortOrder" &&
           (value === "asc" || value === "desc")
         ) {
           cleaned[key] = value;
-        } else if (key === "level" && typeof value === "string") {
-          cleaned[key] = value.toUpperCase();
         } else if (
           key === "varietyId" ||
           key === "multiplierId" ||
@@ -166,8 +180,9 @@ export const seedLotService = {
     if (!cleaned.page) cleaned.page = 1;
     if (!cleaned.pageSize) cleaned.pageSize = 10;
     if (!cleaned.hasOwnProperty("includeRelations"))
-      cleaned.includeRelations = "true";
+      cleaned.includeRelations = true;
 
+    console.log("✅ Params after transformation:", cleaned);
     return cleaned;
   },
 
@@ -178,19 +193,17 @@ export const seedLotService = {
     params?: Partial<SeedLotFilters> & PaginationParams
   ): Promise<ApiResponse<SeedLot[]>> {
     try {
-      // Nettoyer et valider les paramètres
-      const validParams = this.cleanParams(params);
+      // ✅ CORRECTION: Nettoyer ET transformer les paramètres AVANT l'appel API
+      const transformedParams = this.cleanParams(params);
 
-      // Toujours inclure les relations par défaut
-      validParams.includeRelations = true;
-
-      console.log("Fetching seed lots with params:", validParams);
+      console.log("🔍 Original params:", params);
+      console.log("🔧 Transformed params:", transformedParams);
 
       const response = await api.get<ApiResponse<SeedLot[]>>("/seed-lots", {
-        params: validParams,
+        params: transformedParams,
       });
 
-      // Transformer les données si nécessaire
+      // Transformer les données de réponse si nécessaire
       if (response.data?.data && Array.isArray(response.data.data)) {
         response.data.data = response.data.data.map((lot) =>
           DataTransformer.transformSeedLotFromAPI(lot)
@@ -199,19 +212,24 @@ export const seedLotService = {
 
       return response.data;
     } catch (error: any) {
-      console.error("Error fetching seed lots:", error);
+      console.error("❌ Error fetching seed lots:", error);
 
-      // Gestion spécifique de l'erreur 422
+      // ✅ CORRECTION: Gestion spécifique de l'erreur 422
       if (error.response?.status === 422) {
-        const validationErrors = error.response.data?.errors || [];
-        const errorMessage =
-          validationErrors.length > 0
-            ? `Erreur de validation: ${validationErrors
-                .map((e: any) => e.message || e)
-                .join(", ")}`
-            : "Paramètres de requête invalides";
+        console.error("❌ Validation Error 422:", error.response.data);
 
-        toast.error(errorMessage);
+        const validationErrors = error.response.data?.errors || [];
+        let errorMessage = "Paramètres de requête invalides";
+
+        if (validationErrors.length > 0) {
+          errorMessage = validationErrors
+            .map((e: any) => e.message || e)
+            .join(", ");
+        } else if (error.response.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+
+        toast.error(`Erreur de validation: ${errorMessage}`);
       }
 
       throw error;

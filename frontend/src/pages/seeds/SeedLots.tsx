@@ -1,4 +1,4 @@
-// frontend/src/pages/seeds/SeedLots.tsx - VERSION CORRIGÉE
+// frontend/src/pages/seeds/SeedLots.tsx - VERSION FINALE CORRIGÉE
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -18,6 +18,7 @@ import {
   ChevronRight,
   ArrowUpDown,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
@@ -47,6 +48,7 @@ import {
 } from "../../components/ui/dropdown-menu";
 import { Input } from "../../components/ui/input";
 import { Checkbox } from "../../components/ui/checkbox";
+import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
 import { QRCodeModal } from "../../components/qr-code/QRCodeModal";
 import { DeleteSeedLotDialog } from "../../components/seeds/DeleteSeedLotDialog";
 import { seedLotService } from "../../services/seedLotService";
@@ -64,6 +66,7 @@ import { formatDate, formatNumber } from "../../utils/formatters";
 import { toast } from "react-toastify";
 
 const SeedLots: React.FC = () => {
+  // ===== ÉTATS LOCAUX =====
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Partial<SeedLotFilters>>({});
   const [selectedLotForQR, setSelectedLotForQR] = useState<SeedLot | null>(
@@ -75,11 +78,32 @@ const SeedLots: React.FC = () => {
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
+  // ===== HOOKS =====
   const debouncedSearch = useDebounce(search, 300);
   const { pagination, actions } = usePagination({ initialPageSize: 10 });
   const queryClient = useQueryClient();
 
-  // Requête principale pour récupérer les lots
+  // ✅ CORRECTION MAJEURE: Fonction simplifiée - Ne pas sur-transformer les enums
+  const cleanFiltersForAPI = (filters: Partial<SeedLotFilters>) => {
+    const cleaned: any = {};
+
+    Object.entries(filters).forEach(([key, value]) => {
+      // Garder les valeurs UI telles quelles, juste supprimer les valeurs spéciales
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== "" &&
+        value !== "__all"
+      ) {
+        cleaned[key] = value;
+      }
+    });
+
+    console.log("🧹 [SeedLots] Cleaned filters:", cleaned);
+    return cleaned;
+  };
+
+  // ===== REQUÊTE PRINCIPALE =====
   const { data, isLoading, error, refetch } = useQuery<ApiResponse<SeedLot[]>>({
     queryKey: [
       "seedLots",
@@ -96,6 +120,7 @@ const SeedLots: React.FC = () => {
         pageSize: pagination.pageSize,
         sortBy: sortBy,
         sortOrder: sortOrder,
+        includeRelations: true,
       };
 
       // Ajouter search seulement si non vide
@@ -103,38 +128,66 @@ const SeedLots: React.FC = () => {
         params.search = debouncedSearch.trim();
       }
 
-      // Ajouter les filtres actifs
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== "" && value !== null) {
-          params[key] = value;
-        }
+      // ✅ CORRECTION: Utiliser la fonction simplifiée sans transformation d'enum
+      const cleanedFilters = cleanFiltersForAPI(filters);
+      Object.entries(cleanedFilters).forEach(([key, value]) => {
+        params[key] = value;
       });
 
-      console.log("🔍 Fetching seed lots with params:", params);
+      console.log("🔍 [SeedLots] Final API params:", params);
 
-      const response = await seedLotService.getAll(params);
+      try {
+        const response = await seedLotService.getAll(params);
 
-      console.log("📦 Seed lots response:", {
-        totalCount: response.meta?.totalCount,
-        resultsCount: response.data?.length,
-        firstResult: response.data?.[0],
-      });
+        console.log("📦 [SeedLots] API Response success:", {
+          totalCount: response.meta?.totalCount,
+          resultsCount: response.data?.length,
+          page: response.meta?.page,
+        });
 
-      return response;
+        return response;
+      } catch (error: any) {
+        console.error("❌ [SeedLots] API Error:", {
+          status: error?.response?.status,
+          message: error?.response?.data?.message,
+          errors: error?.response?.data?.errors,
+        });
+        throw error;
+      }
     },
+    retry: (failureCount, error: any) => {
+      // Ne pas retry sur les erreurs 422 (erreurs de validation)
+      if (error?.response?.status === 422) {
+        console.warn("🚫 [SeedLots] Not retrying 422 error");
+        return false;
+      }
+      return failureCount < 2;
+    },
+    refetchOnWindowFocus: false,
   });
+
+  // ===== MUTATIONS =====
 
   // Mutation pour supprimer un lot
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      console.log("🗑️ [SeedLots] Deleting seed lot:", id);
       await seedLotService.delete(id);
     },
-    onSuccess: () => {
+    onSuccess: (_, deletedId) => {
       toast.success("Lot supprimé avec succès");
       queryClient.invalidateQueries({ queryKey: ["seedLots"] });
       setSelectedLotForDelete(null);
+
+      // Retirer de la sélection si sélectionné
+      if (selectedLots.has(deletedId)) {
+        const newSelected = new Set(selectedLots);
+        newSelected.delete(deletedId);
+        setSelectedLots(newSelected);
+      }
     },
     onError: (error: any) => {
+      console.error("❌ [SeedLots] Delete error:", error);
       const message =
         error?.response?.data?.message || "Erreur lors de la suppression";
       toast.error(message);
@@ -144,12 +197,31 @@ const SeedLots: React.FC = () => {
   // Mutation pour export
   const exportMutation = useMutation({
     mutationFn: async (format: "csv" | "xlsx") => {
-      return seedLotService.export(format, filters);
+      console.log("📄 [SeedLots] Exporting format:", format);
+      const cleanedFilters = cleanFiltersForAPI(filters);
+      return seedLotService.export(format, cleanedFilters);
     },
-    onError: () => {
+    onSuccess: (blob, format) => {
+      // Créer le lien de téléchargement
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `lots_semences_${
+        new Date().toISOString().split("T")[0]
+      }.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Export réussi");
+    },
+    onError: (error: any) => {
+      console.error("❌ [SeedLots] Export error:", error);
       toast.error("Erreur lors de l'export");
     },
   });
+
+  // ===== FONCTIONS DE TRAITEMENT DES BADGES =====
 
   const getStatusBadge = (status: string) => {
     const config = getStatusConfig(status, LOT_STATUSES);
@@ -160,6 +232,8 @@ const SeedLots: React.FC = () => {
     const config = getSeedLevelConfig(level);
     return <Badge className={config.color}>{config.label}</Badge>;
   };
+
+  // ===== FONCTIONS DE GESTION DE SÉLECTION =====
 
   const handleSelectAll = () => {
     if (selectedLots.size === data?.data?.length) {
@@ -180,26 +254,18 @@ const SeedLots: React.FC = () => {
     setSelectedLots(newSelected);
   };
 
-  const handleExport = async () => {
+  // ===== FONCTIONS DE GESTION D'ACTIONS =====
+
+  const handleExport = async (format: "csv" | "xlsx" = "xlsx") => {
     try {
-      const blob = await exportMutation.mutateAsync("xlsx");
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `lots_semences_${
-        new Date().toISOString().split("T")[0]
-      }.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("Export réussi");
+      await exportMutation.mutateAsync(format);
     } catch (error) {
-      console.error("Export error:", error);
+      console.error("❌ [SeedLots] Export failed:", error);
     }
   };
 
   const handleSort = (field: string) => {
+    console.log("🔄 [SeedLots] Sorting by:", field);
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -209,11 +275,19 @@ const SeedLots: React.FC = () => {
   };
 
   const clearFilters = () => {
+    console.log("🧹 [SeedLots] Clearing all filters");
     setSearch("");
     setFilters({});
     setSortBy("createdAt");
     setSortOrder("desc");
   };
+
+  const handleRetry = () => {
+    console.log("🔄 [SeedLots] Retrying query");
+    refetch();
+  };
+
+  // ===== FONCTIONS UTILITAIRES =====
 
   const hasActiveFilters = Boolean(
     search ||
@@ -223,16 +297,100 @@ const SeedLots: React.FC = () => {
       filters.multiplierId
   );
 
+  const getSortIcon = (field: string) => {
+    if (sortBy !== field) return <ArrowUpDown className="ml-2 h-4 w-4" />;
+    return <span className="ml-2">{sortOrder === "asc" ? "↑" : "↓"}</span>;
+  };
+
+  // ===== GESTION D'ERREUR AMÉLIORÉE =====
+
   if (error) {
+    console.error("❌ [SeedLots] Query error:", error);
+
+    const apiError = error as { response?: { status?: number; data?: any } };
+    const is422Error = apiError?.response?.status === 422;
+    const errorData = apiError?.response?.data;
+
     return (
       <div className="container mx-auto p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Package className="w-8 h-8" />
+              Gestion des Lots de Semences
+            </h1>
+          </div>
+        </div>
+
         <Card>
           <CardContent className="py-8">
-            <div className="text-center">
-              <p className="text-red-600 mb-4">
-                Une erreur est survenue lors du chargement des données.
-              </p>
-              <Button onClick={() => refetch()}>Réessayer</Button>
+            <div className="text-center space-y-4">
+              <AlertTriangle className="w-16 h-16 text-red-500 mx-auto" />
+
+              <div>
+                <h2 className="text-xl font-semibold mb-2">
+                  {is422Error ? "Paramètres invalides" : "Erreur de chargement"}
+                </h2>
+
+                {is422Error && (
+                  <Alert
+                    variant="destructive"
+                    className="text-left max-w-2xl mx-auto"
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Erreur de validation (422)</AlertTitle>
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p>
+                          {errorData?.message ||
+                            "Paramètres de requête invalides"}
+                        </p>
+
+                        {errorData?.errors && errorData.errors.length > 0 && (
+                          <div className="mt-3">
+                            <p className="font-medium">Détails:</p>
+                            <ul className="list-disc list-inside text-sm">
+                              {errorData.errors.map(
+                                (error: any, index: number) => (
+                                  <li key={index}>
+                                    {typeof error === "string"
+                                      ? error
+                                      : error.message || JSON.stringify(error)}
+                                  </li>
+                                )
+                              )}
+                            </ul>
+                          </div>
+                        )}
+
+                        {process.env.NODE_ENV === "development" && (
+                          <details className="mt-4">
+                            <summary className="cursor-pointer text-sm font-medium">
+                              Détails techniques (dev)
+                            </summary>
+                            <pre className="mt-2 text-xs bg-red-50 p-3 rounded overflow-auto">
+                              {JSON.stringify(errorData, null, 2)}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {!is422Error && (
+                  <p className="text-muted-foreground">
+                    Une erreur est survenue lors du chargement des données.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2 justify-center">
+                <Button onClick={handleRetry}>Réessayer</Button>
+                <Button variant="outline" onClick={clearFilters}>
+                  Réinitialiser les filtres
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -255,7 +413,7 @@ const SeedLots: React.FC = () => {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={handleExport}
+            onClick={() => handleExport()}
             disabled={!data?.data?.length || exportMutation.isPending}
           >
             {exportMutation.isPending ? (
