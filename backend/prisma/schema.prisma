@@ -1,3 +1,4 @@
+// 1. backend/prisma/schema.prisma - MISE À JOUR avec valeurs UI
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,6 +8,145 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ✅ ENUMS UNIFIÉS - Utilisation des valeurs UI partout
+enum Role {
+  admin      @map("admin")
+  manager    @map("manager") 
+  inspector  @map("inspector")
+  multiplier @map("multiplier")
+  guest      @map("guest")
+  technician @map("technician")
+  researcher @map("researcher")
+
+  @@map("user_role")
+}
+
+enum SeedLevel {
+  GO @map("GO")
+  G1 @map("G1")
+  G2 @map("G2")
+  G3 @map("G3")
+  G4 @map("G4")
+  R1 @map("R1")
+  R2 @map("R2")
+
+  @@map("seed_level")
+}
+
+enum CropType {
+  rice    @map("rice")
+  maize   @map("maize")
+  peanut  @map("peanut")
+  sorghum @map("sorghum")
+  cowpea  @map("cowpea")
+  millet  @map("millet")
+  wheat   @map("wheat")
+
+  @@map("crop_type")
+}
+
+enum LotStatus {
+  pending     @map("pending")
+  certified   @map("certified")
+  rejected    @map("rejected")
+  in_stock    @map("in-stock")    // ✅ Utilise kebab-case en DB aussi
+  sold        @map("sold")
+  active      @map("active")
+  distributed @map("distributed")
+
+  @@map("lot_status")
+}
+
+enum ParcelStatus {
+  available @map("available")
+  in_use    @map("in-use")       // ✅ Utilise kebab-case en DB aussi
+  resting   @map("resting")
+
+  @@map("parcel_status")
+}
+
+enum ProductionStatus {
+  planned     @map("planned")
+  in_progress @map("in-progress") // ✅ Utilise kebab-case en DB aussi
+  completed   @map("completed")
+  cancelled   @map("cancelled")
+
+  @@map("production_status")
+}
+
+enum ActivityType {
+  soil_preparation @map("soil-preparation") // ✅ Utilise kebab-case en DB aussi
+  sowing           @map("sowing")
+  fertilization    @map("fertilization")
+  irrigation       @map("irrigation")
+  weeding          @map("weeding")
+  pest_control     @map("pest-control")     // ✅ Utilise kebab-case en DB aussi
+  harvest          @map("harvest")
+  other            @map("other")
+
+  @@map("activity_type")
+}
+
+enum ContractStatus {
+  draft     @map("draft")
+  active    @map("active")
+  completed @map("completed")
+  cancelled @map("cancelled")
+
+  @@map("contract_status")
+}
+
+enum MultiplierStatus {
+  active   @map("active")
+  inactive @map("inactive")
+
+  @@map("multiplier_status")
+}
+
+enum CertificationLevel {
+  beginner     @map("beginner")
+  intermediate @map("intermediate")
+  expert       @map("expert")
+
+  @@map("certification_level")
+}
+
+enum TestResult {
+  pass @map("pass")
+  fail @map("fail")
+
+  @@map("test_result")
+}
+
+enum IssueType {
+  disease    @map("disease")
+  pest       @map("pest")
+  weather    @map("weather")
+  management @map("management")
+  other      @map("other")
+
+  @@map("issue_type")
+}
+
+enum IssueSeverity {
+  low    @map("low")
+  medium @map("medium")
+  high   @map("high")
+
+  @@map("issue_severity")
+}
+
+enum ReportType {
+  production             @map("production")
+  quality                @map("quality")
+  inventory              @map("inventory")
+  multiplier_performance @map("multiplier-performance")
+  custom                 @map("custom")
+
+  @@map("report_type")
+}
+
+// ✅ MODÈLES avec enums unifiés
 model User {
   id              Int                  @id @default(autoincrement())
   name            String
@@ -16,19 +156,19 @@ model User {
   isActive        Boolean              @default(true)
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
-  role            Role
+  role            Role                 // ✅ Utilise enum unifié
   activities      ProductionActivity[]
   qualityControls QualityControl[]
   reports         Report[]
 
-  @@index([email], map: "idx_users_email")
-  @@index([role], map: "idx_users_role")
-  @@index([isActive], map: "idx_users_active")
-  @@index([role, isActive], map: "idx_users_role_active")
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
   @@map("users")
 }
 
 model Variety {
+  id             Int        @id @default(autoincrement())
   name           String
   description    String?
   maturityDays   Int
@@ -40,158 +180,14 @@ model Variety {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   code           String     @unique
-  id             Int        @id @default(autoincrement())
-  cropType       CropType
+  cropType       CropType   // ✅ Utilise enum unifié
   contracts      Contract[]
   seedLots       SeedLot[]
 
-  @@index([cropType], map: "idx_varieties_crop_type")
-  @@index([isActive], map: "idx_varieties_active")
-  @@index([code], map: "idx_varieties_code")
-  @@index([name], map: "idx_varieties_name")
-  @@index([cropType, isActive], map: "idx_varieties_crop_active")
+  @@index([cropType])
+  @@index([isActive])
+  @@index([code])
   @@map("varieties")
-}
-
-model Parcel {
-  id               Int            @id @default(autoincrement())
-  name             String?
-  area             Float
-  latitude         Float
-  longitude        Float
-  soilType         String?
-  irrigationSystem String?
-  address          String?
-  multiplierId     Int?
-  isActive         Boolean        @default(true)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  status           ParcelStatus   @default(AVAILABLE)
-  contracts        Contract[]
-  multiplier       Multiplier?    @relation(fields: [multiplierId], references: [id])
-  previousCrops    PreviousCrop[]
-  productions      Production[]
-  seedLots         SeedLot[]
-  soilAnalyses     SoilAnalysis[]
-
-  @@index([status], map: "idx_parcels_status")
-  @@index([multiplierId], map: "idx_parcels_multiplier")
-  @@index([isActive], map: "idx_parcels_active")
-  @@index([latitude, longitude], map: "idx_parcels_location")
-  @@index([multiplierId, status], map: "idx_parcels_multiplier_status")
-  @@map("parcels")
-}
-
-model SoilAnalysis {
-  id            Int      @id @default(autoincrement())
-  parcelId      Int
-  analysisDate  DateTime @db.Date
-  pH            Float?
-  organicMatter Float?
-  nitrogen      Float?
-  phosphorus    Float?
-  potassium     Float?
-  notes         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  parcel        Parcel   @relation(fields: [parcelId], references: [id], onDelete: Cascade)
-
-  @@index([parcelId], map: "idx_soil_analyses_parcel")
-  @@index([analysisDate], map: "idx_soil_analyses_date")
-  @@index([parcelId, analysisDate], map: "idx_soil_analyses_parcel_date")
-  @@map("soil_analyses")
-}
-
-model PreviousCrop {
-  id       Int    @id @default(autoincrement())
-  parcelId Int
-  crop     String
-  year     Int
-  season   String
-  yield    Float?
-  parcel   Parcel @relation(fields: [parcelId], references: [id], onDelete: Cascade)
-
-  @@index([parcelId], map: "idx_previous_crops_parcel")
-  @@index([year], map: "idx_previous_crops_year")
-  @@index([parcelId, year], map: "idx_previous_crops_parcel_year")
-  @@map("previous_crops")
-}
-
-model Multiplier {
-  id                 Int                 @id @default(autoincrement())
-  name               String
-  address            String
-  latitude           Float
-  longitude          Float
-  yearsExperience    Int
-  specialization     String[]
-  phone              String?
-  email              String?             @unique
-  isActive           Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  certificationLevel CertificationLevel
-  status             MultiplierStatus    @default(ACTIVE)
-  contracts          Contract[]
-  parcels            Parcel[]
-  history            ProductionHistory[]
-  productions        Production[]
-  seedLots           SeedLot[]
-
-  @@index([status], map: "idx_multipliers_status")
-  @@index([certificationLevel], map: "idx_multipliers_certification")
-  @@index([isActive], map: "idx_multipliers_active")
-  @@index([latitude, longitude], map: "idx_multipliers_location")
-  @@index([email], map: "idx_multipliers_email")
-  @@index([name], map: "idx_multipliers_name")
-  @@index([status, isActive], map: "idx_multipliers_status_active")
-  @@map("multipliers")
-}
-
-model Contract {
-  id               Int            @id @default(autoincrement())
-  multiplierId     Int
-  startDate        DateTime       @db.Date
-  endDate          DateTime       @db.Date
-  expectedQuantity Int
-  actualQuantity   Int?
-  parcelId         Int?
-  paymentTerms     String?
-  notes            String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  varietyId        Int
-  seedLevel        SeedLevel
-  status           ContractStatus @default(DRAFT)
-  multiplier       Multiplier     @relation(fields: [multiplierId], references: [id])
-  parcel           Parcel?        @relation(fields: [parcelId], references: [id])
-  variety          Variety        @relation(fields: [varietyId], references: [id])
-
-  @@index([status], map: "idx_contracts_status")
-  @@index([multiplierId], map: "idx_contracts_multiplier")
-  @@index([varietyId], map: "idx_contracts_variety")
-  @@index([startDate, endDate], map: "idx_contracts_dates")
-  @@index([multiplierId, status], map: "idx_contracts_multiplier_status")
-  @@map("contracts")
-}
-
-model ProductionHistory {
-  id           Int        @id @default(autoincrement())
-  multiplierId Int
-  season       String
-  year         Int
-  quantity     Int
-  qualityScore Int?
-  contractId   Int?
-  createdAt    DateTime   @default(now())
-  varietyId    Int
-  seedLevel    SeedLevel
-  multiplier   Multiplier @relation(fields: [multiplierId], references: [id])
-
-  @@index([multiplierId], map: "idx_production_history_multiplier")
-  @@index([year], map: "idx_production_history_year")
-  @@index([multiplierId, year], map: "idx_production_history_multiplier_year")
-  @@map("production_history")
 }
 
 model SeedLot {
@@ -209,8 +205,8 @@ model SeedLot {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   varietyId       Int
-  level           SeedLevel
-  status          LotStatus        @default(PENDING)
+  level           SeedLevel        // ✅ Utilise enum unifié
+  status          LotStatus        @default(pending) // ✅ Utilise enum unifié
   productions     Production[]
   qualityControls QualityControl[]
   multiplier      Multiplier?      @relation(fields: [multiplierId], references: [id])
@@ -219,18 +215,9 @@ model SeedLot {
   childLots       SeedLot[]        @relation("SeedLotGenealogy")
   variety         Variety          @relation(fields: [varietyId], references: [id])
 
-  @@index([varietyId], map: "idx_seed_lots_variety")
-  @@index([multiplierId], map: "idx_seed_lots_multiplier")
-  @@index([parcelId], map: "idx_seed_lots_parcel")
-  @@index([status], map: "idx_seed_lots_status")
-  @@index([level], map: "idx_seed_lots_level")
-  @@index([productionDate], map: "idx_seed_lots_production_date")
-  @@index([parentLotId], map: "idx_seed_lots_parent")
-  @@index([isActive], map: "idx_seed_lots_active")
-  @@index([varietyId, level, status], map: "idx_seed_lots_variety_level_status")
-  @@index([productionDate, level], map: "idx_seed_lots_production_level")
-  @@index([multiplierId, status, productionDate], map: "idx_seed_lots_multiplier_complete")
-  @@index([expiryDate, status], map: "idx_seed_lots_expiry_status")
+  @@index([varietyId])
+  @@index([status])
+  @@index([level])
   @@map("seed_lots")
 }
 
@@ -249,300 +236,423 @@ model QualityControl {
   certificateUrl  String?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
-  result          TestResult
+  result          TestResult // ✅ Utilise enum unifié
   inspector       User       @relation(fields: [inspectorId], references: [id])
   seedLot         SeedLot    @relation(fields: [lotId], references: [id])
 
-  @@index([controlDate], map: "idx_quality_controls_date")
-  @@index([result], map: "idx_quality_controls_result")
-  @@index([lotId], map: "idx_quality_controls_lot")
-  @@index([inspectorId], map: "idx_quality_controls_inspector")
-  @@index([lotId, controlDate], map: "idx_quality_controls_lot_date")
-  @@index([result, controlDate], map: "idx_quality_controls_result_date")
+  @@index([result])
+  @@index([lotId])
   @@map("quality_controls")
 }
 
-model Production {
-  id                Int                  @id @default(autoincrement())
-  lotId             String
-  startDate         DateTime             @db.Date
-  endDate           DateTime?            @db.Date
-  sowingDate        DateTime             @db.Date
-  harvestDate       DateTime?            @db.Date
-  multiplierId      Int
-  parcelId          Int
-  plannedQuantity   Int?
-  actualYield       Float?
-  notes             String?
-  weatherConditions String?
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  conditions        String?
-  yield             Float?
-  status            ProductionStatus     @default(PLANNED)
-  activities        ProductionActivity[]
-  issues            ProductionIssue[]
-  seedLot           SeedLot              @relation(fields: [lotId], references: [id])
-  multiplier        Multiplier           @relation(fields: [multiplierId], references: [id])
-  parcel            Parcel               @relation(fields: [parcelId], references: [id])
-  weatherData       WeatherData[]
+// ... autres modèles avec enums unifiés
 
-  @@index([status], map: "idx_productions_status")
-  @@index([startDate], map: "idx_productions_start_date")
-  @@index([multiplierId], map: "idx_productions_multiplier")
-  @@index([parcelId], map: "idx_productions_parcel")
-  @@index([lotId], map: "idx_productions_lot")
-  @@index([startDate, endDate], map: "idx_productions_date_range")
-  @@index([multiplierId, status], map: "idx_productions_multiplier_status")
-  @@map("productions")
+// 2. backend/src/config/enums.ts - NOUVEAU fichier simplifié
+// ✅ ENUMS TYPESCRIPT qui matchent exactement Prisma
+
+export enum Role {
+  admin = "admin",
+  manager = "manager",
+  inspector = "inspector", 
+  multiplier = "multiplier",
+  guest = "guest",
+  technician = "technician",
+  researcher = "researcher"
 }
 
-model ProductionActivity {
-  id           Int             @id @default(autoincrement())
-  productionId Int
-  activityDate DateTime        @db.Date
-  description  String
-  personnel    String[]
-  notes        String?
-  userId       Int?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  type         ActivityType
-  inputs       ActivityInput[]
-  production   Production      @relation(fields: [productionId], references: [id], onDelete: Cascade)
-  user         User?           @relation(fields: [userId], references: [id])
-
-  @@index([productionId], map: "idx_production_activities_production")
-  @@index([activityDate], map: "idx_production_activities_date")
-  @@index([type], map: "idx_production_activities_type")
-  @@index([productionId, activityDate], map: "idx_production_activities_prod_date")
-  @@map("production_activities")
+export enum SeedLevel {
+  GO = "GO",
+  G1 = "G1",
+  G2 = "G2",
+  G3 = "G3",
+  G4 = "G4",
+  R1 = "R1",
+  R2 = "R2"
 }
 
-model ActivityInput {
-  id         Int                @id @default(autoincrement())
-  activityId Int
-  name       String
-  quantity   String
-  unit       String
-  cost       Float?
-  activity   ProductionActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
-
-  @@index([activityId], map: "idx_activity_inputs_activity")
-  @@map("activity_inputs")
+export enum CropType {
+  rice = "rice",
+  maize = "maize",
+  peanut = "peanut",
+  sorghum = "sorghum",
+  cowpea = "cowpea",
+  millet = "millet",
+  wheat = "wheat"
 }
 
-model ProductionIssue {
-  id           Int           @id @default(autoincrement())
-  productionId Int
-  issueDate    DateTime      @db.Date
-  description  String
-  actions      String
-  resolved     Boolean       @default(false)
-  resolvedDate DateTime?     @db.Date
-  cost         Float?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  type         IssueType
-  severity     IssueSeverity
-  production   Production    @relation(fields: [productionId], references: [id], onDelete: Cascade)
-
-  @@index([productionId], map: "idx_production_issues_production")
-  @@index([issueDate], map: "idx_production_issues_date")
-  @@index([resolved], map: "idx_production_issues_resolved")
-  @@index([productionId, resolved], map: "idx_production_issues_prod_resolved")
-  @@map("production_issues")
+export enum LotStatus {
+  pending = "pending",
+  certified = "certified",
+  rejected = "rejected",
+  in_stock = "in-stock",     // ✅ kebab-case unifié
+  sold = "sold",
+  active = "active",
+  distributed = "distributed"
 }
 
-model WeatherData {
-  id           Int         @id @default(autoincrement())
-  productionId Int?
-  recordDate   DateTime    @db.Date
-  temperature  Float
-  rainfall     Float
-  humidity     Float
-  windSpeed    Float?
-  notes        String?
-  source       String?
-  createdAt    DateTime    @default(now())
-  production   Production? @relation(fields: [productionId], references: [id], onDelete: Cascade)
-
-  @@index([productionId], map: "idx_weather_data_production")
-  @@index([recordDate], map: "idx_weather_data_date")
-  @@index([productionId, recordDate], map: "idx_weather_data_prod_date")
-  @@map("weather_data")
+export enum ParcelStatus {
+  available = "available",
+  in_use = "in-use",         // ✅ kebab-case unifié
+  resting = "resting"
 }
 
-model Report {
-  id          Int        @id @default(autoincrement())
-  title       String
-  description String?
-  createdById Int
-  fileName    String?
-  filePath    String?
-  parameters  Json?
-  data        Json?
-  isPublic    Boolean    @default(false)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  type        ReportType
-  createdBy   User       @relation(fields: [createdById], references: [id])
-
-  @@index([type], map: "idx_reports_type")
-  @@index([createdAt], map: "idx_reports_created")
-  @@index([createdById], map: "idx_reports_creator")
-  @@index([isPublic], map: "idx_reports_public")
-  @@index([type, createdAt], map: "idx_reports_type_created")
-  @@map("reports")
+export enum ProductionStatus {
+  planned = "planned",
+  in_progress = "in-progress", // ✅ kebab-case unifié
+  completed = "completed",
+  cancelled = "cancelled"
 }
 
-model RefreshToken {
-  id        String   @id @default(cuid())
-  token     String   @unique
-  userId    Int
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([userId], map: "idx_refresh_tokens_user")
-  @@index([expiresAt], map: "idx_refresh_tokens_expiry")
-  @@index([userId, expiresAt], map: "idx_refresh_tokens_user_expiry")
-  @@index([token, expiresAt], map: "idx_refresh_tokens_token_expiry")
-  @@map("refresh_tokens")
+export enum ActivityType {
+  soil_preparation = "soil-preparation", // ✅ kebab-case unifié
+  sowing = "sowing",
+  fertilization = "fertilization",
+  irrigation = "irrigation",
+  weeding = "weeding",
+  pest_control = "pest-control",         // ✅ kebab-case unifié
+  harvest = "harvest",
+  other = "other"
 }
 
-enum Role {
-  ADMIN      @map("admin")
-  MANAGER    @map("manager")
-  INSPECTOR  @map("inspector")
-  MULTIPLIER @map("multiplier")
-  GUEST      @map("guest")
-  TECHNICIAN @map("technician")
-  RESEARCHER @map("researcher")
-
-  @@map("user_role")
+export enum TestResult {
+  pass = "pass",
+  fail = "fail"
 }
 
-enum SeedLevel {
-  GO @map("GO")
-  G1 @map("G1")
-  G2 @map("G2")
-  G3 @map("G3")
-  G4 @map("G4")
-  R1 @map("R1")
-  R2 @map("R2")
-
-  @@map("seed_level")
+export enum MultiplierStatus {
+  active = "active",
+  inactive = "inactive"
 }
 
-enum CropType {
-  RICE    @map("rice")
-  MAIZE   @map("maize")
-  PEANUT  @map("peanut")
-  SORGHUM @map("sorghum")
-  COWPEA  @map("cowpea")
-  MILLET  @map("millet")
-  WHEAT   @map("wheat")
-
-  @@map("crop_type")
+export enum CertificationLevel {
+  beginner = "beginner",
+  intermediate = "intermediate",
+  expert = "expert"
 }
 
-enum ParcelStatus {
-  AVAILABLE @map("available")
-  IN_USE    @map("in-use")
-  RESTING   @map("resting")
-
-  @@map("parcel_status")
+export enum ContractStatus {
+  draft = "draft",
+  active = "active",
+  completed = "completed",
+  cancelled = "cancelled"
 }
 
-enum LotStatus {
-  PENDING     @map("pending")
-  CERTIFIED   @map("certified")
-  REJECTED    @map("rejected")
-  IN_STOCK    @map("in-stock")
-  SOLD        @map("sold")
-  ACTIVE      @map("active")
-  DISTRIBUTED @map("distributed")
-
-  @@map("lot_status")
+export enum IssueType {
+  disease = "disease",
+  pest = "pest",
+  weather = "weather",
+  management = "management",
+  other = "other"
 }
 
-enum ContractStatus {
-  DRAFT     @map("draft")
-  ACTIVE    @map("active")
-  COMPLETED @map("completed")
-  CANCELLED @map("cancelled")
-
-  @@map("contract_status")
+export enum IssueSeverity {
+  low = "low",
+  medium = "medium",
+  high = "high"
 }
 
-enum CertificationLevel {
-  BEGINNER     @map("beginner")
-  INTERMEDIATE @map("intermediate")
-  EXPERT       @map("expert")
-
-  @@map("certification_level")
+export enum ReportType {
+  production = "production",
+  quality = "quality",
+  inventory = "inventory",
+  multiplier_performance = "multiplier-performance", // ✅ kebab-case unifié
+  custom = "custom"
 }
 
-enum ProductionStatus {
-  PLANNED     @map("planned")
-  IN_PROGRESS @map("in-progress")
-  COMPLETED   @map("completed")
-  CANCELLED   @map("cancelled")
-
-  @@map("production_status")
+// ✅ Fonction utilitaire pour validation
+export function isValidEnumValue<T extends Record<string, string>>(
+  enumObject: T,
+  value: string
+): value is T[keyof T] {
+  return Object.values(enumObject).includes(value);
 }
 
-enum ActivityType {
-  SOIL_PREPARATION @map("soil-preparation")
-  SOWING           @map("sowing")
-  FERTILIZATION    @map("fertilization")
-  IRRIGATION       @map("irrigation")
-  WEEDING          @map("weeding")
-  PEST_CONTROL     @map("pest-control")
-  HARVEST          @map("harvest")
-  OTHER            @map("other")
+// ✅ Listes des valeurs valides pour validation
+export const VALID_ENUM_VALUES = {
+  Role: Object.values(Role),
+  SeedLevel: Object.values(SeedLevel),
+  CropType: Object.values(CropType),
+  LotStatus: Object.values(LotStatus),
+  ParcelStatus: Object.values(ParcelStatus),
+  ProductionStatus: Object.values(ProductionStatus),
+  ActivityType: Object.values(ActivityType),
+  TestResult: Object.values(TestResult),
+  MultiplierStatus: Object.values(MultiplierStatus),
+  CertificationLevel: Object.values(CertificationLevel),
+  ContractStatus: Object.values(ContractStatus),
+  IssueType: Object.values(IssueType),
+  IssueSeverity: Object.values(IssueSeverity),
+  ReportType: Object.values(ReportType)
+} as const;
 
-  @@map("activity_type")
+// 3. backend/src/validators/common.ts - VERSION SIMPLIFIÉE
+import { z } from "zod";
+import { VALID_ENUM_VALUES } from "../config/enums";
+
+// ✅ Enums Zod qui utilisent les mêmes valeurs
+export const RoleEnum = z.enum(VALID_ENUM_VALUES.Role as [string, ...string[]]);
+export const SeedLevelEnum = z.enum(VALID_ENUM_VALUES.SeedLevel as [string, ...string[]]);
+export const CropTypeEnum = z.enum(VALID_ENUM_VALUES.CropType as [string, ...string[]]);
+export const LotStatusEnum = z.enum(VALID_ENUM_VALUES.LotStatus as [string, ...string[]]);
+export const ParcelStatusEnum = z.enum(VALID_ENUM_VALUES.ParcelStatus as [string, ...string[]]);
+export const ProductionStatusEnum = z.enum(VALID_ENUM_VALUES.ProductionStatus as [string, ...string[]]);
+export const ActivityTypeEnum = z.enum(VALID_ENUM_VALUES.ActivityType as [string, ...string[]]);
+export const TestResultEnum = z.enum(VALID_ENUM_VALUES.TestResult as [string, ...string[]]);
+export const MultiplierStatusEnum = z.enum(VALID_ENUM_VALUES.MultiplierStatus as [string, ...string[]]);
+export const CertificationLevelEnum = z.enum(VALID_ENUM_VALUES.CertificationLevel as [string, ...string[]]);
+export const ContractStatusEnum = z.enum(VALID_ENUM_VALUES.ContractStatus as [string, ...string[]]);
+export const IssueTypeEnum = z.enum(VALID_ENUM_VALUES.IssueType as [string, ...string[]]);
+export const IssueSeverityEnum = z.enum(VALID_ENUM_VALUES.IssueSeverity as [string, ...string[]]);
+export const ReportTypeEnum = z.enum(VALID_ENUM_VALUES.ReportType as [string, ...string[]]);
+
+// Schémas de base - pas de transformation
+export const paginationSchema = z.object({
+  page: z.union([z.string(), z.number()]).transform((val) => {
+    const num = typeof val === "string" ? parseInt(val, 10) : val;
+    return Math.max(1, isNaN(num) ? 1 : num);
+  }),
+  pageSize: z.union([z.string(), z.number()]).transform((val) => {
+    const num = typeof val === "string" ? parseInt(val, 10) : val;
+    return Math.min(Math.max(1, isNaN(num) ? 10 : num), 100);
+  }),
+  search: z.string().optional(),
+  sortBy: z.string().max(50).optional(),
+  sortOrder: z.enum(["asc", "desc"]).optional(),
+});
+
+export const emailSchema = z.string().email("Email invalide").toLowerCase();
+export const phoneSchema = z.string().regex(/^(\+221)?[0-9]{8,9}$/, "Téléphone invalide").optional();
+export const percentageSchema = z.number().min(0).max(100);
+export const positiveIdSchema = z.union([
+  z.number().positive(),
+  z.string().transform((val) => {
+    const parsed = parseInt(val, 10);
+    if (isNaN(parsed) || parsed <= 0) throw new Error("ID invalide");
+    return parsed;
+  }),
+]);
+
+// 4. backend/src/services/SeedLotService.ts - VERSION SANS TRANSFORMATEURS
+import { prisma } from "../config/database";
+import { logger } from "../utils/logger";
+import { LotStatus, SeedLevel } from "../config/enums";
+import type { PaginationQuery } from "../types/api";
+
+export class SeedLotService {
+  // ✅ PAS DE TRANSFORMATION - utilise directement les valeurs Prisma/UI
+  static async createSeedLot(data: any): Promise<any> {
+    try {
+      // Validation simple sans transformation
+      if (data.status && !Object.values(LotStatus).includes(data.status)) {
+        throw new Error(`Statut invalide: ${data.status}`);
+      }
+      
+      if (data.level && !Object.values(SeedLevel).includes(data.level)) {
+        throw new Error(`Niveau invalide: ${data.level}`);
+      }
+
+      const seedLot = await prisma.seedLot.create({
+        data: {
+          ...data,
+          // Pas de transformation nécessaire
+        },
+        include: {
+          variety: true,
+          multiplier: true,
+          parcel: true,
+        },
+      });
+
+      return seedLot; // ✅ Retour direct sans transformation
+    } catch (error) {
+      logger.error("Erreur création lot:", error);
+      throw error;
+    }
+  }
+
+  static async getSeedLots(filters: any): Promise<any> {
+    try {
+      const where: any = { isActive: true };
+
+      // ✅ Filtres directs sans transformation
+      if (filters.status) where.status = filters.status;
+      if (filters.level) where.level = filters.level;
+      if (filters.varietyId) where.varietyId = filters.varietyId;
+
+      const seedLots = await prisma.seedLot.findMany({
+        where,
+        include: {
+          variety: true,
+          multiplier: true,
+          parcel: true,
+          qualityControls: {
+            orderBy: { controlDate: "desc" },
+            take: 1,
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        skip: ((filters.page || 1) - 1) * (filters.pageSize || 10),
+        take: filters.pageSize || 10,
+      });
+
+      const total = await prisma.seedLot.count({ where });
+
+      return {
+        success: true,
+        message: "Lots récupérés",
+        data: seedLots, // ✅ Pas de transformation
+        meta: {
+          total,
+          page: filters.page || 1,
+          pageSize: filters.pageSize || 10,
+          totalPages: Math.ceil(total / (filters.pageSize || 10)),
+        },
+      };
+    } catch (error) {
+      logger.error("Erreur récupération lots:", error);
+      throw error;
+    }
+  }
+
+  static async updateSeedLot(id: string, data: any): Promise<any> {
+    try {
+      // Validation simple
+      if (data.status && !Object.values(LotStatus).includes(data.status)) {
+        throw new Error(`Statut invalide: ${data.status}`);
+      }
+
+      const updatedLot = await prisma.seedLot.update({
+        where: { id },
+        data, // ✅ Pas de transformation
+        include: {
+          variety: true,
+          multiplier: true,
+          parcel: true,
+        },
+      });
+
+      return updatedLot; // ✅ Retour direct
+    } catch (error) {
+      logger.error("Erreur mise à jour lot:", error);
+      throw error;
+    }
+  }
 }
 
-enum IssueType {
-  DISEASE    @map("disease")
-  PEST       @map("pest")
-  WEATHER    @map("weather")
-  MANAGEMENT @map("management")
-  OTHER      @map("other")
+// 5. Migration script pour mettre à jour la DB
+// backend/prisma/migrations/update_enum_values.sql
 
-  @@map("issue_type")
+-- Mise à jour des valeurs enum pour correspondre au format UI
+
+-- 1. Role enum
+ALTER TYPE "user_role" RENAME VALUE 'ADMIN' TO 'admin';
+ALTER TYPE "user_role" RENAME VALUE 'MANAGER' TO 'manager';
+ALTER TYPE "user_role" RENAME VALUE 'INSPECTOR' TO 'inspector';
+ALTER TYPE "user_role" RENAME VALUE 'MULTIPLIER' TO 'multiplier';
+ALTER TYPE "user_role" RENAME VALUE 'GUEST' TO 'guest';
+ALTER TYPE "user_role" RENAME VALUE 'TECHNICIAN' TO 'technician';
+ALTER TYPE "user_role" RENAME VALUE 'RESEARCHER' TO 'researcher';
+
+-- 2. CropType enum  
+ALTER TYPE "crop_type" RENAME VALUE 'RICE' TO 'rice';
+ALTER TYPE "crop_type" RENAME VALUE 'MAIZE' TO 'maize';
+ALTER TYPE "crop_type" RENAME VALUE 'PEANUT' TO 'peanut';
+ALTER TYPE "crop_type" RENAME VALUE 'SORGHUM' TO 'sorghum';
+ALTER TYPE "crop_type" RENAME VALUE 'COWPEA' TO 'cowpea';
+ALTER TYPE "crop_type" RENAME VALUE 'MILLET' TO 'millet';
+ALTER TYPE "crop_type" RENAME VALUE 'WHEAT' TO 'wheat';
+
+-- 3. LotStatus enum
+ALTER TYPE "lot_status" RENAME VALUE 'PENDING' TO 'pending';
+ALTER TYPE "lot_status" RENAME VALUE 'CERTIFIED' TO 'certified';
+ALTER TYPE "lot_status" RENAME VALUE 'REJECTED' TO 'rejected';
+ALTER TYPE "lot_status" RENAME VALUE 'IN_STOCK' TO 'in-stock';
+ALTER TYPE "lot_status" RENAME VALUE 'SOLD' TO 'sold';
+ALTER TYPE "lot_status" RENAME VALUE 'ACTIVE' TO 'active';
+ALTER TYPE "lot_status" RENAME VALUE 'DISTRIBUTED' TO 'distributed';
+
+-- 4. TestResult enum
+ALTER TYPE "test_result" RENAME VALUE 'PASS' TO 'pass';
+ALTER TYPE "test_result" RENAME VALUE 'FAIL' TO 'fail';
+
+-- ... autres enums de la même manière
+
+-- 6. frontend/src/types/enums.ts - MÊME FICHIER POUR LE FRONTEND
+// ✅ Utilise exactement les mêmes enums que le backend
+
+export enum Role {
+  admin = "admin",
+  manager = "manager", 
+  inspector = "inspector",
+  multiplier = "multiplier",
+  guest = "guest",
+  technician = "technician",
+  researcher = "researcher"
 }
 
-enum IssueSeverity {
-  LOW    @map("low")
-  MEDIUM @map("medium")
-  HIGH   @map("high")
-
-  @@map("issue_severity")
+export enum LotStatus {
+  pending = "pending",
+  certified = "certified",
+  rejected = "rejected",
+  in_stock = "in-stock",
+  sold = "sold", 
+  active = "active",
+  distributed = "distributed"
 }
 
-enum TestResult {
-  PASS @map("pass")
-  FAIL @map("fail")
-
-  @@map("test_result")
+export enum SeedLevel {
+  GO = "GO",
+  G1 = "G1",
+  G2 = "G2", 
+  G3 = "G3",
+  G4 = "G4",
+  R1 = "R1",
+  R2 = "R2"
 }
 
-enum ReportType {
-  PRODUCTION             @map("production")
-  QUALITY                @map("quality")
-  INVENTORY              @map("inventory")
-  MULTIPLIER_PERFORMANCE @map("multiplier-performance")
-  CUSTOM                 @map("custom")
+// ... tous les autres enums identiques au backend
 
-  @@map("report_type")
-}
+// 7. Suppression des fichiers de transformation
+// ❌ SUPPRIMER ces fichiers :
+// - backend/src/utils/transformers.ts
+// - backend/src/config/enumMappings.ts  
+// - backend/src/middleware/enumTransformMiddleware.ts
+// - backend/src/middleware/transformationMiddleware.ts
 
-enum MultiplierStatus {
-  ACTIVE   @map("active")
-  INACTIVE @map("inactive")
+// 8. backend/src/middleware/validation.ts - MIDDLEWARE SIMPLIFIÉ
+import { Request, Response, NextFunction } from "express";
+import { z, ZodSchema } from "zod";
+import { ResponseHandler } from "../utils/response";
 
-  @@map("multiplier_status")
+export function validateRequest(schema: {
+  body?: ZodSchema;
+  query?: ZodSchema;
+  params?: ZodSchema;
+}) {
+  return (req: Request, res: Response, next: NextFunction): Response | void => {
+    try {
+      // ✅ Validation directe - pas de transformation
+      if (schema.body) {
+        req.body = schema.body.parse(req.body);
+      }
+
+      if (schema.query) {
+        req.query = schema.query.parse(req.query);
+      }
+
+      if (schema.params) {
+        req.params = schema.params.parse(req.params);
+      }
+
+      next();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const errors = error.errors.map(
+          (err: any) => `${err.path.join(".")}: ${err.message}`
+        );
+        return ResponseHandler.validationError(res, errors);
+      }
+      next(error);
+    }
+  };
 }
