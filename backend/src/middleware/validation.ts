@@ -1,4 +1,4 @@
-// backend/src/middleware/validation.ts
+// backend/src/middleware/validation.ts (VERSION SIMPLIFIÉE)
 import { Request, Response, NextFunction } from "express";
 import { z, ZodSchema } from "zod";
 import { ResponseHandler } from "../utils/response";
@@ -10,6 +10,7 @@ export function validateRequest(schema: {
 }) {
   return (req: Request, res: Response, next: NextFunction): Response | void => {
     try {
+      // ✅ Validation directe - pas de transformation
       if (schema.body) {
         req.body = schema.body.parse(req.body);
       }

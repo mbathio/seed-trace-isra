@@ -1,4 +1,4 @@
-// 2. backend/src/config/enums.ts - NOUVEAU fichier simplifié
+// backend/src/config/enums.ts - ENUMS UNIFIÉS
 // ✅ ENUMS TYPESCRIPT qui matchent exactement Prisma
 
 export enum Role {
