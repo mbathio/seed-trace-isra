@@ -1,5 +1,4 @@
-// backend/src/routes/quality-controls.ts - VERSION NETTOYÉE
-
+// backend/src/routes/quality-controls.ts - VERSION UNIFIÉE FINALE
 import { Router } from "express";
 import { QualityControlController } from "../controllers/QualityControlController";
 import { validateRequest } from "../middleware/validation";

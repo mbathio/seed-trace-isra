@@ -1,4 +1,4 @@
-// backend/src/controllers/SeedLotController.ts - VERSION NETTOYÉE
+// backend/src/controllers/SeedLotController.ts - VERSION CORRIGÉE
 
 import { Request, Response, NextFunction } from "express";
 import { SeedLotService } from "../services/SeedLotService";
@@ -6,6 +6,25 @@ import { ResponseHandler } from "../utils/response";
 import { logger, LoggerUtils } from "../utils/logger";
 import { AuthenticatedRequest } from "../middleware/auth";
 import QRCode from "qrcode";
+
+// ✅ AJOUT: Interface pour typage correct du seedLot
+interface SeedLotWithRelations {
+  id: string;
+  level: string;
+  quantity: number;
+  productionDate: Date | string;
+  status: string;
+  variety?: {
+    id: number;
+    code: string;
+    name: string;
+  };
+  multiplier?: {
+    id: number;
+    name: string;
+  };
+  [key: string]: any; // Pour les autres propriétés
+}
 
 export class SeedLotController {
   /**
@@ -287,6 +306,7 @@ export class SeedLotController {
 
   /**
    * GET /api/seed-lots/:id/qr-code - Générer le QR Code
+   * ✅ CORRIGÉ: Typage et validation appropriés
    */
   static async getQRCode(
     req: Request,
@@ -297,11 +317,15 @@ export class SeedLotController {
       const { id } = req.params;
       const size = parseInt(req.query.size as string) || 300;
 
-      const seedLot = await SeedLotService.getSeedLotById(id, false);
+      const seedLotData = await SeedLotService.getSeedLotById(id, false);
 
-      if (!seedLot || typeof seedLot !== "object") {
+      // ✅ CORRECTION: Vérification et typage appropriés
+      if (!seedLotData) {
         return ResponseHandler.notFound(res, "Lot non trouvé");
       }
+
+      // ✅ CORRECTION: Cast vers notre interface typée
+      const seedLot = seedLotData as SeedLotWithRelations;
 
       // Utilise directement les données Prisma
       const qrData = {

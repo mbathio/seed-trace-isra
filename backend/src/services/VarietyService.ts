@@ -1,46 +1,18 @@
-// backend/src/services/VarietyService.ts - VERSION CORRIGÉE
+// backend/src/services/VarietyService.ts - VERSION UNIFIÉE
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { PaginationQuery } from "../types/api";
 import { CropType } from "@prisma/client";
-import DataTransformer from "../utils/transformers";
 
 export class VarietyService {
   static async createVariety(data: any): Promise<any> {
     try {
-      // Transformer le type de culture vers le format DB
-      let cropType = data.cropType;
-
-      // Mapping UI vers DB
-      const cropTypeMapping: Record<string, CropType> = {
-        rice: CropType.RICE,
-        maize: CropType.MAIZE,
-        peanut: CropType.PEANUT,
-        sorghum: CropType.SORGHUM,
-        cowpea: CropType.COWPEA,
-        millet: CropType.MILLET,
-        wheat: CropType.WHEAT,
-        // Accepter aussi les majuscules
-        RICE: CropType.RICE,
-        MAIZE: CropType.MAIZE,
-        PEANUT: CropType.PEANUT,
-        SORGHUM: CropType.SORGHUM,
-        COWPEA: CropType.COWPEA,
-        MILLET: CropType.MILLET,
-        WHEAT: CropType.WHEAT,
-      };
-
-      const dbCropType = cropTypeMapping[cropType];
-
-      if (!dbCropType) {
-        throw new Error(`Type de culture invalide: ${cropType}`);
-      }
-
+      // ✅ PLUS DE TRANSFORMATION - utilise directement les valeurs reçues
       const variety = await prisma.variety.create({
         data: {
           code: data.code.toUpperCase(), // Toujours en majuscules
           name: data.name,
-          cropType: dbCropType,
+          cropType: data.cropType, // Valeur Prisma directe
           description: data.description,
           maturityDays: data.maturityDays,
           yieldPotential: data.yieldPotential,
@@ -50,8 +22,8 @@ export class VarietyService {
         },
       });
 
-      // Transformer pour le frontend
-      return DataTransformer.transformVariety(variety);
+      // ✅ RETOUR DIRECT - plus de transformation
+      return variety;
     } catch (error) {
       logger.error("Erreur lors de la création de la variété:", error);
       throw error;
@@ -88,19 +60,9 @@ export class VarietyService {
         ];
       }
 
+      // ✅ UTILISATION DIRECTE - plus de mapping
       if (cropType) {
-        // Transformer le cropType UI vers DB
-        const cropTypeMapping: Record<string, CropType> = {
-          rice: CropType.RICE,
-          maize: CropType.MAIZE,
-          peanut: CropType.PEANUT,
-          sorghum: CropType.SORGHUM,
-          cowpea: CropType.COWPEA,
-          millet: CropType.MILLET,
-          wheat: CropType.WHEAT,
-        };
-
-        where.cropType = cropTypeMapping[cropType] || cropType;
+        where.cropType = cropType; // Valeur Prisma directe
       }
 
       const [varieties, total] = await Promise.all([
@@ -124,13 +86,9 @@ export class VarietyService {
 
       const totalPages = Math.ceil(total / pageSizeNum);
 
-      // Transformer les variétés pour le frontend
-      const transformedVarieties = varieties.map((variety) =>
-        DataTransformer.transformVariety(variety)
-      );
-
+      // ✅ RETOUR DIRECT - plus de transformation
       return {
-        varieties: transformedVarieties,
+        varieties,
         total,
         meta: {
           page: pageNum,
@@ -182,7 +140,7 @@ export class VarietyService {
       if (!variety) {
         variety = await prisma.variety.findFirst({
           where: {
-            code: id.toUpperCase(), // Chercher avec le code en majuscules
+            code: id.toUpperCase(),
             isActive: true,
           },
           include: {
@@ -207,20 +165,8 @@ export class VarietyService {
         });
       }
 
-      if (!variety) {
-        return null;
-      }
-
-      // Transformer la variété et ses relations
-      const transformedVariety = DataTransformer.transformVariety(variety);
-
-      if (transformedVariety.seedLots) {
-        transformedVariety.seedLots = transformedVariety.seedLots.map(
-          (lot: any) => DataTransformer.transformSeedLot(lot)
-        );
-      }
-
-      return transformedVariety;
+      // ✅ RETOUR DIRECT - plus de transformation
+      return variety;
     } catch (error) {
       logger.error("Erreur lors de la récupération de la variété:", error);
       throw error;
@@ -229,27 +175,6 @@ export class VarietyService {
 
   static async updateVariety(id: string, data: any): Promise<any> {
     try {
-      // Transformer le cropType si fourni
-      if (data.cropType) {
-        const cropTypeMapping: Record<string, CropType> = {
-          rice: CropType.RICE,
-          maize: CropType.MAIZE,
-          peanut: CropType.PEANUT,
-          sorghum: CropType.SORGHUM,
-          cowpea: CropType.COWPEA,
-          millet: CropType.MILLET,
-          wheat: CropType.WHEAT,
-        };
-
-        const dbCropType = cropTypeMapping[data.cropType] || data.cropType;
-
-        if (!Object.values(CropType).includes(dbCropType)) {
-          throw new Error(`Type de culture invalide: ${data.cropType}`);
-        }
-
-        data.cropType = dbCropType;
-      }
-
       // Déterminer si c'est un ID ou un code
       const parsedId = parseInt(id);
       const where = !isNaN(parsedId)
@@ -264,12 +189,21 @@ export class VarietyService {
       // Le code ne peut pas être modifié
       delete updateData.code;
 
+      // ✅ VALIDATION DIRECTE - plus de mapping cropType
+      if (
+        updateData.cropType &&
+        !Object.values(CropType).includes(updateData.cropType)
+      ) {
+        throw new Error(`Type de culture invalide: ${updateData.cropType}`);
+      }
+
       const variety = await prisma.variety.update({
         where,
         data: updateData,
       });
 
-      return DataTransformer.transformVariety(variety);
+      // ✅ RETOUR DIRECT
+      return variety;
     } catch (error) {
       logger.error("Erreur lors de la mise à jour de la variété:", error);
       throw error;

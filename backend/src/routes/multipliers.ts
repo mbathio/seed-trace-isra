@@ -1,52 +1,27 @@
-// backend/src/routes/multipliers.ts - VERSION NETTOYÉE
-
+// backend/src/routes/multipliers.ts - VERSION UNIFIÉE FINALE
 import { Router } from "express";
 import { MultiplierController } from "../controllers/MultiplierController";
 import { validateRequest } from "../middleware/validation";
 import { requireRole, authMiddleware } from "../middleware/auth";
-import { z } from "zod";
 import {
-  MultiplierStatusEnum,
-  CertificationLevelEnum,
-  CropTypeEnum,
-  SeedLevelEnum,
-  ContractStatusEnum,
-} from "../validators/common";
+  createMultiplierSchema,
+  updateMultiplierSchema,
+  multiplierQuerySchema,
+} from "../validators/multipliers";
 
 const router = Router();
 
-// Schémas de validation avec enums Prisma directs
-const createMultiplierSchema = z.object({
-  name: z.string().min(1),
-  address: z.string().min(1),
-  latitude: z.number(),
-  longitude: z.number(),
-  yearsExperience: z.number().min(0),
-  certificationLevel: CertificationLevelEnum, // Enum Prisma direct
-  specialization: z.array(CropTypeEnum), // Enum Prisma direct
-  phone: z.string().optional(),
-  email: z.string().email().optional(),
-  status: MultiplierStatusEnum.optional(), // Enum Prisma direct
-});
+// Routes publiques
+router.get(
+  "/",
+  validateRequest({ query: multiplierQuerySchema }),
+  MultiplierController.getMultipliers
+);
 
-const updateMultiplierSchema = createMultiplierSchema.partial();
-
-const contractSchema = z.object({
-  varietyId: z.union([z.number().positive(), z.string()]),
-  startDate: z.string().refine((date: string) => !isNaN(Date.parse(date))),
-  endDate: z.string().refine((date: string) => !isNaN(Date.parse(date))),
-  seedLevel: SeedLevelEnum, // Enum Prisma direct
-  expectedQuantity: z.number().positive(),
-  parcelId: z.number().optional(),
-  paymentTerms: z.string().optional(),
-  notes: z.string().optional(),
-  status: ContractStatusEnum.optional(), // Enum Prisma direct
-});
-
-// Routes
-router.get("/", MultiplierController.getMultipliers);
 router.get("/:id", MultiplierController.getMultiplierById);
+router.get("/:id/contracts", MultiplierController.getContracts);
 
+// Routes protégées
 router.post(
   "/",
   authMiddleware,
@@ -70,13 +45,10 @@ router.delete(
   MultiplierController.deleteMultiplier
 );
 
-router.get("/:id/contracts", MultiplierController.getContracts);
-
 router.post(
   "/:id/contracts",
   authMiddleware,
   requireRole("MANAGER", "ADMIN"),
-  validateRequest({ body: contractSchema }),
   MultiplierController.createContract
 );
 

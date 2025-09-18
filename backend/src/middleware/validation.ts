@@ -1,4 +1,4 @@
-// backend/src/middleware/validation.ts - VERSION SIMPLIFIÉE
+// backend/src/middleware/validation.ts - VERSION SIMPLIFIÉE UNIFIÉE
 
 import { Request, Response, NextFunction } from "express";
 import { z, ZodSchema } from "zod";
@@ -6,7 +6,7 @@ import { ResponseHandler } from "../utils/response";
 import { logger } from "../utils/logger";
 
 /**
- * Middleware de validation Zod simplifié
+ * ✅ MIDDLEWARE DE VALIDATION SIMPLIFIÉ
  * Valide les données sans transformation - utilise les enums Prisma directement
  */
 export function validateRequest(schema: {
@@ -30,6 +30,7 @@ export function validateRequest(schema: {
           });
           return ResponseHandler.validationError(res, errors);
         }
+        // ✅ ASSIGNATION DIRECTE - plus de transformation
         req.body = result.data;
       }
 
@@ -47,6 +48,7 @@ export function validateRequest(schema: {
           });
           return ResponseHandler.validationError(res, errors);
         }
+        // ✅ ASSIGNATION DIRECTE
         req.query = result.data;
       }
 
@@ -76,63 +78,7 @@ export function validateRequest(schema: {
 }
 
 /**
- * Middleware de validation optionnelle
- * Valide si les données sont présentes mais n'échoue pas si elles sont absentes
- */
-export function validateRequestOptional(schema: {
-  body?: ZodSchema;
-  query?: ZodSchema;
-  params?: ZodSchema;
-}) {
-  return (req: Request, res: Response, next: NextFunction): Response | void => {
-    try {
-      // Validation optionnelle du body
-      if (schema.body && req.body && Object.keys(req.body).length > 0) {
-        const result = schema.body.safeParse(req.body);
-        if (!result.success) {
-          const errors = result.error.errors.map(
-            (err) => `${err.path.join(".")}: ${err.message}`
-          );
-          logger.warn("Optional body validation failed", { errors });
-          return ResponseHandler.validationError(res, errors);
-        }
-        req.body = result.data;
-      }
-
-      // Validation optionnelle des query params
-      if (schema.query && req.query && Object.keys(req.query).length > 0) {
-        const result = schema.query.safeParse(req.query);
-        if (!result.success) {
-          const errors = result.error.errors.map(
-            (err) => `${err.path.join(".")}: ${err.message}`
-          );
-          logger.warn("Optional query validation failed", { errors });
-          return ResponseHandler.validationError(res, errors);
-        }
-        req.query = result.data;
-      }
-
-      next();
-    } catch (error) {
-      logger.error("Optional validation middleware error", { error });
-      return ResponseHandler.serverError(res, "Erreur de validation");
-    }
-  };
-}
-
-/**
- * Middleware pour valider les IDs dans les paramètres d'URL
- */
-export function validateId(paramName: string = "id") {
-  const schema = z.object({
-    [paramName]: z.string().min(1, `${paramName} requis`),
-  });
-
-  return validateRequest({ params: schema });
-}
-
-/**
- * Middleware pour valider les IDs numériques
+ * ✅ MIDDLEWARE POUR VALIDER LES IDs NUMÉRIQUES
  */
 export function validateNumericId(paramName: string = "id") {
   const schema = z.object({
@@ -155,24 +101,12 @@ export function validateNumericId(paramName: string = "id") {
 }
 
 /**
- * Middleware pour valider la pagination
+ * ✅ MIDDLEWARE POUR VALIDER LA PAGINATION (simplifié)
  */
 export function validatePagination() {
   const paginationSchema = z.object({
-    page: z
-      .union([z.string(), z.number()])
-      .transform((val) => {
-        const num = typeof val === "string" ? parseInt(val, 10) : val;
-        return Math.max(1, isNaN(num) ? 1 : num);
-      })
-      .optional(),
-    pageSize: z
-      .union([z.string(), z.number()])
-      .transform((val) => {
-        const num = typeof val === "string" ? parseInt(val, 10) : val;
-        return Math.min(Math.max(1, isNaN(num) ? 10 : num), 100);
-      })
-      .optional(),
+    page: z.coerce.number().min(1).default(1),
+    pageSize: z.coerce.number().min(1).max(100).default(10),
     search: z
       .string()
       .optional()
@@ -181,40 +115,40 @@ export function validatePagination() {
     sortOrder: z.enum(["asc", "desc"]).optional(),
   });
 
-  return validateRequestOptional({ query: paginationSchema });
+  return validateRequest({ query: paginationSchema });
 }
 
 /**
- * Utilitaire pour créer des validateurs personnalisés
+ * ✅ VALIDATION DES COORDONNÉES GPS
  */
-export function createCustomValidator<T>(
-  validationFn: (data: any) => { success: boolean; data?: T; errors?: string[] }
-) {
-  return (req: Request, res: Response, next: NextFunction): Response | void => {
-    try {
-      const result = validationFn(req.body);
+export function validateCoordinates() {
+  const coordinatesSchema = z.object({
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+  });
 
-      if (!result.success) {
-        return ResponseHandler.validationError(res, result.errors || []);
-      }
-
-      if (result.data) {
-        req.body = result.data;
-      }
-
-      next();
-    } catch (error) {
-      logger.error("Custom validation error", { error });
-      return ResponseHandler.serverError(
-        res,
-        "Erreur de validation personnalisée"
-      );
-    }
-  };
+  return validateRequest({ body: coordinatesSchema });
 }
 
 /**
- * Middleware pour nettoyer les données d'entrée
+ * ✅ VALIDATION DES DATES
+ */
+export function validateDates(fields: string[]) {
+  const dateFields = fields.reduce((acc, field) => {
+    acc[field] = z
+      .string()
+      .refine(
+        (date) => !isNaN(Date.parse(date)),
+        `${field} doit être une date valide`
+      );
+    return acc;
+  }, {} as Record<string, z.ZodTypeAny>);
+
+  return validateRequest({ body: z.object(dateFields) });
+}
+
+/**
+ * ✅ SANITISATION SIMPLE DES INPUTS
  */
 export function sanitizeInput() {
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -238,7 +172,7 @@ export function sanitizeInput() {
 }
 
 /**
- * Fonction utilitaire pour nettoyer récursivement un objet
+ * ✅ FONCTION UTILITAIRE POUR NETTOYER LES OBJETS
  */
 function sanitizeObject(obj: any): any {
   if (obj === null || obj === undefined) {
@@ -265,65 +199,6 @@ function sanitizeObject(obj: any): any {
   }
 
   return obj;
-}
-
-/**
- * Middleware pour valider les uploads de fichiers
- */
-export function validateFileUpload(
-  options: {
-    maxSize?: number;
-    allowedTypes?: string[];
-    required?: boolean;
-  } = {}
-) {
-  const {
-    maxSize = 10 * 1024 * 1024, // 10MB par défaut
-    allowedTypes = ["jpg", "jpeg", "png", "pdf", "csv", "xlsx"],
-    required = false,
-  } = options;
-
-  return (req: Request, res: Response, next: NextFunction): Response | void => {
-    try {
-      const file = (req as any).file || (req as any).files?.[0];
-
-      if (!file) {
-        if (required) {
-          return ResponseHandler.badRequest(res, "Fichier requis");
-        }
-        return next();
-      }
-
-      // Vérifier la taille
-      if (file.size > maxSize) {
-        return ResponseHandler.badRequest(
-          res,
-          `Fichier trop volumineux (max: ${Math.round(
-            maxSize / 1024 / 1024
-          )}MB)`
-        );
-      }
-
-      // Vérifier le type
-      const fileExtension = file.originalname?.split(".").pop()?.toLowerCase();
-      if (fileExtension && !allowedTypes.includes(fileExtension)) {
-        return ResponseHandler.badRequest(
-          res,
-          `Type de fichier non autorisé. Types acceptés: ${allowedTypes.join(
-            ", "
-          )}`
-        );
-      }
-
-      next();
-    } catch (error) {
-      logger.error("File validation error", { error });
-      return ResponseHandler.serverError(
-        res,
-        "Erreur de validation du fichier"
-      );
-    }
-  };
 }
 
 export default validateRequest;

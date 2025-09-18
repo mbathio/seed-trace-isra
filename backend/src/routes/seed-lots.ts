@@ -1,5 +1,4 @@
-// backend/src/routes/seed-lots.ts - VERSION NETTOYÉE
-
+// backend/src/routes/seed-lots.ts - VERSION UNIFIÉE FINALE
 import { Router } from "express";
 import { SeedLotController } from "../controllers/SeedLotController";
 import { validateRequest } from "../middleware/validation";
@@ -16,35 +15,24 @@ import {
 
 const router = Router();
 
-// Middleware de debug pour les requêtes
-if (process.env.NODE_ENV === "development") {
-  router.use((req, res, next) => {
-    console.log(`[SeedLots] ${req.method} ${req.path}`, {
-      query: req.query,
-      body: req.body,
-      params: req.params,
-    });
-    next();
-  });
-}
+// ✅ PLUS DE MIDDLEWARE DE TRANSFORMATION
 
-// Routes publiques (consultation) - PAS D'AUTHENTIFICATION REQUISE
+// Routes publiques (consultation)
 router.get(
   "/",
   parseQueryParams,
-  validateRequest({ query: seedLotQuerySchema }),
+  validateRequest({ query: seedLotQuerySchema }), // ✅ Validation directe
   SeedLotController.getSeedLots
 );
 
 router.get("/search", parseQueryParams, SeedLotController.searchSeedLots);
-
 router.get("/:id", SeedLotController.getSeedLotById);
 router.get("/:id/genealogy", SeedLotController.getGenealogyTree);
 router.get("/:id/qr-code", SeedLotController.getQRCode);
 router.get("/:id/stats", SeedLotController.getSeedLotStats);
 router.get("/:id/history", SeedLotController.getSeedLotHistory);
 
-// Routes protégées - AUTHENTIFICATION REQUISE
+// Routes protégées
 router.get(
   "/export",
   authMiddleware,
@@ -52,12 +40,11 @@ router.get(
   SeedLotController.exportSeedLots
 );
 
-// CRUD Operations (protégées)
 router.post(
   "/",
   authMiddleware,
   requireRole("RESEARCHER", "TECHNICIAN", "ADMIN"),
-  validateRequest({ body: createSeedLotSchema }),
+  validateRequest({ body: createSeedLotSchema }), // ✅ Validation directe
   SeedLotController.createSeedLot
 );
 
@@ -65,7 +52,7 @@ router.put(
   "/:id",
   authMiddleware,
   requireRole("RESEARCHER", "TECHNICIAN", "ADMIN"),
-  validateRequest({ body: updateSeedLotSchema }),
+  validateRequest({ body: updateSeedLotSchema }), // ✅ Validation directe
   SeedLotController.updateSeedLot
 );
 
