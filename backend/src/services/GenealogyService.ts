@@ -1,12 +1,11 @@
-// backend/src/services/GenealogyService.ts - VERSION CORRIGÉE COMPLÈTE
-
+// ===== 4. backend/src/services/GenealogyService.ts =====
 import { PrismaClient, Prisma } from "@prisma/client";
 import { logger } from "../utils/logger";
-import DataTransformer from "../utils/transformers";
+// ✅ CORRECTION: Supprimer l'import DataTransformer manquant
+// import DataTransformer from "../utils/transformers";
 
 const prisma = new PrismaClient();
 
-// ✅ CORRECTION: Interface mise à jour avec parentLotId optionnel
 export interface GenealogyNode {
   id: string;
   level: string;
@@ -17,12 +16,12 @@ export interface GenealogyNode {
   };
   quantity: number;
   productionDate: Date;
-  status: string; // ✅ Format UI (transformé)
+  status: string; // ✅ Format UI direct (pas de transformation nécessaire)
   multiplier?: {
     id: number;
     name: string;
   };
-  parentLotId?: string | null; // ✅ CORRECTION: Accepter null
+  parentLotId?: string | null;
   children: GenealogyNode[];
   _depth?: number;
   _path?: string[];
@@ -38,7 +37,7 @@ export interface GenealogyRelation {
 
 export class GenealogyService {
   /**
-   * ✅ CORRECTION: Récupère l'arbre généalogique complet avec transformation
+   * Récupère l'arbre généalogique complet
    */
   static async getGenealogyTree(
     lotId: string,
@@ -103,10 +102,6 @@ export class GenealogyService {
           }
         }
 
-        // ✅ CORRECTION: Transformer le statut pour UI
-        const transformedStatus =
-          DataTransformer.transformLotStatusDBToUI(lot.status) || lot.status;
-
         return {
           id: lot.id,
           level: lot.level,
@@ -117,14 +112,14 @@ export class GenealogyService {
           },
           quantity: lot.quantity,
           productionDate: lot.productionDate,
-          status: transformedStatus, // ✅ Status transformé pour UI
+          status: lot.status, // ✅ Pas de transformation nécessaire
           multiplier: lot.multiplier
             ? {
                 id: lot.multiplier.id,
                 name: lot.multiplier.name,
               }
             : undefined,
-          parentLotId: lot.parentLotId, // ✅ CORRECTION: Gérer null
+          parentLotId: lot.parentLotId,
           children,
           _depth: depth,
           _path: currentPath,
@@ -140,7 +135,7 @@ export class GenealogyService {
   }
 
   /**
-   * ✅ CORRECTION: Récupère tous les ancêtres avec transformation
+   * Récupère tous les ancêtres
    */
   static async getAncestors(lotId: string): Promise<any[]> {
     try {
@@ -180,15 +175,13 @@ export class GenealogyService {
 
         if (!lot) break;
 
-        // ✅ CORRECTION: Transformer avant d'ajouter
         const transformedLot = {
           id: lot.id,
           level: lot.level,
           variety: lot.variety,
           quantity: lot.quantity,
           productionDate: lot.productionDate,
-          status:
-            DataTransformer.transformLotStatusDBToUI(lot.status) || lot.status,
+          status: lot.status, // ✅ Pas de transformation nécessaire
           multiplier: lot.multiplier,
           parentLotId: lot.parentLotId,
         };
@@ -205,7 +198,7 @@ export class GenealogyService {
   }
 
   /**
-   * ✅ CORRECTION: Récupère tous les descendants avec transformation
+   * Récupère tous les descendants
    */
   static async getDescendants(lotId: string): Promise<any[]> {
     try {
@@ -228,16 +221,13 @@ export class GenealogyService {
         });
 
         for (const child of childLots) {
-          // ✅ CORRECTION: Transformer avant d'ajouter
           const transformedChild = {
             id: child.id,
             level: child.level,
             variety: child.variety,
             quantity: child.quantity,
             productionDate: child.productionDate,
-            status:
-              DataTransformer.transformLotStatusDBToUI(child.status) ||
-              child.status,
+            status: child.status, // ✅ Pas de transformation nécessaire
             multiplier: child.multiplier,
             parentLotId: child.parentLotId,
           };
@@ -255,7 +245,7 @@ export class GenealogyService {
   }
 
   /**
-   * ✅ CORRECTION: Relations directes avec transformation
+   * Relations directes
    */
   static async getDirectRelations(lotId: string) {
     try {
@@ -283,16 +273,13 @@ export class GenealogyService {
         throw new Error(`Lot not found: ${lotId}`);
       }
 
-      // ✅ CORRECTION: Fonction helper pour transformer un lot
       const transformLot = (seedLot: any) => ({
         id: seedLot.id,
         level: seedLot.level,
         variety: seedLot.variety,
         quantity: seedLot.quantity,
         productionDate: seedLot.productionDate,
-        status:
-          DataTransformer.transformLotStatusDBToUI(seedLot.status) ||
-          seedLot.status,
+        status: seedLot.status, // ✅ Pas de transformation nécessaire
         multiplier: seedLot.multiplier,
         parentLotId: seedLot.parentLotId,
       });
@@ -309,7 +296,7 @@ export class GenealogyService {
   }
 
   /**
-   * ✅ CORRECTION: Crée une relation parent-enfant avec validation
+   * Crée une relation parent-enfant avec validation
    */
   static async createRelation(
     parentId: string,
@@ -382,8 +369,7 @@ export class GenealogyService {
 
       logger.info(`Created relation: ${parentId} -> ${childId}`);
 
-      // ✅ CORRECTION: Transformer avant de retourner
-      return DataTransformer.transformSeedLot(updatedChild);
+      return updatedChild; // ✅ Retour direct sans transformation
     } catch (error) {
       logger.error("Error creating relation:", error);
       throw error;
@@ -391,7 +377,7 @@ export class GenealogyService {
   }
 
   /**
-   * ✅ CORRECTION: Supprime une relation parent-enfant
+   * Supprime une relation parent-enfant
    */
   static async removeRelation(childId: string) {
     try {
@@ -420,8 +406,7 @@ export class GenealogyService {
 
       logger.info(`Removed parent relation from lot: ${childId}`);
 
-      // ✅ CORRECTION: Transformer avant de retourner
-      return DataTransformer.transformSeedLot(updatedChild);
+      return updatedChild; // ✅ Retour direct sans transformation
     } catch (error) {
       logger.error("Error removing relation:", error);
       throw error;
@@ -429,7 +414,7 @@ export class GenealogyService {
   }
 
   /**
-   * ✅ CORRECTION: Met à jour une relation existante
+   * Met à jour une relation existante
    */
   static async updateRelation(
     childId: string,
@@ -492,8 +477,7 @@ export class GenealogyService {
 
       logger.info(`Updated relation for lot: ${childId}`);
 
-      // ✅ CORRECTION: Transformer avant de retourner
-      return DataTransformer.transformSeedLot(updatedChild);
+      return updatedChild; // ✅ Retour direct sans transformation
     } catch (error) {
       logger.error("Error updating relation:", error);
       throw error;
@@ -501,7 +485,7 @@ export class GenealogyService {
   }
 
   /**
-   * ✅ CORRECTION: Statistiques de généalogie avec transformation
+   * Statistiques de généalogie
    */
   static async getGenealogyStats(lotId: string) {
     try {
@@ -552,7 +536,7 @@ export class GenealogyService {
   }
 
   /**
-   * ✅ CORRECTION: Vérification de cohérence avec transformation
+   * Vérification de cohérence
    */
   static async checkGenealogyConsistency(lotId: string) {
     try {
@@ -636,7 +620,7 @@ export class GenealogyService {
   }
 
   /**
-   * ✅ CORRECTION: Export de généalogie avec transformation
+   * Export de généalogie
    */
   static async exportGenealogy(
     lotId: string,

@@ -1,3 +1,4 @@
+// ===== 1. backend/src/services/AlertService.ts =====
 import { prisma } from "../config/database";
 import { NotificationService } from "./NotificationService";
 import { logger } from "../utils/logger";
@@ -27,7 +28,7 @@ export class AlertService {
         const recipients = await prisma.user.findMany({
           where: {
             isActive: true,
-            role: { in: ["MANAGER", "ADMIN"] },
+            role: { in: ["manager", "admin"] }, // ✅ CORRIGÉ: minuscules
           },
           select: { email: true },
         });
@@ -52,7 +53,7 @@ export class AlertService {
 
       const failedControls = await prisma.qualityControl.findMany({
         where: {
-          result: "FAIL",
+          result: "fail", // ✅ CORRIGÉ: minuscules
           controlDate: { gte: yesterday },
         },
         include: {
@@ -70,7 +71,7 @@ export class AlertService {
         const recipients = await prisma.user.findMany({
           where: {
             isActive: true,
-            role: { in: ["MANAGER", "ADMIN", "INSPECTOR"] },
+            role: { in: ["manager", "admin", "inspector"] }, // ✅ CORRIGÉ: minuscules
           },
           select: { email: true },
         });
