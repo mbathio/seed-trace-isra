@@ -1,13 +1,13 @@
-// 1. backend/src/services/CacheService.ts - VERSION AMÉLIORÉE avec Redis
 import Redis from "ioredis";
 import { config } from "../config/environment";
 import { logger } from "../utils/logger";
+import { prisma } from "../config/database";
+import { LotStatus } from "@prisma/client"; // ✅ Correct enum Prisma
 
 export class CacheService {
   private static redis: Redis | null = null;
   private static localCache = new Map<string, { value: any; expiry: number }>();
 
-  // Initialisation Redis avec fallback local
   static async init() {
     try {
       if (config.redis.host) {
@@ -20,7 +20,7 @@ export class CacheService {
 
         this.redis.on("error", (err: Error) => {
           logger.error("Redis connection error:", err);
-          this.redis = null; // Fallback to local cache
+          this.redis = null;
         });
 
         logger.info("Redis cache initialized");
@@ -30,27 +30,17 @@ export class CacheService {
     }
   }
 
-  // Méthode générique avec TTL personnalisé
   static async get<T>(key: string): Promise<T | null> {
     try {
-      // Essayer Redis d'abord
       if (this.redis) {
         const value = await this.redis.get(key);
-        if (value) {
-          return JSON.parse(value);
-        }
+        if (value) return JSON.parse(value);
       }
 
-      // Fallback sur cache local
       const cached = this.localCache.get(key);
-      if (cached && cached.expiry > Date.now()) {
-        return cached.value;
-      }
+      if (cached && cached.expiry > Date.now()) return cached.value;
 
-      // Nettoyer si expiré
-      if (cached) {
-        this.localCache.delete(key);
-      }
+      if (cached) this.localCache.delete(key);
 
       return null;
     } catch (error) {
@@ -59,77 +49,56 @@ export class CacheService {
     }
   }
 
-  static async set<T>(
-    key: string,
-    value: T,
-    ttlSeconds: number = 300
-  ): Promise<void> {
+  static async set<T>(key: string, value: T, ttlSeconds: number = 300) {
     try {
       const serialized = JSON.stringify(value);
 
-      // Sauvegarder dans Redis
-      if (this.redis) {
-        await this.redis.setex(key, ttlSeconds, serialized);
-      }
+      if (this.redis) await this.redis.setex(key, ttlSeconds, serialized);
 
-      // Sauvegarder aussi dans le cache local
       this.localCache.set(key, {
         value,
         expiry: Date.now() + ttlSeconds * 1000,
       });
 
-      // Nettoyer le cache local si trop grand
-      if (this.localCache.size > 1000) {
-        this.cleanupLocalCache();
-      }
+      if (this.localCache.size > 1000) this.cleanupLocalCache();
     } catch (error) {
       logger.error("Cache set error:", error);
     }
   }
 
-  static async invalidate(pattern: string): Promise<void> {
+  static async invalidate(pattern: string) {
     try {
-      // Invalider dans Redis
       if (this.redis) {
         const keys = await this.redis.keys(pattern);
-        if (keys.length > 0) {
-          await this.redis.del(...keys);
-        }
+        if (keys.length > 0) await this.redis.del(...keys);
       }
 
-      // Invalider dans le cache local
       for (const key of this.localCache.keys()) {
-        if (key.includes(pattern.replace("*", ""))) {
-          this.localCache.delete(key);
-        }
+        if (key.includes(pattern.replace("*", ""))) this.localCache.delete(key);
       }
     } catch (error) {
       logger.error("Cache invalidation error:", error);
     }
   }
 
-  private static cleanupLocalCache(): void {
+  private static cleanupLocalCache() {
     const now = Date.now();
     for (const [key, value] of this.localCache.entries()) {
-      if (value.expiry < now) {
-        this.localCache.delete(key);
-      }
+      if (value.expiry < now) this.localCache.delete(key);
     }
   }
 
-  // Cache pour les données fréquemment accédées
   static async getVarieties() {
     const key = "varieties:all:active";
     let varieties = await this.get(key);
 
     if (!varieties) {
-      const { prisma } = await import("../config/database");
       varieties = await prisma.variety.findMany({
         where: { isActive: true },
         orderBy: { name: "asc" },
       });
 
-      await this.set(key, varieties, 3600); // Cache 1 heure
+      await this.set(key, varieties, 3600);
     }
 
     return varieties;
@@ -140,13 +109,14 @@ export class CacheService {
     let stats = await this.get(key);
 
     if (!stats) {
-      const { prisma } = await import("../config/database");
       const [total, certified, pending, byLevel] = await Promise.all([
         prisma.seedLot.count({ where: { isActive: true } }),
         prisma.seedLot.count({
-          where: { isActive: true, status: "CERTIFIED" },
+          where: { isActive: true, status: LotStatus.certified }, // ✅ Enum correct
         }),
-        prisma.seedLot.count({ where: { isActive: true, status: "PENDING" } }),
+        prisma.seedLot.count({
+          where: { isActive: true, status: LotStatus.pending }, // ✅ Enum correct
+        }),
         prisma.seedLot.groupBy({
           by: ["level"],
           where: { isActive: true },
@@ -155,7 +125,7 @@ export class CacheService {
       ]);
 
       stats = { total, certified, pending, byLevel };
-      await this.set(key, stats, 600); // Cache 10 minutes
+      await this.set(key, stats, 600);
     }
 
     return stats;

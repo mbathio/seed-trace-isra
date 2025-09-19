@@ -1,9 +1,9 @@
 // backend/src/validators/auth.ts - VERSION UNIFIÉE
-
 import { z } from "zod";
-import { RoleEnum, emailSchema } from "./common";
+import { Role } from "@prisma/client"; // ✅ Enum Prisma direct
+import { emailSchema } from "./common";
 
-// ✅ CORRECTION: Schéma de connexion sécurisé
+// 🔹 Schéma de connexion sécurisé
 export const loginSchema = z.object({
   email: emailSchema,
   password: z
@@ -12,7 +12,7 @@ export const loginSchema = z.object({
     .max(128, "Mot de passe trop long"),
 });
 
-// ✅ CORRECTION: Schéma d'inscription avec rôle Prisma
+// 🔹 Schéma d'inscription avec rôle Prisma
 export const registerSchema = z.object({
   name: z
     .string()
@@ -30,7 +30,6 @@ export const registerSchema = z.object({
       "Le mot de passe doit contenir au moins une minuscule, une majuscule et un chiffre"
     )
     .refine((password) => {
-      // Vérification de mots de passe faibles
       const weakPasswords = [
         "password",
         "123456",
@@ -43,7 +42,7 @@ export const registerSchema = z.object({
       ];
       return !weakPasswords.includes(password.toLowerCase());
     }, "Mot de passe trop faible - évitez les mots de passe communs"),
-  role: RoleEnum, // ✅ Utilise directement l'enum Prisma
+  role: z.nativeEnum(Role), // ✅ Utilisation directe de l'enum Prisma
   avatar: z
     .string()
     .url("URL d'avatar invalide")
@@ -51,7 +50,7 @@ export const registerSchema = z.object({
     .transform((val) => val || undefined),
 });
 
-// Schéma de refresh token sécurisé
+// 🔹 Schéma de refresh token sécurisé
 export const refreshTokenSchema = z.object({
   refreshToken: z
     .string()
@@ -60,7 +59,7 @@ export const refreshTokenSchema = z.object({
     .regex(/^[A-Za-z0-9_-]+$/, "Format de refresh token invalide"),
 });
 
-// Schéma de changement de mot de passe
+// 🔹 Schéma de changement de mot de passe
 export const changePasswordSchema = z
   .object({
     currentPassword: z
@@ -86,7 +85,7 @@ export const changePasswordSchema = z
     path: ["newPassword"],
   });
 
-// ✅ CORRECTION: Schéma de mise à jour de profil avec rôle Prisma
+// 🔹 Schéma de mise à jour de profil avec rôle Prisma
 export const updateProfileSchema = z.object({
   name: z
     .string()
@@ -100,5 +99,5 @@ export const updateProfileSchema = z.object({
     .string()
     .regex(/^(\+221)?[0-9]{8,9}$/, "Numéro de téléphone sénégalais invalide")
     .optional(),
-  role: RoleEnum.optional(), // ✅ Utilise directement l'enum Prisma
+  role: z.nativeEnum(Role).optional(), // ✅ Enum Prisma direct
 });

@@ -1,19 +1,14 @@
-// backend/src/validators/seedLot.ts - VERSION UNIFIÉE (sans transformation)
-
+// backend/src/validators/seedLot.ts - VERSION UNIFIÉE
 import { z } from "zod";
-import {
-  SeedLevelEnum,
-  LotStatusEnum,
-  paginationSchema,
-  positiveIntSchema,
-  notesSchema,
-} from "./common";
+import { prisma } from "../config/database";
+import { LotStatus, SeedLevel } from "@prisma/client"; // ✅ Enums Prisma directs
+import { paginationSchema, positiveIntSchema, notesSchema } from "./common";
 
-// ✅ CORRECTION: Utilise directement les enums Prisma
+// 🔹 Schéma de création de lot
 export const createSeedLotSchema = z
   .object({
     varietyId: positiveIntSchema,
-    level: SeedLevelEnum, // Utilise directement l'enum Prisma
+    level: z.nativeEnum(SeedLevel),
     quantity: z
       .number()
       .positive("La quantité doit être positive")
@@ -33,7 +28,7 @@ export const createSeedLotSchema = z
         (date) => !date || !isNaN(Date.parse(date)),
         "Date d'expiration invalide"
       ),
-    status: LotStatusEnum.optional().default("PENDING"), // ✅ Valeur Prisma par défaut
+    status: z.nativeEnum(LotStatus).optional().default(LotStatus.pending),
     batchNumber: z.string().max(50).optional(),
     multiplierId: positiveIntSchema.optional(),
     parcelId: positiveIntSchema.optional(),
@@ -42,7 +37,6 @@ export const createSeedLotSchema = z
   })
   .refine(
     (data) => {
-      // Validation: la date d'expiration doit être après la date de production
       if (data.expiryDate && data.productionDate) {
         return new Date(data.expiryDate) > new Date(data.productionDate);
       }
@@ -54,10 +48,10 @@ export const createSeedLotSchema = z
     }
   );
 
-// Schéma de mise à jour
+// 🔹 Schéma de mise à jour
 export const updateSeedLotSchema = z.object({
   quantity: z.number().positive().optional(),
-  status: LotStatusEnum.optional(), // ✅ Utilise directement l'enum Prisma
+  status: z.nativeEnum(LotStatus).optional(),
   notes: notesSchema,
   multiplierId: positiveIntSchema.optional().nullable(),
   parcelId: positiveIntSchema.optional().nullable(),
@@ -65,10 +59,10 @@ export const updateSeedLotSchema = z.object({
   batchNumber: z.string().max(50).optional(),
 });
 
-// ✅ SCHÉMA DE REQUÊTE: Accepte les valeurs Prisma directement
+// 🔹 Schéma de requête
 export const seedLotQuerySchema = paginationSchema.extend({
-  level: SeedLevelEnum.optional(),
-  status: LotStatusEnum.optional(), // ✅ Accepte les valeurs Prisma
+  level: z.nativeEnum(SeedLevel).optional(),
+  status: z.nativeEnum(LotStatus).optional(),
   varietyId: z
     .union([z.string(), z.number()])
     .transform((val) => {
@@ -124,27 +118,27 @@ export const seedLotQuerySchema = paginationSchema.extend({
   sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
 });
 
-// Schéma pour création de lot enfant
+// 🔹 Schéma création lot enfant
 export const createChildLotSchema = z.object({
   quantity: z.number().positive("La quantité doit être positive"),
   productionDate: z
     .string()
     .refine((date) => !isNaN(Date.parse(date)), "Date invalide"),
-  level: SeedLevelEnum, // ✅ Utilise directement l'enum Prisma
+  level: z.nativeEnum(SeedLevel),
   multiplierId: positiveIntSchema.optional(),
   parcelId: positiveIntSchema.optional(),
   notes: notesSchema,
   batchNumber: z.string().max(50).optional(),
 });
 
-// Schéma pour transfert
+// 🔹 Schéma transfert
 export const transferLotSchema = z.object({
   targetMultiplierId: positiveIntSchema,
   quantity: z.number().positive("La quantité doit être positive"),
   notes: notesSchema,
 });
 
-// Schéma pour mise à jour en masse
+// 🔹 Schéma mise à jour en masse
 export const bulkUpdateSchema = z.object({
   ids: z
     .array(z.string())
@@ -153,7 +147,7 @@ export const bulkUpdateSchema = z.object({
   updateData: updateSeedLotSchema,
 });
 
-// Export des types TypeScript
+// 🔹 Types TypeScript
 export type CreateSeedLotInput = z.infer<typeof createSeedLotSchema>;
 export type UpdateSeedLotInput = z.infer<typeof updateSeedLotSchema>;
 export type SeedLotQueryInput = z.infer<typeof seedLotQuerySchema>;

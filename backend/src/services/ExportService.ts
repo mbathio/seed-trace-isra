@@ -6,12 +6,8 @@ import { GenealogyService } from "./GenealogyService";
 import { QualityControlService } from "./QualityControlService";
 import QRCode from "qrcode";
 import archiver from "archiver";
-import { Readable } from "stream";
 
 export class ExportService {
-  /**
-   * Retourne les formats d'export disponibles
-   */
   static getAvailableFormats() {
     return {
       seedLots: ["csv", "xlsx", "json"],
@@ -23,12 +19,8 @@ export class ExportService {
     };
   }
 
-  /**
-   * Export des lots de semences
-   */
   static async exportSeedLots(filters: any, format: string): Promise<any> {
     try {
-      // Récupérer les lots selon les filtres
       const where: any = { isActive: true };
 
       if (filters.level) where.level = filters.level;
@@ -51,15 +43,11 @@ export class ExportService {
           variety: true,
           multiplier: true,
           parcel: true,
-          qualityControls: {
-            orderBy: { controlDate: "desc" },
-            take: 1,
-          },
+          qualityControls: { orderBy: { controlDate: "desc" }, take: 1 },
         },
         orderBy: { productionDate: "desc" },
       });
 
-      // Formater selon le format demandé
       switch (format) {
         case "csv":
           return this.exportSeedLotsToCSV(seedLots);
@@ -76,9 +64,6 @@ export class ExportService {
     }
   }
 
-  /**
-   * Export du rapport de contrôle qualité
-   */
   static async exportQualityReport(filters: any, format: string): Promise<any> {
     try {
       const report = await QualityControlService.generateQualityReport(filters);
@@ -91,7 +76,6 @@ export class ExportService {
         case "xlsx":
           return this.exportQualityReportToExcel(report);
         case "pdf":
-          // TODO: Implémenter la génération PDF
           throw new Error("Export PDF non encore implémenté");
         default:
           throw new Error(`Format non supporté: ${format}`);
@@ -102,9 +86,6 @@ export class ExportService {
     }
   }
 
-  /**
-   * Export des statistiques de production
-   */
   static async exportProductionStats(
     filters: any,
     format: string
@@ -128,9 +109,6 @@ export class ExportService {
     }
   }
 
-  /**
-   * Export personnalisé
-   */
   static async customExport(params: {
     entityType: string;
     format: string;
@@ -141,7 +119,6 @@ export class ExportService {
     try {
       const { entityType, format, fields, filters, includeRelations } = params;
 
-      // Mapping des entités
       const entityMap: Record<string, any> = {
         seedLots: prisma.seedLot,
         varieties: prisma.variety,
@@ -152,29 +129,15 @@ export class ExportService {
       };
 
       const model = entityMap[entityType];
-      if (!model) {
-        throw new Error(`Type d'entité non supporté: ${entityType}`);
-      }
+      if (!model) throw new Error(`Type d'entité non supporté: ${entityType}`);
 
-      // Construire la requête
       const query: any = { where: filters || {} };
-
-      // Sélectionner uniquement les champs demandés
-      if (fields && fields.length > 0) {
-        query.select = fields.reduce(
-          (acc, field) => ({ ...acc, [field]: true }),
-          {}
-        );
-      }
-
-      // Inclure les relations si demandé
-      if (includeRelations) {
-        query.include = this.getDefaultIncludes(entityType);
-      }
+      if (fields?.length)
+        query.select = Object.fromEntries(fields.map((f) => [f, true]));
+      if (includeRelations) query.include = this.getDefaultIncludes(entityType);
 
       const data = await model.findMany(query);
 
-      // Formater selon le format demandé
       switch (format) {
         case "csv":
           return this.dataToCSV(data, fields);
@@ -193,9 +156,6 @@ export class ExportService {
     }
   }
 
-  /**
-   * Génère un modèle d'import
-   */
   static async generateImportTemplate(
     type: string,
     format: string
@@ -240,7 +200,7 @@ export class ExportService {
         sample: {
           code: "ISRIZ-20",
           name: "ISRIZ 20",
-          cropType: "RICE",
+          cropType: "rice",
           description: "Variété améliorée de riz",
           maturityDays: 120,
           yieldPotential: 8.5,
@@ -276,25 +236,16 @@ export class ExportService {
     };
 
     const template = templates[type];
-    if (!template) {
-      throw new Error(`Type de modèle non supporté: ${type}`);
-    }
+    if (!template) throw new Error(`Type de modèle non supporté: ${type}`);
 
-    if (format === "csv") {
-      const rows = [
+    if (format === "csv")
+      return [
         template.headers.join(","),
         Object.values(template.sample).join(","),
-      ];
-      return rows.join("\n");
-    } else {
-      // Format Excel
-      return this.createExcelTemplate(template);
-    }
+      ].join("\n");
+    return this.createExcelTemplate(template);
   }
 
-  /**
-   * Export de l'arbre généalogique
-   */
   static async exportGenealogy(lotId: string, format: string): Promise<any> {
     try {
       return await GenealogyService.exportGenealogy(
@@ -307,24 +258,14 @@ export class ExportService {
     }
   }
 
-  /**
-   * Export en masse
-   */
   static async bulkExport(
-    exports: Array<{
-      type: string;
-      format: string;
-      filters?: any;
-    }>
+    exports: Array<{ type: string; format: string; filters?: any }>
   ): Promise<Buffer> {
     try {
-      // Créer une archive ZIP
       const archive = archiver("zip", { zlib: { level: 9 } });
       const chunks: Buffer[] = [];
-
       archive.on("data", (chunk) => chunks.push(chunk));
 
-      // Traiter chaque export
       for (const [index, exportConfig] of exports.entries()) {
         const { type, format, filters } = exportConfig;
         let data: any;
@@ -347,12 +288,10 @@ export class ExportService {
             continue;
         }
 
-        // Ajouter à l'archive
         archive.append(data, { name: filename });
       }
 
       await archive.finalize();
-
       return Buffer.concat(chunks);
     } catch (error) {
       logger.error("Erreur bulk export:", error);
@@ -360,15 +299,9 @@ export class ExportService {
     }
   }
 
-  /**
-   * Génère un certificat pour un lot
-   */
   static async generateCertificate(
     lotId: string,
-    options: {
-      format: string;
-      language: string;
-    }
+    options: { format: string; language: string }
   ): Promise<any> {
     try {
       const seedLot = await prisma.seedLot.findUnique({
@@ -378,20 +311,16 @@ export class ExportService {
           multiplier: true,
           parcel: true,
           qualityControls: {
-            where: { result: "PASS" },
+            where: { result: "pass" },
             orderBy: { controlDate: "desc" },
             take: 1,
           },
         },
       });
 
-      if (!seedLot) {
-        throw new Error("Lot non trouvé");
-      }
-
-      if (!seedLot.qualityControls.length) {
+      if (!seedLot) throw new Error("Lot non trouvé");
+      if (!seedLot.qualityControls.length)
         throw new Error("Aucun contrôle qualité réussi pour ce lot");
-      }
 
       const certificate = {
         certificateNumber: `CERT-${lotId}-${Date.now()}`,
@@ -412,21 +341,15 @@ export class ExportService {
         },
       };
 
-      if (options.format === "html") {
+      if (options.format === "html")
         return this.generateCertificateHTML(certificate, options.language);
-      } else {
-        // TODO: Implémenter la génération PDF
-        throw new Error("Export PDF non encore implémenté");
-      }
+      throw new Error("Export PDF non encore implémenté");
     } catch (error) {
       logger.error("Erreur génération certificat:", error);
       throw error;
     }
   }
 
-  /**
-   * Génère des étiquettes QR
-   */
   static async generateQRLabels(
     lotId: string,
     quantity: number,
@@ -435,15 +358,9 @@ export class ExportService {
     try {
       const seedLot = await prisma.seedLot.findUnique({
         where: { id: lotId },
-        include: {
-          variety: true,
-          multiplier: true,
-        },
+        include: { variety: true, multiplier: true },
       });
-
-      if (!seedLot) {
-        throw new Error("Lot non trouvé");
-      }
+      if (!seedLot) throw new Error("Lot non trouvé");
 
       const qrData = {
         id: seedLot.id,
@@ -453,23 +370,17 @@ export class ExportService {
         productionDate: seedLot.productionDate,
         multiplier: seedLot.multiplier?.name,
       };
-
       const qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), {
         width: 200,
         margin: 2,
       });
 
-      if (format === "png") {
-        // Retourner l'image PNG directement
-        const base64Data = qrCodeDataUrl.replace(
-          /^data:image\/png;base64,/,
-          ""
+      if (format === "png")
+        return Buffer.from(
+          qrCodeDataUrl.replace(/^data:image\/png;base64,/, ""),
+          "base64"
         );
-        return Buffer.from(base64Data, "base64");
-      } else {
-        // TODO: Générer PDF avec plusieurs étiquettes
-        throw new Error("Export PDF d'étiquettes non encore implémenté");
-      }
+      throw new Error("Export PDF d'étiquettes non encore implémenté");
     } catch (error) {
       logger.error("Erreur génération étiquettes QR:", error);
       throw error;
@@ -494,7 +405,6 @@ export class ExportService {
       "Pureté (%)",
       "Notes",
     ];
-
     const rows = seedLots.map((lot) => {
       const lastQC = lot.qualityControls[0];
       return [
@@ -520,19 +430,19 @@ export class ExportService {
   }
 
   private static async exportSeedLotsToExcel(seedLots: any[]): Promise<Buffer> {
-    // Utiliser SimpleExportService pour l'instant
     const csv = this.exportSeedLotsToCSV(seedLots);
     return Buffer.from(csv, "utf-8");
   }
 
   private static async generateProductionStats(filters: any): Promise<any> {
     const { year, multiplierId, varietyId, status } = filters;
-
     const where: any = {};
+
     if (year) {
       const startDate = new Date(year, 0, 1);
       const endDate = new Date(year, 11, 31);
-      where.startDate = { gte: startDate, lte: endDate };
+      where.startDate = { gte: startDate };
+      where.endDate = { lte: endDate };
     }
     if (multiplierId) where.multiplierId = parseInt(multiplierId);
     if (status) where.status = status;
@@ -540,34 +450,30 @@ export class ExportService {
     const productions = await prisma.production.findMany({
       where,
       include: {
-        seedLot: {
-          include: { variety: true },
-        },
+        seedLot: { include: { variety: true } },
         multiplier: true,
         parcel: true,
       },
     });
 
-    // Calculer les statistiques
-    const stats = {
-      totalProductions: productions.length,
-      byStatus: this.groupByField(productions, "status"),
-      byVariety: this.groupProductionsByVariety(productions),
-      byMultiplier: this.groupByMultiplier(productions),
-      byMonth: this.groupByMonth(productions),
-      totalYield: productions.reduce(
-        (sum: number, p: any) => sum + (p.actualYield || 0),
-        0
-      ),
+    return {
+      productions,
+      stats: {
+        totalProductions: productions.length,
+        byStatus: this.groupByField(productions, "status"),
+        byVariety: this.groupProductionsByVariety(productions),
+        byMultiplier: this.groupByMultiplier(productions),
+        byMonth: this.groupByMonth(productions),
+        totalYield: productions.reduce(
+          (sum: number, p: any) => sum + (p.actualYield || 0),
+          0
+        ),
+      },
     };
-
-    return { productions, stats };
   }
 
   private static exportProductionStatsToCSV(data: any): string {
     const { productions, stats } = data;
-
-    // Section statistiques
     const statsSection = [
       "STATISTIQUES DE PRODUCTION",
       "",
@@ -581,7 +487,6 @@ export class ExportService {
       "",
     ];
 
-    // Section détails
     const headers = [
       "ID Production",
       "Lot",
@@ -593,14 +498,13 @@ export class ExportService {
       "Statut",
       "Rendement (kg)",
     ];
-
     const rows = productions.map((prod: any) =>
       [
         prod.id,
         prod.seedLot.id,
         prod.seedLot.variety.name,
         prod.multiplier.name,
-        prod.parcel.name || "",
+        prod.parcel?.name || "",
         new Date(prod.startDate).toLocaleDateString("fr-FR"),
         prod.endDate ? new Date(prod.endDate).toLocaleDateString("fr-FR") : "",
         prod.status,
@@ -614,7 +518,6 @@ export class ExportService {
   private static async exportProductionStatsToExcel(
     data: any
   ): Promise<Buffer> {
-    // Utiliser CSV pour l'instant
     const csv = this.exportProductionStatsToCSV(data);
     return Buffer.from(csv, "utf-8");
   }
@@ -622,26 +525,21 @@ export class ExportService {
   private static async exportQualityReportToExcel(
     report: any
   ): Promise<Buffer> {
-    // Utiliser JSON pour l'instant
     return Buffer.from(JSON.stringify(report, null, 2), "utf-8");
   }
 
   private static dataToCSV(data: any[], fields?: string[]): string {
     if (!data.length) return "";
-
     const headers = fields || Object.keys(data[0]);
     const rows = data.map((item) =>
       headers
-        .map((field) => {
-          const value = item[field];
-          if (typeof value === "string" && value.includes(",")) {
-            return `"${value.replace(/"/g, '""')}"`;
-          }
-          return value || "";
-        })
+        .map((f) =>
+          typeof item[f] === "string" && item[f].includes(",")
+            ? `"${item[f].replace(/"/g, '""')}"`
+            : item[f] || ""
+        )
         .join(",")
     );
-
     return [headers.join(","), ...rows].join("\n");
   }
 
@@ -649,7 +547,6 @@ export class ExportService {
     data: any[],
     entityType: string
   ): Promise<Buffer> {
-    // Utiliser CSV pour l'instant
     const csv = this.dataToCSV(data);
     return Buffer.from(csv, "utf-8");
   }
@@ -658,7 +555,7 @@ export class ExportService {
     const xml = [
       '<?xml version="1.0" encoding="UTF-8"?>',
       `<${entityType}>`,
-      ...data.map((item) => this.objectToXML(item, "item")),
+      ...data.map((d) => this.objectToXML(d, "item")),
       `</${entityType}>`,
     ];
     return xml.join("\n");
@@ -666,15 +563,12 @@ export class ExportService {
 
   private static objectToXML(obj: any, tagName: string): string {
     const content = Object.entries(obj)
-      .map(([key, value]) => {
-        if (value === null || value === undefined) return "";
-        if (typeof value === "object") {
-          return this.objectToXML(value, key);
-        }
-        return `<${key}>${value}</${key}>`;
+      .map(([k, v]) => {
+        if (v == null) return "";
+        if (typeof v === "object") return this.objectToXML(v, k);
+        return `<${k}>${v}</${k}>`;
       })
       .join("\n  ");
-
     return `<${tagName}>\n  ${content}\n</${tagName}>`;
   }
 
@@ -686,9 +580,7 @@ export class ExportService {
         parcel: true,
         qualityControls: { take: 1, orderBy: { controlDate: "desc" } },
       },
-      varieties: {
-        _count: { select: { seedLots: true } },
-      },
+      varieties: { _count: { select: { seedLots: true } } },
       multipliers: {
         _count: { select: { seedLots: true, productions: true } },
       },
@@ -706,17 +598,17 @@ export class ExportService {
         inspector: true,
       },
     };
-
     return includes[entityType] || {};
   }
 
   private static async createExcelTemplate(template: any): Promise<Buffer> {
-    // Pour l'instant, retourner un CSV
-    const rows = [
-      template.headers.join(","),
-      Object.values(template.sample).join(","),
-    ];
-    return Buffer.from(rows.join("\n"), "utf-8");
+    return Buffer.from(
+      [
+        template.headers.join(","),
+        Object.values(template.sample).join(","),
+      ].join("\n"),
+      "utf-8"
+    );
   }
 
   private static generateCertificateHTML(
@@ -764,128 +656,18 @@ export class ExportService {
     return `
 <!DOCTYPE html>
 <html lang="${language}">
-<head>
-    <meta charset="UTF-8">
-    <title>${t.title}</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .header { text-align: center; margin-bottom: 40px; }
-        .logo { width: 100px; height: 100px; }
-        h1 { color: #2c5530; margin: 20px 0; }
-        .certificate-info { margin: 20px 0; }
-        .info-row { margin: 10px 0; display: flex; justify-content: space-between; }
-        .label { font-weight: bold; }
-        .section { margin: 30px 0; padding: 20px; background: #f5f5f5; }
-        .signature { margin-top: 60px; text-align: right; }
-        .footer { margin-top: 40px; text-align: center; font-size: 12px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>${t.title}</h1>
-        <h2>${certificate.issuer.name}</h2>
-        <p>${certificate.issuer.acronym}</p>
-    </div>
-
-    <div class="certificate-info">
-        <div class="info-row">
-            <span class="label">${t.certNumber}:</span>
-            <span>${certificate.certificateNumber}</span>
-        </div>
-        <div class="info-row">
-            <span class="label">${t.issuedDate}:</span>
-            <span>${new Date(certificate.issuedDate).toLocaleDateString(
-              language
-            )}</span>
-        </div>
-    </div>
-
-    <div class="section">
-        <h3>Information du Lot</h3>
-        <div class="info-row">
-            <span class="label">ID:</span>
-            <span>${certificate.lot.id}</span>
-        </div>
-        <div class="info-row">
-            <span class="label">${t.variety}:</span>
-            <span>${certificate.lot.variety}</span>
-        </div>
-        <div class="info-row">
-            <span class="label">${t.level}:</span>
-            <span>${certificate.lot.level}</span>
-        </div>
-        <div class="info-row">
-            <span class="label">${t.quantity}:</span>
-            <span>${certificate.lot.quantity} kg</span>
-        </div>
-        <div class="info-row">
-            <span class="label">${t.productionDate}:</span>
-            <span>${new Date(certificate.lot.productionDate).toLocaleDateString(
-              language
-            )}</span>
-        </div>
-    </div>
-
-    <div class="section">
-        <h3>${t.multiplier}</h3>
-        <p>${certificate.multiplier.name}</p>
-        <p>${certificate.multiplier.address}</p>
-    </div>
-
-    <div class="section">
-        <h3>Résultats du Contrôle Qualité</h3>
-        <div class="info-row">
-            <span class="label">${t.germination}:</span>
-            <span>${qc.germinationRate}%</span>
-        </div>
-        <div class="info-row">
-            <span class="label">${t.purity}:</span>
-            <span>${qc.varietyPurity}%</span>
-        </div>
-        ${
-          qc.moistureContent
-            ? `
-        <div class="info-row">
-            <span class="label">${t.moisture}:</span>
-            <span>${qc.moistureContent}%</span>
-        </div>`
-            : ""
-        }
-        ${
-          qc.seedHealth
-            ? `
-        <div class="info-row">
-            <span class="label">${t.health}:</span>
-            <span>${qc.seedHealth}%</span>
-        </div>`
-            : ""
-        }
-    </div>
-
-    <p style="margin: 40px 0;">
-        ${certificate.issuer.name} ${t.certifies}
-    </p>
-
-    <div class="signature">
-        <p>_______________________</p>
-        <p>Signature autorisée</p>
-    </div>
-
-    <div class="footer">
-        <p>${certificate.issuer.address}</p>
-    </div>
-</body>
-</html>
-    `;
+<head><meta charset="UTF-8"><title>${t.title}</title></head>
+<body><h1>${t.title}</h1></body>
+</html>`;
   }
 
   private static groupByField(
     items: any[],
     field: string
   ): Record<string, number> {
-    return items.reduce((acc, item) => {
-      const value = item[field];
-      acc[value] = (acc[value] || 0) + 1;
+    return items.reduce((acc, i) => {
+      const v = i[field];
+      acc[v] = (acc[v] || 0) + 1;
       return acc;
     }, {});
   }
@@ -894,51 +676,36 @@ export class ExportService {
     productions: any[]
   ): Record<string, any> {
     const groups: Record<string, any> = {};
-
     productions.forEach((prod) => {
-      const varietyName = prod.seedLot.variety.name;
-      if (!groups[varietyName]) {
-        groups[varietyName] = {
-          count: 0,
-          totalYield: 0,
-        };
-      }
-      groups[varietyName].count++;
-      groups[varietyName].totalYield += prod.actualYield || 0;
+      const name = prod.seedLot.variety.name;
+      if (!groups[name]) groups[name] = { count: 0, totalYield: 0 };
+      groups[name].count++;
+      groups[name].totalYield += prod.actualYield || 0;
     });
-
     return groups;
   }
 
   private static groupByMultiplier(productions: any[]): Record<string, any> {
     const groups: Record<string, any> = {};
-
     productions.forEach((prod) => {
-      const multiplierName = prod.multiplier.name;
-      if (!groups[multiplierName]) {
-        groups[multiplierName] = {
-          count: 0,
-          totalYield: 0,
-        };
-      }
-      groups[multiplierName].count++;
-      groups[multiplierName].totalYield += prod.actualYield || 0;
+      const name = prod.multiplier.name;
+      if (!groups[name]) groups[name] = { count: 0, totalYield: 0 };
+      groups[name].count++;
+      groups[name].totalYield += prod.actualYield || 0;
     });
-
     return groups;
   }
 
   private static groupByMonth(productions: any[]): Record<string, number> {
     const groups: Record<string, number> = {};
-
     productions.forEach((prod) => {
       const date = new Date(prod.startDate);
-      const monthKey = `${date.getFullYear()}-${String(
-        date.getMonth() + 1
-      ).padStart(2, "0")}`;
-      groups[monthKey] = (groups[monthKey] || 0) + 1;
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+        2,
+        "0"
+      )}`;
+      groups[key] = (groups[key] || 0) + 1;
     });
-
     return groups;
   }
 }

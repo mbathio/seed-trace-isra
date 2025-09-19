@@ -142,7 +142,7 @@ export class SeedLotService {
               quantity: data.quantity,
               productionDate: new Date(data.productionDate),
               expiryDate,
-              status: data.status || LotStatus.PENDING,
+              status: data.status || LotStatus.pending,
               multiplier: data.multiplierId
                 ? { connect: { id: data.multiplierId } }
                 : undefined,
@@ -520,9 +520,9 @@ export class SeedLotService {
         updateData.status = data.status;
 
         // Validation pour certification
-        if (data.status === LotStatus.CERTIFIED) {
+        if (data.status === LotStatus.certified) {
           const hasPassedQC = await prisma.qualityControl.findFirst({
-            where: { lotId: id, result: "PASS" },
+            where: { lotId: id, result: "pass" },
           });
 
           if (!hasPassedQC) {
@@ -573,9 +573,9 @@ export class SeedLotService {
       await CacheService.invalidate("stats:*");
 
       // Notifications
-      if (data.status === LotStatus.REJECTED) {
+      if (data.status === LotStatus.rejected) {
         await NotificationService.notifyLotRejected(updatedLot);
-      } else if (data.status === LotStatus.CERTIFIED) {
+      } else if (data.status === LotStatus.certified) {
         await NotificationService.notifyLotCertified(updatedLot);
       }
 
@@ -844,7 +844,7 @@ export class SeedLotService {
             quantity,
             productionDate: sourceLot.productionDate,
             expiryDate: sourceLot.expiryDate,
-            status: LotStatus.ACTIVE,
+            status: LotStatus.active,
             multiplierId: targetMultiplierId,
             parentLotId: lotId,
             notes: notes || `Transféré depuis ${lotId}`,
@@ -952,7 +952,7 @@ export class SeedLotService {
 
       // Vérifications contrôle qualité
       const hasQualityControl = lot.qualityControls.length > 0;
-      if (!hasQualityControl && lot.status === LotStatus.CERTIFIED) {
+      if (!hasQualityControl && lot.status === LotStatus.certified) {
         errors.push("Aucun contrôle qualité pour un lot certifié");
       }
 

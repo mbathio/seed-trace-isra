@@ -2,37 +2,52 @@
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { PaginationQuery } from "../types/api";
-import { ProductionStatus } from "@prisma/client";
+import {
+  ProductionStatus,
+  ActivityType,
+  IssueType,
+  IssueSeverity,
+} from "@prisma/client";
+
+type CreateProductionInput = {
+  lotId: string;
+  multiplierId: number;
+  parcelId: number;
+  startDate: string | Date;
+  endDate?: string | Date;
+  sowingDate?: string | Date;
+  harvestDate?: string | Date;
+  plannedQuantity?: number;
+  actualYield?: number;
+  status?: ProductionStatus;
+  notes?: string;
+  weatherConditions?: string;
+};
+
+type UpdateProductionInput = Partial<CreateProductionInput>;
 
 export class ProductionService {
-  static async createProduction(data: any): Promise<any> {
+  static async createProduction(data: CreateProductionInput) {
     try {
-      const createData: any = {
+      const createData = {
         lotId: data.lotId,
         multiplierId: data.multiplierId,
         parcelId: data.parcelId,
         startDate: new Date(data.startDate),
-        status: data.status || ProductionStatus.PLANNED,
+        status: data.status || ProductionStatus.planned,
         plannedQuantity: data.plannedQuantity,
         notes: data.notes,
         weatherConditions: data.weatherConditions,
+        endDate: data.endDate ? new Date(data.endDate) : undefined,
+        sowingDate: data.sowingDate ? new Date(data.sowingDate) : undefined,
+        harvestDate: data.harvestDate ? new Date(data.harvestDate) : undefined,
+        actualYield: data.actualYield,
       };
-
-      // Ajouter les dates optionnelles seulement si définies
-      if (data.endDate) createData.endDate = new Date(data.endDate);
-      if (data.sowingDate) createData.sowingDate = new Date(data.sowingDate);
-      if (data.harvestDate) createData.harvestDate = new Date(data.harvestDate);
-      if (data.actualYield !== undefined)
-        createData.actualYield = data.actualYield;
 
       const production = await prisma.production.create({
         data: createData,
         include: {
-          seedLot: {
-            include: {
-              variety: true,
-            },
-          },
+          seedLot: { include: { variety: true } },
           multiplier: true,
           parcel: true,
         },
@@ -46,8 +61,14 @@ export class ProductionService {
   }
 
   static async getProductions(
-    query: PaginationQuery & any
-  ): Promise<{ productions: any[]; total: number; meta: any }> {
+    query: PaginationQuery & {
+      search?: string;
+      status?: ProductionStatus;
+      multiplierId?: number;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
+    }
+  ) {
     try {
       const {
         page = 1,
@@ -58,51 +79,29 @@ export class ProductionService {
         sortBy = "startDate",
         sortOrder = "desc",
       } = query;
-
       const skip = (page - 1) * pageSize;
 
       const where: any = {};
-
       if (search) {
         where.OR = [
           { seedLot: { id: { contains: search, mode: "insensitive" } } },
           { notes: { contains: search, mode: "insensitive" } },
         ];
       }
-
-      if (status) {
-        where.status = status;
-      }
-
-      if (multiplierId) {
-        where.multiplierId = parseInt(multiplierId);
-      }
+      if (status) where.status = status;
+      if (multiplierId) where.multiplierId = multiplierId;
 
       const [productions, total] = await Promise.all([
         prisma.production.findMany({
           where,
           include: {
-            seedLot: {
-              include: {
-                variety: true,
-              },
-            },
+            seedLot: { include: { variety: true } },
             multiplier: true,
             parcel: true,
-            activities: {
-              orderBy: { activityDate: "desc" },
-              take: 3,
-            },
-            issues: {
-              where: { resolved: false },
-              take: 3,
-            },
+            activities: { orderBy: { activityDate: "desc" }, take: 3 },
+            issues: { where: { resolved: false }, take: 3 },
             _count: {
-              select: {
-                activities: true,
-                issues: true,
-                weatherData: true,
-              },
+              select: { activities: true, issues: true, weatherData: true },
             },
           },
           orderBy: { [sortBy]: sortOrder },
@@ -112,8 +111,6 @@ export class ProductionService {
         prisma.production.count({ where }),
       ]);
 
-      const totalPages = Math.ceil(total / pageSize);
-
       return {
         productions,
         total,
@@ -121,7 +118,7 @@ export class ProductionService {
           page,
           pageSize,
           totalCount: total,
-          totalPages,
+          totalPages: Math.ceil(total / pageSize),
         },
       };
     } catch (error) {
@@ -130,43 +127,29 @@ export class ProductionService {
     }
   }
 
-  static async getProductionById(id: number): Promise<any> {
+  static async getProductionById(id: string) {
     try {
       const production = await prisma.production.findUnique({
         where: { id },
         include: {
-          seedLot: {
-            include: {
-              variety: true,
-            },
-          },
+          seedLot: { include: { variety: true } },
           multiplier: true,
           parcel: {
             include: {
-              soilAnalyses: {
-                orderBy: { analysisDate: "desc" },
-                take: 1,
-              },
+              soilAnalyses: { orderBy: { analysisDate: "desc" }, take: 1 },
             },
           },
           activities: {
             include: {
-              user: {
-                select: { id: true, name: true },
-              },
+              user: { select: { id: true, name: true } },
               inputs: true,
             },
             orderBy: { activityDate: "desc" },
           },
-          issues: {
-            orderBy: { issueDate: "desc" },
-          },
-          weatherData: {
-            orderBy: { recordDate: "desc" },
-          },
+          issues: { orderBy: { issueDate: "desc" } },
+          weatherData: { orderBy: { recordDate: "desc" } },
         },
       });
-
       return production;
     } catch (error) {
       logger.error("Erreur lors de la récupération de la production:", error);
@@ -174,44 +157,25 @@ export class ProductionService {
     }
   }
 
-  static async updateProduction(id: number, data: any): Promise<any> {
+  static async updateProduction(id: string, data: UpdateProductionInput) {
     try {
-      const updateData: any = {};
-
-      // Copier les champs simples
-      if (data.plannedQuantity !== undefined)
-        updateData.plannedQuantity = data.plannedQuantity;
-      if (data.actualYield !== undefined)
-        updateData.actualYield = data.actualYield;
-      if (data.notes !== undefined) updateData.notes = data.notes;
-      if (data.weatherConditions !== undefined)
-        updateData.weatherConditions = data.weatherConditions;
-      if (data.status !== undefined) updateData.status = data.status;
-
-      // Ajouter les dates seulement si elles existent
-      if (data.endDate) {
-        updateData.endDate = new Date(data.endDate);
-      }
-
-      if (data.sowingDate) {
-        updateData.sowingDate = new Date(data.sowingDate);
-      }
-
-      if (data.harvestDate) {
-        updateData.harvestDate = new Date(data.harvestDate);
-      }
-
-      updateData.updatedAt = new Date();
+      const updateData: any = {
+        plannedQuantity: data.plannedQuantity,
+        actualYield: data.actualYield,
+        notes: data.notes,
+        weatherConditions: data.weatherConditions,
+        status: data.status,
+        endDate: data.endDate ? new Date(data.endDate) : undefined,
+        sowingDate: data.sowingDate ? new Date(data.sowingDate) : undefined,
+        harvestDate: data.harvestDate ? new Date(data.harvestDate) : undefined,
+        updatedAt: new Date(),
+      };
 
       const production = await prisma.production.update({
         where: { id },
         data: updateData,
         include: {
-          seedLot: {
-            include: {
-              variety: true,
-            },
-          },
+          seedLot: { include: { variety: true } },
           multiplier: true,
           parcel: true,
         },
@@ -224,18 +188,27 @@ export class ProductionService {
     }
   }
 
-  static async deleteProduction(id: number): Promise<void> {
+  static async deleteProduction(id: string) {
     try {
-      await prisma.production.delete({
-        where: { id },
-      });
+      await prisma.production.delete({ where: { id } });
     } catch (error) {
       logger.error("Erreur lors de la suppression de la production:", error);
       throw error;
     }
   }
 
-  static async addActivity(productionId: number, data: any): Promise<any> {
+  static async addActivity(
+    productionId: string,
+    data: {
+      type: ActivityType;
+      activityDate: string | Date;
+      description: string;
+      personnel?: string[];
+      notes?: string;
+      userId: number;
+      inputs?: any[];
+    }
+  ) {
     try {
       const activity = await prisma.productionActivity.create({
         data: {
@@ -246,18 +219,10 @@ export class ProductionService {
           personnel: data.personnel || [],
           notes: data.notes,
           userId: data.userId,
-          inputs: {
-            create: data.inputs || [],
-          },
+          inputs: { create: data.inputs || [] },
         },
-        include: {
-          user: {
-            select: { id: true, name: true },
-          },
-          inputs: true,
-        },
+        include: { user: { select: { id: true, name: true } }, inputs: true },
       });
-
       return activity;
     } catch (error) {
       logger.error("Erreur lors de l'ajout de l'activité:", error);
@@ -265,7 +230,17 @@ export class ProductionService {
     }
   }
 
-  static async addIssue(productionId: number, data: any): Promise<any> {
+  static async addIssue(
+    productionId: string,
+    data: {
+      issueDate: string | Date;
+      type: IssueType;
+      description: string;
+      severity: IssueSeverity;
+      actions?: string;
+      cost?: number;
+    }
+  ) {
     try {
       const issue = await prisma.productionIssue.create({
         data: {
@@ -274,11 +249,10 @@ export class ProductionService {
           type: data.type,
           description: data.description,
           severity: data.severity,
-          actions: data.actions,
+          actions: data.actions || "", // ✅ jamais undefined
           cost: data.cost,
         },
       });
-
       return issue;
     } catch (error) {
       logger.error("Erreur lors de l'ajout du problème:", error);
@@ -286,7 +260,18 @@ export class ProductionService {
     }
   }
 
-  static async addWeatherData(productionId: number, data: any): Promise<any> {
+  static async addWeatherData(
+    productionId: string,
+    data: {
+      recordDate: string | Date;
+      temperature: number;
+      rainfall: number;
+      humidity: number;
+      windSpeed?: number;
+      notes?: string;
+      source?: string;
+    }
+  ) {
     try {
       const weatherData = await prisma.weatherData.create({
         data: {
@@ -300,7 +285,6 @@ export class ProductionService {
           source: data.source,
         },
       });
-
       return weatherData;
     } catch (error) {
       logger.error("Erreur lors de l'ajout des données météo:", error);

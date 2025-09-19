@@ -47,7 +47,7 @@ export class ProductionController {
   ): Promise<Response | void> {
     try {
       const production = await ProductionService.getProductionById(
-        parseInt(req.params.id)
+        req.params.id
       );
       if (!production) {
         return ResponseHandler.notFound(res, "Production non trouvée");
@@ -69,7 +69,7 @@ export class ProductionController {
   ): Promise<Response | void> {
     try {
       const production = await ProductionService.updateProduction(
-        parseInt(req.params.id),
+        req.params.id,
         req.body
       );
       return ResponseHandler.success(
@@ -88,7 +88,7 @@ export class ProductionController {
     next: NextFunction
   ): Promise<Response | void> {
     try {
-      await ProductionService.deleteProduction(parseInt(req.params.id));
+      await ProductionService.deleteProduction(req.params.id);
       return ResponseHandler.noContent(res);
     } catch (error) {
       next(error);
@@ -101,10 +101,10 @@ export class ProductionController {
     next: NextFunction
   ): Promise<Response | void> {
     try {
-      const activity = await ProductionService.addActivity(
-        parseInt(req.params.id),
-        { ...req.body, userId: req.user?.userId }
-      );
+      const activity = await ProductionService.addActivity(req.params.id, {
+        ...req.body,
+        userId: req.user?.userId,
+      });
       return ResponseHandler.created(
         res,
         activity,
@@ -121,10 +121,7 @@ export class ProductionController {
     next: NextFunction
   ): Promise<Response | void> {
     try {
-      const issue = await ProductionService.addIssue(
-        parseInt(req.params.id),
-        req.body
-      );
+      const issue = await ProductionService.addIssue(req.params.id, req.body);
       return ResponseHandler.created(
         res,
         issue,
@@ -142,7 +139,7 @@ export class ProductionController {
   ): Promise<Response | void> {
     try {
       const weatherData = await ProductionService.addWeatherData(
-        parseInt(req.params.id),
+        req.params.id,
         req.body
       );
       return ResponseHandler.created(

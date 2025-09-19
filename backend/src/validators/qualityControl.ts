@@ -1,8 +1,7 @@
 // backend/src/validators/qualityControl.ts - VERSION UNIFIÉE
-
 import { z } from "zod";
+import { TestResult } from "@prisma/client"; // ✅ Enum Prisma direct
 import {
-  TestResultEnum,
   percentageSchema,
   notesSchema,
   paginationSchema,
@@ -33,7 +32,7 @@ const baseQualityControlSchema = z.object({
   certificateUrl: z.string().url().optional(),
 });
 
-// Schéma de création avec validation métier
+// 🔹 Schéma de création avec validation métier
 export const createQualityControlSchema = baseQualityControlSchema.refine(
   (data) => {
     // Validation métier pour certification
@@ -48,16 +47,16 @@ export const createQualityControlSchema = baseQualityControlSchema.refine(
   }
 );
 
-// Schéma de mise à jour
+// 🔹 Schéma de mise à jour
 export const updateQualityControlSchema = baseQualityControlSchema
   .partial()
   .extend({
-    result: TestResultEnum.optional(), // ✅ Utilise directement l'enum Prisma
+    result: z.nativeEnum(TestResult).optional(), // ✅ Enum Prisma direct
   });
 
-// Schéma de requête
+// 🔹 Schéma de requête
 export const qualityControlQuerySchema = paginationSchema.extend({
-  result: TestResultEnum.optional(), // ✅ Utilise directement l'enum Prisma
+  result: z.nativeEnum(TestResult).optional(),
   lotId: z.string().optional(),
   inspectorId: positiveIdSchema.optional(),
   varietyId: varietyIdSchema.optional(),
@@ -79,7 +78,7 @@ export const qualityControlQuerySchema = paginationSchema.extend({
     .default("controlDate"),
 });
 
-// Export des types
+// 🔹 Export des types TypeScript
 export type CreateQualityControlInput = z.infer<
   typeof createQualityControlSchema
 >;

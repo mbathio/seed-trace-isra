@@ -15,13 +15,13 @@ export class StatisticsService {
         totalVarieties,
       ] = await Promise.all([
         prisma.seedLot.count({ where: { isActive: true } }),
-        prisma.seedLot.count({ where: { isActive: true, status: "ACTIVE" } }),
+        prisma.seedLot.count({ where: { isActive: true, status: "active" } }),
         prisma.production.count(),
-        prisma.production.count({ where: { status: "COMPLETED" } }),
+        prisma.production.count({ where: { status: "completed" } }),
         prisma.qualityControl.count(),
-        prisma.qualityControl.count({ where: { result: "PASS" } }),
+        prisma.qualityControl.count({ where: { result: "pass" } }),
         prisma.multiplier.count({
-          where: { isActive: true, status: "ACTIVE" },
+          where: { isActive: true, status: "active" },
         }),
         prisma.variety.count({ where: { isActive: true } }),
       ]);

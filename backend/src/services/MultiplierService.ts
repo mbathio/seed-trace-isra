@@ -1,4 +1,4 @@
-// backend/src/services/MultiplierService.ts - SERVICE CORRIGÉ
+// backend/src/services/MultiplierService.ts - VERSION UNIFIÉE CORRIGÉE
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { PaginationQuery } from "../types/api";
@@ -16,7 +16,7 @@ export class MultiplierService {
       const multiplier = await prisma.multiplier.create({
         data: {
           name: data.name,
-          status: data.status || MultiplierStatus.ACTIVE,
+          status: data.status || MultiplierStatus.active,
           address: data.address,
           latitude: data.latitude,
           longitude: data.longitude,
@@ -36,7 +36,7 @@ export class MultiplierService {
   }
 
   /**
-   * ✅ CORRIGÉ: Retourne une structure uniforme avec 'data' au lieu de 'multipliers'
+   * ✅ RETOURNE: { data, total, meta } - Structure unifiée
    */
   static async getMultipliers(
     query: PaginationQuery & any
@@ -52,7 +52,6 @@ export class MultiplierService {
         sortOrder = "asc",
       } = query;
 
-      // ✅ CORRECTION: Convertir page et pageSize en nombres
       const pageNum = typeof page === "string" ? parseInt(page, 10) : page;
       const pageSizeNum =
         typeof pageSize === "string" ? parseInt(pageSize, 10) : pageSize;
@@ -73,14 +72,13 @@ export class MultiplierService {
       }
 
       if (status) {
-        where.status = status;
+        where.status = status; // Valeur Prisma directe
       }
 
       if (certificationLevel) {
-        where.certificationLevel = certificationLevel;
+        where.certificationLevel = certificationLevel; // Valeur Prisma directe
       }
 
-      // Effectuer les requêtes
       const [multipliers, total] = await Promise.all([
         prisma.multiplier.findMany({
           where,
@@ -95,7 +93,7 @@ export class MultiplierService {
               },
             },
             contracts: {
-              where: { status: ContractStatus.ACTIVE },
+              where: { status: ContractStatus.active },
               select: {
                 id: true,
                 status: true,
@@ -134,10 +132,9 @@ export class MultiplierService {
         prisma.multiplier.count({ where }),
       ]);
 
-      // Calculer les métadonnées de pagination
       const totalPages = Math.ceil(total / pageSizeNum);
 
-      // ✅ IMPORTANT: Retourner 'data' au lieu de 'multipliers'
+      // ✅ RETOUR UNIFIÉ: 'data' au lieu de 'multipliers'
       return {
         data: multipliers,
         total,
@@ -204,7 +201,7 @@ export class MultiplierService {
         },
       });
 
-      return multiplier;
+      return multiplier; // Retour direct
     } catch (error) {
       logger.error("Erreur lors de la récupération du multiplicateur:", error);
       throw error;
@@ -237,7 +234,7 @@ export class MultiplierService {
         data: updateData,
       });
 
-      return multiplier;
+      return multiplier; // Retour direct
     } catch (error) {
       logger.error("Erreur lors de la mise à jour du multiplicateur:", error);
       throw error;
@@ -266,7 +263,7 @@ export class MultiplierService {
         orderBy: { startDate: "desc" },
       });
 
-      return contracts;
+      return contracts; // Retour direct
     } catch (error) {
       logger.error("Erreur lors de la récupération des contrats:", error);
       throw error;
@@ -286,7 +283,7 @@ export class MultiplierService {
           parcelId: data.parcelId,
           paymentTerms: data.paymentTerms,
           notes: data.notes,
-          status: data.status || ContractStatus.DRAFT,
+          status: data.status || ContractStatus.draft,
         },
         include: {
           variety: true,
@@ -295,7 +292,7 @@ export class MultiplierService {
         },
       });
 
-      return contract;
+      return contract; // Retour direct
     } catch (error) {
       logger.error("Erreur lors de la création du contrat:", error);
       throw error;

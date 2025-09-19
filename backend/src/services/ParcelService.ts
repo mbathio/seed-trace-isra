@@ -1,11 +1,12 @@
-// backend/src/services/ParcelService.ts - VERSION CORRIGÉE
+// backend/src/services/ParcelService.ts - VERSION UNIFIÉE
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { PaginationQuery } from "../types/api";
 import { ParcelStatus } from "@prisma/client";
 
 export class ParcelService {
-  static async createParcel(data: any): Promise<any> {
+  // Création d'une parcelle
+  static async createParcel(data: any) {
     try {
       const parcel = await prisma.parcel.create({
         data: {
@@ -13,17 +14,14 @@ export class ParcelService {
           area: data.area,
           latitude: data.latitude,
           longitude: data.longitude,
-          status: data.status || ParcelStatus.AVAILABLE,
+          status: data.status || ParcelStatus.available,
           soilType: data.soilType,
           irrigationSystem: data.irrigationSystem,
           address: data.address,
           multiplierId: data.multiplierId,
         },
-        include: {
-          multiplier: true,
-        },
+        include: { multiplier: true },
       });
-
       return parcel;
     } catch (error) {
       logger.error("Erreur lors de la création de la parcelle:", error);
@@ -31,9 +29,8 @@ export class ParcelService {
     }
   }
 
-  static async getParcels(
-    query: PaginationQuery & any
-  ): Promise<{ parcels: any[]; total: number; meta: any }> {
+  // Récupération paginée des parcelles
+  static async getParcels(query: PaginationQuery & any) {
     try {
       const {
         page = 1,
@@ -45,15 +42,12 @@ export class ParcelService {
         sortOrder = "asc",
       } = query;
 
-      // ✅ CORRECTION: Convertir page et pageSize en nombres
       const pageNum = typeof page === "string" ? parseInt(page, 10) : page;
       const pageSizeNum =
         typeof pageSize === "string" ? parseInt(pageSize, 10) : pageSize;
-
       const skip = (pageNum - 1) * pageSizeNum;
-      const where: any = {
-        isActive: true,
-      };
+
+      const where: any = { isActive: true };
 
       if (search) {
         where.OR = [
@@ -63,45 +57,32 @@ export class ParcelService {
         ];
       }
 
-      if (status) {
-        where.status = status;
-      }
-
-      if (multiplierId) {
-        where.multiplierId = parseInt(multiplierId);
-      }
+      if (status) where.status = status;
+      if (multiplierId) where.multiplierId = parseInt(multiplierId);
 
       const [parcels, total] = await Promise.all([
         prisma.parcel.findMany({
           where,
           include: {
             multiplier: true,
-            soilAnalyses: {
-              orderBy: { analysisDate: "desc" },
-              take: 1,
-            },
-            _count: {
-              select: {
-                seedLots: true,
-                productions: true,
-              },
-            },
+            soilAnalyses: { orderBy: { analysisDate: "desc" }, take: 1 },
+            _count: { select: { seedLots: true, productions: true } },
           },
           orderBy: { [sortBy]: sortOrder },
           skip,
-          take: pageSizeNum, // ✅ CORRECTION: Utiliser pageSizeNum
+          take: pageSizeNum,
         }),
         prisma.parcel.count({ where }),
       ]);
 
-      const totalPages = Math.ceil(total / pageSizeNum); // ✅ CORRECTION: Utiliser pageSizeNum
+      const totalPages = Math.ceil(total / pageSizeNum);
 
       return {
         parcels,
         total,
         meta: {
-          page: pageNum, // ✅ CORRECTION: Utiliser pageNum
-          pageSize: pageSizeNum, // ✅ CORRECTION: Utiliser pageSizeNum
+          page: pageNum,
+          pageSize: pageSizeNum,
           totalCount: total,
           totalPages,
           hasNextPage: pageNum < totalPages,
@@ -114,83 +95,59 @@ export class ParcelService {
     }
   }
 
-  // ✅ CORRECTION PRINCIPALE: Utiliser findFirst avec une combinaison de conditions
-  static async getParcelById(id: number): Promise<any> {
+  // Récupération d'une parcelle par ID
+  static async getParcelById(id: number) {
     try {
-      const parcel = await prisma.parcel.findFirst({
-        where: {
-          id: id,
-          isActive: true,
-        },
+      return await prisma.parcel.findFirst({
+        where: { id, isActive: true },
         include: {
           multiplier: true,
-          soilAnalyses: {
-            orderBy: { analysisDate: "desc" },
-          },
-          previousCrops: {
-            orderBy: { year: "desc" },
-          },
+          soilAnalyses: { orderBy: { analysisDate: "desc" } },
+          previousCrops: { orderBy: { year: "desc" } },
           seedLots: {
-            include: {
-              variety: true,
-            },
+            include: { variety: true },
             orderBy: { productionDate: "desc" },
           },
           productions: {
-            include: {
-              seedLot: {
-                include: {
-                  variety: true,
-                },
-              },
-            },
+            include: { seedLot: { include: { variety: true } } },
             orderBy: { startDate: "desc" },
           },
         },
       });
-
-      return parcel;
     } catch (error) {
       logger.error("Erreur lors de la récupération de la parcelle:", error);
       throw error;
     }
   }
 
-  static async updateParcel(id: number, data: any): Promise<any> {
+  // Mise à jour d'une parcelle
+  static async updateParcel(id: number, data: any) {
     try {
-      const parcel = await prisma.parcel.update({
+      return await prisma.parcel.update({
         where: { id },
-        data: {
-          ...data,
-          updatedAt: new Date(),
-        },
-        include: {
-          multiplier: true,
-        },
+        data: { ...data, updatedAt: new Date() },
+        include: { multiplier: true },
       });
-
-      return parcel;
     } catch (error) {
       logger.error("Erreur lors de la mise à jour de la parcelle:", error);
       throw error;
     }
   }
 
-  static async deleteParcel(id: number): Promise<void> {
+  // Suppression logique d'une parcelle
+  static async deleteParcel(id: number) {
     try {
-      await prisma.parcel.update({
-        where: { id },
-        data: { isActive: false },
-      });
+      await prisma.parcel.update({ where: { id }, data: { isActive: false } });
     } catch (error) {
       logger.error("Erreur lors de la suppression de la parcelle:", error);
       throw error;
     }
   }
 
-  static async addSoilAnalysis(parcelId: number, data: any): Promise<any> {
+  // Ajout d'une analyse de sol
+  static async addSoilAnalysis(parcelId: number, data: any) {
     try {
-      const analysis = await prisma.soilAnalysis.create({
+      return await prisma.soilAnalysis.create({
         data: {
           parcelId,
           analysisDate: new Date(data.analysisDate),
@@ -202,23 +159,19 @@ export class ParcelService {
           notes: data.notes,
         },
       });
-
-      return analysis;
     } catch (error) {
       logger.error("Erreur lors de l'ajout de l'analyse de sol:", error);
       throw error;
     }
   }
 
-  // ✅ NOUVELLE MÉTHODE: Récupérer les analyses de sol d'une parcelle
-  static async getSoilAnalyses(parcelId: number): Promise<any[]> {
+  // Récupération des analyses de sol d'une parcelle
+  static async getSoilAnalyses(parcelId: number) {
     try {
-      const analyses = await prisma.soilAnalysis.findMany({
+      return await prisma.soilAnalysis.findMany({
         where: { parcelId },
         orderBy: { analysisDate: "desc" },
       });
-
-      return analyses;
     } catch (error) {
       logger.error(
         "Erreur lors de la récupération des analyses de sol:",
@@ -228,20 +181,20 @@ export class ParcelService {
     }
   }
 
-  // ✅ NOUVELLE MÉTHODE: Récupérer les statistiques des parcelles
-  static async getStatistics(): Promise<any> {
+  // Statistiques des parcelles
+  static async getStatistics() {
     try {
       const [total, disponibles, enUtilisation, auRepos, surfaceTotale] =
         await Promise.all([
           prisma.parcel.count({ where: { isActive: true } }),
           prisma.parcel.count({
-            where: { isActive: true, status: ParcelStatus.AVAILABLE },
+            where: { isActive: true, status: ParcelStatus.available },
           }),
           prisma.parcel.count({
-            where: { isActive: true, status: ParcelStatus.IN_USE },
+            where: { isActive: true, status: ParcelStatus.in_use },
           }),
           prisma.parcel.count({
-            where: { isActive: true, status: ParcelStatus.RESTING },
+            where: { isActive: true, status: ParcelStatus.resting },
           }),
           prisma.parcel.aggregate({
             where: { isActive: true },
@@ -262,14 +215,14 @@ export class ParcelService {
     }
   }
 
-  // ✅ NOUVELLE MÉTHODE: Vérifier la disponibilité d'une parcelle
+  // Vérifier disponibilité d'une parcelle pour une période donnée
   static async checkAvailability(
     parcelId: number,
     startDate: string,
     endDate: string
-  ): Promise<boolean> {
+  ) {
     try {
-      const conflictingProductions = await prisma.production.count({
+      const count = await prisma.production.count({
         where: {
           parcelId,
           OR: [
@@ -288,51 +241,34 @@ export class ParcelService {
           ],
         },
       });
-
-      return conflictingProductions === 0;
+      return count === 0;
     } catch (error) {
       logger.error("Erreur lors de la vérification de disponibilité:", error);
       throw error;
     }
   }
 
-  // ✅ NOUVELLE MÉTHODE: Assigner un multiplicateur à une parcelle
-  static async assignMultiplier(
-    parcelId: number,
-    multiplierId: number
-  ): Promise<any> {
+  // Assigner un multiplicateur à une parcelle
+  static async assignMultiplier(parcelId: number, multiplierId: number) {
     try {
-      const parcel = await prisma.parcel.update({
+      return await prisma.parcel.update({
         where: { id: parcelId },
-        data: {
-          multiplierId,
-          updatedAt: new Date(),
-        },
-        include: {
-          multiplier: true,
-        },
+        data: { multiplierId, updatedAt: new Date() },
+        include: { multiplier: true },
       });
-
-      return parcel;
     } catch (error) {
       logger.error("Erreur lors de l'assignation du multiplicateur:", error);
       throw error;
     }
   }
 
-  // ✅ NOUVELLE MÉTHODE: Récupérer l'historique d'une parcelle
-  static async getHistory(parcelId: number): Promise<any> {
+  // Historique complet d'une parcelle
+  static async getHistory(parcelId: number) {
     try {
-      const [productions, soilAnalyses, crops] = await Promise.all([
+      const [productions, soilAnalyses, previousCrops] = await Promise.all([
         prisma.production.findMany({
           where: { parcelId },
-          include: {
-            seedLot: {
-              include: {
-                variety: true,
-              },
-            },
-          },
+          include: { seedLot: { include: { variety: true } } },
           orderBy: { startDate: "desc" },
         }),
         prisma.soilAnalysis.findMany({
@@ -345,11 +281,7 @@ export class ParcelService {
         }),
       ]);
 
-      return {
-        productions,
-        soilAnalyses,
-        previousCrops: crops,
-      };
+      return { productions, soilAnalyses, previousCrops };
     } catch (error) {
       logger.error("Erreur lors de la récupération de l'historique:", error);
       throw error;

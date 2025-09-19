@@ -1,12 +1,13 @@
 // backend/src/validators/productions.ts - VERSION UNIFIÉE
 import { z } from "zod";
 import {
-  ProductionStatusEnum,
-  ActivityTypeEnum,
-  IssueTypeEnum,
-  IssueSeverityEnum,
-} from "./common";
+  ProductionStatus,
+  ActivityType,
+  IssueType,
+  IssueSeverity,
+} from "@prisma/client";
 
+// 🔹 Schéma de création de production
 export const createProductionSchema = z.object({
   lotId: z.string().min(1),
   multiplierId: z.number().positive(),
@@ -26,17 +27,22 @@ export const createProductionSchema = z.object({
     .optional(),
   plannedQuantity: z.number().positive().optional(),
   actualYield: z.number().positive().optional(),
-  status: ProductionStatusEnum.optional().default("PLANNED"),
+  status: z
+    .nativeEnum(ProductionStatus)
+    .optional()
+    .default(ProductionStatus.planned),
   notes: z.string().max(1000).optional(),
   weatherConditions: z.string().max(500).optional(),
 });
 
+// 🔹 Schéma de mise à jour
 export const updateProductionSchema = createProductionSchema
   .partial()
   .omit({ lotId: true, multiplierId: true, parcelId: true });
 
+// 🔹 Schéma ajout d'activité
 export const addActivitySchema = z.object({
-  type: ActivityTypeEnum, // ✅ Utilise directement l'enum Prisma
+  type: z.nativeEnum(ActivityType),
   activityDate: z.string().refine((date) => !isNaN(Date.parse(date))),
   description: z.string().min(1).max(1000),
   personnel: z.array(z.string()).optional().default([]),
@@ -54,23 +60,32 @@ export const addActivitySchema = z.object({
     .default([]),
 });
 
+// 🔹 Schéma ajout d'incident / problème
 export const addIssueSchema = z.object({
   issueDate: z.string().refine((date) => !isNaN(Date.parse(date))),
-  type: IssueTypeEnum, // ✅ Utilise directement l'enum Prisma
+  type: z.nativeEnum(IssueType),
   description: z.string().min(1).max(1000),
-  severity: IssueSeverityEnum, // ✅ Utilise directement l'enum Prisma
+  severity: z.nativeEnum(IssueSeverity),
   actions: z.string().min(1).max(1000),
   cost: z.number().positive().optional(),
 });
 
+// 🔹 Schéma de requête pour lister les productions
 export const productionQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   pageSize: z.coerce.number().min(1).max(100).default(10),
   search: z.string().optional(),
-  status: ProductionStatusEnum.optional(),
+  status: z.nativeEnum(ProductionStatus).optional(),
   multiplierId: z.coerce.number().positive().optional(),
   sortBy: z
     .enum(["startDate", "status", "actualYield", "createdAt"])
     .default("startDate"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
+
+// 🔹 Types TypeScript
+export type CreateProductionInput = z.infer<typeof createProductionSchema>;
+export type UpdateProductionInput = z.infer<typeof updateProductionSchema>;
+export type AddActivityInput = z.infer<typeof addActivitySchema>;
+export type AddIssueInput = z.infer<typeof addIssueSchema>;
+export type ProductionQueryInput = z.infer<typeof productionQuerySchema>;

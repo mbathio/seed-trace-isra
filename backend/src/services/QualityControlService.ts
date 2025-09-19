@@ -1,4 +1,4 @@
-// backend/src/services/QualityControlService.ts - SERVICE COMPLET ET CORRIGÉ
+// backend/src/services/QualityControlService.ts - VERSION UNIFIÉE CORRIGÉE
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { CreateQualityControlData } from "../types/entities";
@@ -59,10 +59,10 @@ export class QualityControlService {
       });
 
       // Mettre à jour le statut du lot selon le résultat
-      if (result === TestResult.PASS) {
+      if (result === TestResult.pass) {
         await prisma.seedLot.update({
           where: { id: data.lotId },
-          data: { status: LotStatus.CERTIFIED },
+          data: { status: LotStatus.certified },
         });
 
         // Générer automatiquement un certificat si nécessaire
@@ -77,7 +77,7 @@ export class QualityControlService {
       } else {
         await prisma.seedLot.update({
           where: { id: data.lotId },
-          data: { status: LotStatus.REJECTED },
+          data: { status: LotStatus.rejected },
         });
       }
 
@@ -87,7 +87,7 @@ export class QualityControlService {
         result,
       });
 
-      return qualityControl;
+      return qualityControl; // Retour direct
     } catch (error) {
       logger.error("Erreur lors de la création du contrôle qualité:", error);
       throw error;
@@ -118,13 +118,12 @@ export class QualityControlService {
 
     return germinationRate >= threshold.germination &&
       varietyPurity >= threshold.purity
-      ? TestResult.PASS
-      : TestResult.FAIL;
+      ? TestResult.pass
+      : TestResult.fail;
   }
 
   /**
-   * Récupérer la liste des contrôles qualité avec pagination et filtres
-   * ✅ CORRECTION IMPORTANTE: Retourne 'data' au lieu de 'controls'
+   * ✅ RETOURNE: { data, total, meta } - Structure unifiée
    */
   static async getQualityControls(
     query: PaginationQuery & any
@@ -164,16 +163,7 @@ export class QualityControlService {
       }
 
       if (result) {
-        // Transformer le résultat UI vers DB si nécessaire
-        const resultMap: Record<string, TestResult> = {
-          pass: TestResult.PASS,
-          fail: TestResult.FAIL,
-          passed: TestResult.PASS,
-          failed: TestResult.FAIL,
-          PASS: TestResult.PASS,
-          FAIL: TestResult.FAIL,
-        };
-        where.result = resultMap[result] || result;
+        where.result = result; // Valeur Prisma directe
       }
 
       if (lotId) where.lotId = lotId;
@@ -198,37 +188,33 @@ export class QualityControlService {
           where.germinationRate.lte = parseFloat(maxGerminationRate.toString());
       }
 
-      // Compter le total
-      const total = await prisma.qualityControl.count({ where });
-
-      // Récupérer les contrôles avec pagination
-      const qualityControls = await prisma.qualityControl.findMany({
-        where,
-        skip,
-        take: pageSizeNum,
-        orderBy: { [sortBy]: sortOrder },
-        include: {
-          seedLot: {
-            include: {
-              variety: true,
-              multiplier: true,
+      const [qualityControls, total] = await Promise.all([
+        prisma.qualityControl.findMany({
+          where,
+          skip,
+          take: pageSizeNum,
+          orderBy: { [sortBy]: sortOrder },
+          include: {
+            seedLot: {
+              include: {
+                variety: true,
+                multiplier: true,
+              },
+            },
+            inspector: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
             },
           },
-          inspector: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              role: true,
-            },
-          },
-        },
-      });
+        }),
+        prisma.qualityControl.count({ where }),
+      ]);
 
-      // Calculer les métadonnées de pagination
       const totalPages = Math.ceil(total / pageSizeNum);
-      const hasNext = pageNum < totalPages;
-      const hasPrev = pageNum > 1;
 
       logger.info(`Contrôles qualité récupérés`, {
         total,
@@ -236,17 +222,17 @@ export class QualityControlService {
         pageSize: pageSizeNum,
       });
 
-      // ✅ IMPORTANT: Retourner 'data' et non 'controls'
+      // ✅ RETOUR UNIFIÉ: 'data' au lieu de 'controls'
       return {
-        data: qualityControls, // ✅ CHANGÉ de 'controls' à 'data'
+        data: qualityControls,
         total,
         meta: {
           page: pageNum,
           pageSize: pageSizeNum,
-          total,
+          totalCount: total,
           totalPages,
-          hasNext,
-          hasPrev,
+          hasNextPage: pageNum < totalPages,
+          hasPreviousPage: pageNum > 1,
         },
       };
     } catch (error) {
@@ -314,7 +300,7 @@ export class QualityControlService {
       return {
         ...qualityControl,
         statistics: stats,
-      };
+      }; // Retour direct avec stats
     } catch (error) {
       logger.error(
         "Erreur lors de la récupération du contrôle qualité:",
@@ -354,21 +340,20 @@ export class QualityControlService {
 
         // Mettre à jour le statut du lot si le résultat change
         if (newResult !== existingControl.result) {
-          if (newResult === TestResult.PASS) {
+          if (newResult === TestResult.pass) {
             await prisma.seedLot.update({
               where: { id: existingControl.lotId },
-              data: { status: LotStatus.CERTIFIED },
+              data: { status: LotStatus.certified },
             });
           } else {
             await prisma.seedLot.update({
               where: { id: existingControl.lotId },
-              data: { status: LotStatus.REJECTED },
+              data: { status: LotStatus.rejected },
             });
           }
         }
       }
 
-      // Mettre à jour le contrôle qualité
       const qualityControl = await prisma.qualityControl.update({
         where: { id },
         data: {
@@ -399,7 +384,7 @@ export class QualityControlService {
         changes: Object.keys(data),
       });
 
-      return qualityControl;
+      return qualityControl; // Retour direct
     } catch (error) {
       logger.error("Erreur lors de la mise à jour du contrôle qualité:", error);
       throw error;
@@ -411,7 +396,6 @@ export class QualityControlService {
    */
   static async deleteQualityControl(id: number): Promise<void> {
     try {
-      // Vérifier que le contrôle existe
       const control = await prisma.qualityControl.findUnique({
         where: { id },
       });
@@ -420,7 +404,6 @@ export class QualityControlService {
         throw new Error("Contrôle qualité non trouvé");
       }
 
-      // Supprimer le contrôle
       await prisma.qualityControl.delete({
         where: { id },
       });
@@ -433,7 +416,7 @@ export class QualityControlService {
       if (remainingControls === 0) {
         await prisma.seedLot.update({
           where: { id: control.lotId },
-          data: { status: LotStatus.PENDING },
+          data: { status: LotStatus.pending },
         });
       }
 
@@ -458,10 +441,10 @@ export class QualityControlService {
     }
 
     const passedControls = allControls.filter(
-      (c) => c.result === TestResult.PASS
+      (c) => c.result === TestResult.pass
     );
     const failedControls = allControls.filter(
-      (c) => c.result === TestResult.FAIL
+      (c) => c.result === TestResult.fail
     );
 
     return {
@@ -486,72 +469,8 @@ export class QualityControlService {
     qualityControlId: number
   ): Promise<string> {
     // TODO: Implémenter la génération réelle du certificat PDF
-    // Pour l'instant, retourner une URL fictive
     const baseUrl = process.env.API_URL || "http://localhost:3001";
     return `${baseUrl}/api/certificates/quality-control/${qualityControlId}`;
-  }
-
-  /**
-   * Obtenir les contrôles qualité par lot
-   */
-  static async getQualityControlsByLot(lotId: string): Promise<any[]> {
-    try {
-      const controls = await prisma.qualityControl.findMany({
-        where: { lotId },
-        include: {
-          inspector: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              role: true,
-            },
-          },
-        },
-        orderBy: { controlDate: "desc" },
-      });
-
-      return controls;
-    } catch (error) {
-      logger.error(
-        "Erreur lors de la récupération des contrôles du lot:",
-        error
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * Obtenir les contrôles qualité par inspecteur
-   */
-  static async getQualityControlsByInspector(
-    inspectorId: number,
-    options?: { limit?: number; offset?: number }
-  ): Promise<any[]> {
-    try {
-      const controls = await prisma.qualityControl.findMany({
-        where: { inspectorId },
-        include: {
-          seedLot: {
-            include: {
-              variety: true,
-              multiplier: true,
-            },
-          },
-        },
-        orderBy: { controlDate: "desc" },
-        take: options?.limit || 50,
-        skip: options?.offset || 0,
-      });
-
-      return controls;
-    } catch (error) {
-      logger.error(
-        "Erreur lors de la récupération des contrôles par inspecteur:",
-        error
-      );
-      throw error;
-    }
   }
 
   /**
@@ -577,9 +496,9 @@ export class QualityControlService {
 
       const summary = {
         totalControls: controls.length,
-        passedControls: controls.filter((c) => c.result === TestResult.PASS)
+        passedControls: controls.filter((c) => c.result === TestResult.pass)
           .length,
-        failedControls: controls.filter((c) => c.result === TestResult.FAIL)
+        failedControls: controls.filter((c) => c.result === TestResult.fail)
           .length,
         averageGerminationRate:
           controls.reduce((sum, c) => sum + c.germinationRate, 0) /
@@ -599,9 +518,7 @@ export class QualityControlService {
     }
   }
 
-  /**
-   * Grouper les contrôles par variété
-   */
+  // Méthodes de regroupement (inchangées)
   private static groupByVariety(controls: any[]): any {
     const groups: Record<string, any> = {};
 
@@ -622,7 +539,7 @@ export class QualityControlService {
       }
 
       groups[varietyId].totalControls++;
-      if (control.result === TestResult.PASS) {
+      if (control.result === TestResult.pass) {
         groups[varietyId].passedControls++;
       } else {
         groups[varietyId].failedControls++;
@@ -632,7 +549,6 @@ export class QualityControlService {
       groups[varietyId].averageVarietyPurity += control.varietyPurity;
     });
 
-    // Calculer les moyennes
     Object.values(groups).forEach((group) => {
       group.averageGerminationRate /= group.totalControls;
       group.averageVarietyPurity /= group.totalControls;
@@ -642,9 +558,6 @@ export class QualityControlService {
     return Object.values(groups);
   }
 
-  /**
-   * Grouper les contrôles par multiplicateur
-   */
   private static groupByMultiplier(controls: any[]): any {
     const groups: Record<string, any> = {};
 
@@ -667,7 +580,7 @@ export class QualityControlService {
       }
 
       groups[multiplierId].totalControls++;
-      if (control.result === TestResult.PASS) {
+      if (control.result === TestResult.pass) {
         groups[multiplierId].passedControls++;
       } else {
         groups[multiplierId].failedControls++;
@@ -677,7 +590,6 @@ export class QualityControlService {
       groups[multiplierId].averageVarietyPurity += control.varietyPurity;
     });
 
-    // Calculer les moyennes
     Object.values(groups).forEach((group) => {
       group.averageGerminationRate /= group.totalControls;
       group.averageVarietyPurity /= group.totalControls;
@@ -687,9 +599,6 @@ export class QualityControlService {
     return Object.values(groups);
   }
 
-  /**
-   * Grouper les contrôles par mois
-   */
   private static groupByMonth(controls: any[]): any {
     const groups: Record<string, any> = {};
 
@@ -709,14 +618,13 @@ export class QualityControlService {
       }
 
       groups[monthKey].totalControls++;
-      if (control.result === TestResult.PASS) {
+      if (control.result === TestResult.pass) {
         groups[monthKey].passedControls++;
       } else {
         groups[monthKey].failedControls++;
       }
     });
 
-    // Calculer le taux de réussite
     Object.values(groups).forEach((group) => {
       group.passRate = (group.passedControls / group.totalControls) * 100;
     });
