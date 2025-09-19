@@ -1,4 +1,4 @@
-// ===== 3. backend/src/services/ExportService.ts =====
+// backend/src/services/ExportService.ts
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { SimpleExportService } from "./SimpleExportService";
@@ -52,7 +52,6 @@ export class ExportService {
           multiplier: true,
           parcel: true,
           qualityControls: {
-            where: { result: "pass" }, // ✅ CORRIGÉ: minuscules
             orderBy: { controlDate: "desc" },
             take: 1,
           },
@@ -241,7 +240,7 @@ export class ExportService {
         sample: {
           code: "ISRIZ-20",
           name: "ISRIZ 20",
-          cropType: "rice", // ✅ CORRIGÉ: minuscules
+          cropType: "RICE",
           description: "Variété améliorée de riz",
           maturityDays: 120,
           yieldPotential: 8.5,
@@ -268,8 +267,8 @@ export class ExportService {
           latitude: 16.5667,
           longitude: -15.1333,
           yearsExperience: 10,
-          certificationLevel: "intermediate", // ✅ CORRIGÉ: minuscules
-          specialization: "rice,wheat", // ✅ CORRIGÉ: minuscules
+          certificationLevel: "INTERMEDIATE",
+          specialization: "RICE,WHEAT",
           phone: "771234567",
           email: "coop.fanaye@email.sn",
         },
@@ -379,7 +378,7 @@ export class ExportService {
           multiplier: true,
           parcel: true,
           qualityControls: {
-            where: { result: "pass" }, // ✅ CORRIGÉ: minuscules
+            where: { result: "PASS" },
             orderBy: { controlDate: "desc" },
             take: 1,
           },

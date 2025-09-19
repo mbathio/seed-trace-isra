@@ -1,4 +1,4 @@
-// ===== 2. backend/src/services/CacheService.ts =====
+// 1. backend/src/services/CacheService.ts - VERSION AMÉLIORÉE avec Redis
 import Redis from "ioredis";
 import { config } from "../config/environment";
 import { logger } from "../utils/logger";
@@ -144,11 +144,9 @@ export class CacheService {
       const [total, certified, pending, byLevel] = await Promise.all([
         prisma.seedLot.count({ where: { isActive: true } }),
         prisma.seedLot.count({
-          where: { isActive: true, status: "certified" }, // ✅ CORRIGÉ: minuscules
+          where: { isActive: true, status: "CERTIFIED" },
         }),
-        prisma.seedLot.count({
-          where: { isActive: true, status: "pending" }, // ✅ CORRIGÉ: minuscules
-        }),
+        prisma.seedLot.count({ where: { isActive: true, status: "PENDING" } }),
         prisma.seedLot.groupBy({
           by: ["level"],
           where: { isActive: true },
