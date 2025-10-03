@@ -41,8 +41,8 @@ interface CreateSeedLotForm {
   expiryDate?: string;
   notes?: string;
   batchNumber?: string;
-  multiplierId?: number;
-  parentLotId?: string;
+  multiplierId?: number | undefined;
+  parentLotId?: number | undefined;
 }
 
 const CreateSeedLot: React.FC = () => {

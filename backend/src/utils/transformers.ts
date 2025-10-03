@@ -30,19 +30,19 @@ export default class DataTransformer {
   static transformSeedLot(seedLot: any): any {
     if (!seedLot) return null;
 
+
     return {
       id: seedLot.id,
       varietyId: seedLot.varietyId,
-      varietyName: seedLot.variety?.name,
-      varietyCode: seedLot.variety?.code,
+      variety: seedLot.variety ? this.transformVariety(seedLot.variety) : null,
       level: seedLot.level, // Pas de transformation nécessaire pour SeedLevel
       quantity: seedLot.quantity,
       productionDate: seedLot.productionDate,
       expiryDate: seedLot.expiryDate,
       multiplierId: seedLot.multiplierId,
-      multiplierName: seedLot.multiplier?.name,
+      multiplier: seedLot.multiplier ? this.transformMultiplier(seedLot.multiplier) : null,
       parcelId: seedLot.parcelId,
-      parcelName: seedLot.parcel?.name,
+      parcel: seedLot.parcel ? this.transformParcel(seedLot.parcel) : null,
       status: this.transformLotStatusDBToUI(seedLot.status),
       batchNumber: seedLot.batchNumber,
       parentLotId: seedLot.parentLotId,
@@ -70,6 +70,7 @@ export default class DataTransformer {
    */
   static transformVariety(variety: any): any {
     if (!variety) return null;
+    
 
     // Mapping DB vers UI pour cropType
     const cropTypeMapping: Record<string, string> = {

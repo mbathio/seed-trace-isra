@@ -617,6 +617,14 @@ const SeedLotDetail: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">
+                      Variété
+                    </label>
+                    <p className="font-medium">
+                      {seedLot.variety?.name || "Non spécifiée"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
                       Date de production
                     </label>
                     <p className="font-medium">

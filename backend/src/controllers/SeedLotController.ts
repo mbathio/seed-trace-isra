@@ -91,7 +91,9 @@ export class SeedLotController {
       const { id } = req.params;
       const includeFullDetails =
         req.query.full === undefined ||
-        (typeof req.query.full === "string" && req.query.full !== "false");
+        (typeof req.query.full === "string" && req.query.full !== "false") ||
+        req.query.includeRelations === "true" ||
+        req.query.includeRelations === true;
       // ✅ CORRECTION: Le service retourne déjà les données transformées
       const seedLot = await SeedLotService.getSeedLotById(
         id,

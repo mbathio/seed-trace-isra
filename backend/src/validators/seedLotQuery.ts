@@ -15,6 +15,7 @@ export const seedLotQuerySchema = z
     level: z.enum(["GO", "G1", "G2", "G3", "G4", "R1", "R2"]).optional(),
     status: z
       .enum([
+        // Format UI (kebab-case)
         "pending",
         "certified",
         "rejected",
@@ -22,6 +23,14 @@ export const seedLotQuerySchema = z
         "sold",
         "active",
         "distributed",
+        // Format DB (SNAKE_CASE)
+        "PENDING",
+        "CERTIFIED",
+        "REJECTED",
+        "IN_STOCK",
+        "SOLD",
+        "ACTIVE",
+        "DISTRIBUTED",
       ])
       .optional(),
 

@@ -1,5 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../services/api";
 import {
   Sprout,
   Users,
@@ -125,6 +127,24 @@ const StatsCard: React.FC<{
   </Card>
 );
 
+// Hook pour récupérer les productions en cours
+const useCurrentProductions = () => {
+  return useQuery({
+    queryKey: ["current-productions"],
+    queryFn: async () => {
+      const response = await api.get("/productions", {
+        params: {
+          status: "in-progress",
+          pageSize: 5,
+          sortBy: "startDate",
+          sortOrder: "desc",
+        },
+      });
+      return response.data;
+    },
+  });
+};
+
 // Hook simulé pour les données (remplace useApiQuery)
 const useDashboardData = () => {
   const [isLoading, setIsLoading] = React.useState(true);
@@ -213,6 +233,7 @@ const useDashboardData = () => {
 // Composant principal
 export default function DashboardPage() {
   const { stats, trends, isLoading } = useDashboardData();
+  const { data: currentProductionsResponse, isLoading: productionsLoading } = useCurrentProductions();
 
   // Couleurs pour les graphiques
   const COLORS = [
@@ -571,6 +592,61 @@ export default function DashboardPage() {
           </Link>
         </Card>
       </div>
+
+      {/* Productions en cours */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Productions en cours</CardTitle>
+              <CardDescription>Suivi des productions actives</CardDescription>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/dashboard/productions">
+                <Tractor className="h-4 w-4 mr-2" />
+                Voir toutes
+              </Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {productionsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">Chargement...</span>
+            </div>
+          ) : currentProductionsResponse?.data?.productions?.length > 0 ? (
+            <div className="space-y-4">
+              {currentProductionsResponse.data.productions.map((production: any) => (
+                <div key={production.id} className="flex items-center space-x-4">
+                  <div className="p-2 bg-orange-100 rounded-full">
+                    <Tractor className="h-4 w-4 text-orange-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">
+                      {production.seedLot?.variety?.name || "Variété inconnue"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Lot: {production.lotId} • Parcelle: {production.parcel?.name || "N/A"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-orange-600">En cours</p>
+                    <p className="text-xs text-muted-foreground">
+                      Depuis {new Date(production.startDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Tractor className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Aucune production en cours</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Activité récente */}
       <Card>

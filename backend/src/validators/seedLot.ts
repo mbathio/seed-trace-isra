@@ -18,16 +18,25 @@ const SeedLevelEnum = z.enum(["GO", "G1", "G2", "G3", "G4", "R1", "R2"], {
   },
 });
 
-// ✅ CORRECTION CRITIQUE: Status avec valeurs UI exactes (kebab-case)
+// ✅ CORRECTION CRITIQUE: Status acceptant les deux formats (UI et DB)
 const LotStatusEnum = z.enum(
   [
+    // Format UI (kebab-case)
     "pending",
     "certified",
     "rejected",
-    "in-stock", // ✅ CRITIQUE: kebab-case - c'est ça qui posait problème !
+    "in-stock",
     "sold",
     "active",
     "distributed",
+    // Format DB (SNAKE_CASE)
+    "PENDING",
+    "CERTIFIED",
+    "REJECTED",
+    "IN_STOCK",
+    "SOLD",
+    "ACTIVE",
+    "DISTRIBUTED",
   ],
   {
     errorMap: (issue, _ctx) => {

@@ -1,8 +1,9 @@
 // frontend/src/pages/productions/Productions.tsx - CORRECTION DES BALISES JSX
 
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   Plus,
   Tractor,
@@ -18,6 +19,7 @@ import {
   TrendingUp,
   AlertTriangle,
   CheckCircle,
+  Trash2,
 } from "lucide-react";
 import {
   Card,
@@ -50,11 +52,19 @@ import {
   DropdownMenuTrigger,
 } from "../../components/ui/dropdown-menu";
 import { Badge } from "../../components/ui/badge";
-import { api } from "../../services/api";
+import { api, apiService } from "../../services/api";
 import { Production } from "../../types/entities";
 import { formatDate, formatNumber } from "../../utils/formatters";
 import { useDebounce } from "../../hooks/useDebounce";
 import { PRODUCTION_STATUSES, getStatusConfig } from "../../constants";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 
 // Interfaces corrigées
 interface ApiResponse<T> {
@@ -80,10 +90,14 @@ interface ProductionsResponse {
 }
 
 const Productions: React.FC = () => {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productionToDelete, setProductionToDelete] = useState<Production | null>(null);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -117,6 +131,34 @@ const Productions: React.FC = () => {
 
   const productions = response?.data?.productions || [];
   const meta = response?.data?.meta;
+
+  // Mutation pour supprimer une production
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiService.productions.delete(id);
+    },
+    onSuccess: () => {
+      toast.success("Production supprimée avec succès");
+      queryClient.invalidateQueries({ queryKey: ["productions"] });
+      setDeleteDialogOpen(false);
+      setProductionToDelete(null);
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message || "Erreur lors de la suppression";
+      toast.error(message);
+    },
+  });
+
+  const handleDelete = (production: Production) => {
+    setProductionToDelete(production);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (productionToDelete) {
+      deleteMutation.mutate(productionToDelete.id);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const config = getStatusConfig(status, PRODUCTION_STATUSES);
@@ -394,6 +436,13 @@ const Productions: React.FC = () => {
                                 Modifier
                               </Link>
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(production)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Supprimer
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -450,6 +499,34 @@ const Productions: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog de confirmation de suppression */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmer la suppression</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer cette production ? Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleteMutation.isPending}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Suppression..." : "Supprimer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

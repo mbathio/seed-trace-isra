@@ -496,7 +496,7 @@ export class SeedLotService {
         where: { id, isActive: true },
         include: includeFullDetails
           ? {
-              variety: { include: { _count: { select: { seedLots: true } } } },
+              variety: true, // Simplifier pour éviter les problèmes de relations
               multiplier: {
                 include: {
                   _count: { select: { seedLots: true, productions: true } },
