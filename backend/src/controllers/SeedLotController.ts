@@ -93,7 +93,7 @@ export class SeedLotController {
         req.query.full === undefined ||
         (typeof req.query.full === "string" && req.query.full !== "false") ||
         req.query.includeRelations === "true" ||
-        req.query.includeRelations === true;
+        req.query.includeRelations === "true";
       // ✅ CORRECTION: Le service retourne déjà les données transformées
       const seedLot = await SeedLotService.getSeedLotById(
         id,
@@ -234,58 +234,98 @@ export class SeedLotController {
   }
 
   /**
-   * ✅ CORRECTION: GET /api/seed-lots/export - Export des données
+   * GET /api/seed-lots/export
+   * ⚠️ CRITIQUE: Cette méthode doit être appelée AVANT getSeedLotById dans les routes
    */
-  static async exportSeedLots(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<Response | void> {
+  static exportSeedLots = async (req: Request, res: Response) => {
     try {
-      const format = (req.query.format as string) || "csv";
-      const filters = {
-        ...req.query,
-        format: undefined,
-      };
+      console.log("📄 [CONTROLLER] GET /seed-lots/export", {
+        query: req.query,
+      });
 
-      const data = await SeedLotService.exportSeedLots(
-        filters as any,
-        format as "csv" | "json" | "xlsx"
-      );
+      // 1. Validation du format
+      const format = (req.query.format as string) || "xlsx";
 
-      // Définir les headers selon le format
-      switch (format) {
-        case "csv":
-          res.setHeader("Content-Type", "text/csv; charset=utf-8");
-          res.setHeader(
-            "Content-Disposition",
-            `attachment; filename="seed-lots-${Date.now()}.csv"`
-          );
-          break;
-        case "json":
-          res.setHeader("Content-Type", "application/json");
-          res.setHeader(
-            "Content-Disposition",
-            `attachment; filename="seed-lots-${Date.now()}.json"`
-          );
-          break;
-        case "xlsx":
-          res.setHeader(
-            "Content-Type",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          );
-          res.setHeader(
-            "Content-Disposition",
-            `attachment; filename="seed-lots-${Date.now()}.xlsx"`
-          );
-          break;
+      if (!["csv", "xlsx"].includes(format)) {
+        return res.status(422).json({
+          success: false,
+          message: "Format invalide. Utilisez 'csv' ou 'xlsx'",
+          errors: [`Format '${format}' non supporté`],
+        });
       }
 
-      return res.send(data);
-    } catch (error) {
-      next(error);
+      // 2. Construire les filtres (transformés par le middleware)
+      const filters = {
+        level: req.query.level as string | undefined,
+        status: req.query.status as string | undefined,
+        varietyId: req.query.varietyId
+          ? Number(req.query.varietyId)
+          : undefined,
+        multiplierId: req.query.multiplierId
+          ? Number(req.query.multiplierId)
+          : undefined,
+        search: req.query.search as string | undefined,
+        startDate: req.query.startDate as string | undefined,
+        endDate: req.query.endDate as string | undefined,
+      };
+
+      console.log("✅ [CONTROLLER] Export filters:", filters);
+
+      // 3. Appeler le service d'export
+      const exportData = await SeedLotService.exportSeedLots(
+        filters,
+        format as "csv" | "xlsx"
+      );
+
+      // 4. Headers pour téléchargement
+      const filename = `lots_semences_${
+        new Date().toISOString().split("T")[0]
+      }.${format}`;
+      const mimeTypes = {
+        csv: "text/csv; charset=utf-8",
+        xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      };
+
+      res.setHeader(
+        "Content-Type",
+        mimeTypes[format as keyof typeof mimeTypes]
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename}"`
+      );
+      res.setHeader("Cache-Control", "no-cache");
+
+      console.log("✅ [CONTROLLER] Export successful:", {
+        format,
+        filename,
+        dataType: typeof exportData,
+      });
+
+      // 5. Envoyer les données
+      res.send(exportData);
+      return;
+    } catch (error: any) {
+      console.error("❌ [CONTROLLER] Export error:", error);
+      logger.error("Error exporting seed lots", {
+        error: error.message,
+        stack: error.stack,
+        query: req.query,
+      });
+
+      if (res.headersSent) {
+        res.end();
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: error.message || "Erreur lors de l'export",
+        errors: [error.message],
+      });
+      return;
     }
-  }
+  };
 
   /**
    * ✅ CORRECTION: GET /api/seed-lots/:id/qr-code - Générer le QR Code
