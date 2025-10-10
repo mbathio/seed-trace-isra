@@ -78,7 +78,7 @@ const ParcelDetail: React.FC = () => {
     queryKey: ["parcel-productions", id],
     queryFn: async () => {
       const response = await api.get(`/productions?parcelId=${id}`);
-      return response.data.data;
+      return response.data.data.productions || [];
     },
     enabled: !!id,
   });

@@ -470,7 +470,7 @@ async function main() {
     prisma.seedLot.create({
       data: {
         id: "SL-G0-2024-ALIOUNE",
-        varietyId: riceVarieties.find((v) => v.code === "SAHEL-108")!.id,
+        varietyId: wheatVarieties.find((v) => v.code === "ALIOUNE")!.id,
         level: "GO",
         quantity: 88, // 88 kg selon les données
         productionDate: new Date("2024-01-15"),
@@ -484,8 +484,8 @@ async function main() {
     }),
     prisma.seedLot.create({
       data: {
-        id: "SL-G0-2024-HAMATH",
-        varietyId: riceVarieties.find((v) => v.code === "SAHEL-108")!.id,
+        id: "SL-G0-2024-HAMAT",
+        varietyId: wheatVarieties.find((v) => v.code === "HAMAT")!.id,
         level: "GO",
         quantity: 75,
         productionDate: new Date("2024-01-15"),
@@ -493,7 +493,7 @@ async function main() {
         multiplierId: multipliers[0].id,
         parcelId: parcels[1].id,
         status: "CERTIFIED",
-        batchNumber: "HAMATH-2024",
+        batchNumber: "HAMAT-2024",
         notes: "Niveau G0 - 2500 épis",
       },
     }),
