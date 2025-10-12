@@ -57,6 +57,9 @@ import Genealogy from "./pages/genealogy/Genealogy";
 import Users from "./pages/users/Users";
 import Reports from "./pages/reports/Reports";
 
+// Trace Page (nouvelle page pour affichage après scan du QR Code)
+import TracePage from "./pages/TracePage";
+
 // Protected Route Component
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
@@ -76,8 +79,11 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            {/* Landing Page - Accessible to everyone */}
+            {/* Landing Page - Accessible à tous */}
             <Route path="/" element={<LandingPage />} />
+
+            {/* ✅ Route publique pour affichage des informations d’un lot après scan du QR code */}
+            <Route path="/trace/:id" element={<TracePage />} />
 
             {/* Auth Routes */}
             <Route path="/auth" element={<AuthLayout />}>

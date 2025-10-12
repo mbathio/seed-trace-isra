@@ -42,7 +42,7 @@ interface CreateSeedLotForm {
   notes?: string;
   batchNumber?: string;
   multiplierId?: number | undefined;
-  parentLotId?: number | undefined;
+  parentLotId?: string;
 }
 
 const CreateSeedLot: React.FC = () => {
@@ -78,8 +78,15 @@ const CreateSeedLot: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateSeedLotForm) => {
-      // Les données sont déjà au format UI, le middleware backend les transformera
-      const response = await seedLotService.create(data);
+      // Adapter parentLotId au type attendu par l'API (number | undefined)
+      const adaptedData = {
+        ...data,
+        parentLotId:
+          data.parentLotId && data.parentLotId.trim() !== ""
+            ? Number(data.parentLotId)
+            : undefined,
+      };
+      const response = await seedLotService.create(adaptedData);
       return response.data;
     },
     onSuccess: (data) => {

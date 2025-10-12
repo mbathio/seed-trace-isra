@@ -328,7 +328,7 @@ export class SeedLotController {
   };
 
   /**
-   * ✅ CORRECTION: GET /api/seed-lots/:id/qr-code - Générer le QR Code
+   * ✅ GET /api/seed-lots/:id/qr-code - Générer un QR code qui renvoie vers le front
    */
   static async getQRCode(
     req: Request,
@@ -339,50 +339,28 @@ export class SeedLotController {
       const { id } = req.params;
       const size = parseInt(req.query.size as string) || 300;
 
-      // ✅ CORRECTION: Le service retourne déjà les données transformées
       const seedLot = await SeedLotService.getSeedLotById(id, false);
 
-      if (!seedLot || typeof seedLot !== "object") {
+      if (!seedLot) {
         return ResponseHandler.notFound(res, "Lot non trouvé");
       }
 
-      // ✅ CORRECTION: Les données sont déjà transformées (format UI)
-      const qrData = {
-        id: seedLot.id,
-        variety: seedLot.varietyCode || "N/A",
-        level: seedLot.level,
-        quantity: seedLot.quantity,
-        productionDate: seedLot.productionDate,
-        status: seedLot.status, // Déjà en format UI
-        url: `${process.env.CLIENT_URL}/seed-lots/${id}`,
-      };
+      // ✅ Lien direct vers la page React
+      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const traceUrl = `${frontendUrl}/trace/${seedLot.id}`;
 
-      const qrOptions = {
+      // ✅ On encode SEULEMENT l’URL dans le QR Code, pas le JSON
+      const buffer = await QRCode.toBuffer(traceUrl, {
         width: size,
         margin: 2,
         color: {
           dark: "#000000",
           light: "#FFFFFF",
         },
-      };
+      });
 
-      const format = req.query.format || "dataurl";
-
-      if (format === "png") {
-        const buffer = await QRCode.toBuffer(JSON.stringify(qrData), qrOptions);
-        res.setHeader("Content-Type", "image/png");
-        return res.send(buffer);
-      } else {
-        const qrCodeDataUrl = await QRCode.toDataURL(
-          JSON.stringify(qrData),
-          qrOptions
-        );
-        return ResponseHandler.success(
-          res,
-          { qrCode: qrCodeDataUrl },
-          "QR Code généré avec succès"
-        );
-      }
+      res.setHeader("Content-Type", "image/png");
+      res.send(buffer);
     } catch (error) {
       next(error);
     }

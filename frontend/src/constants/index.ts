@@ -36,13 +36,54 @@ export const API_CONFIG: APIConfig = {
 
 // ===== NIVEAUX DE SEMENCES =====
 export const SEED_LEVELS: LevelConfig[] = [
-  { label: "GO", value: "GO", color: "text-purple-600", order: 0 },
-  { label: "G1", value: "G1", color: "text-blue-600", order: 1 },
-  { label: "G2", value: "G2", color: "text-cyan-600", order: 2 },
-  { label: "G3", value: "G3", color: "text-green-600", order: 3 },
-  { label: "G4", value: "G4", color: "text-yellow-600", order: 4 },
-  { label: "R1", value: "R1", color: "text-orange-600", order: 5 },
-  { label: "R2", value: "R2", color: "text-red-600", order: 6 },
+  {
+    label: "GO",
+    value: "GO",
+    color:
+      "bg-purple-500/20 text-purple-800 font-semibold rounded-full px-3 py-0.5",
+    order: 0,
+  },
+  {
+    label: "G1",
+    value: "G1",
+    color:
+      "bg-blue-500/20 text-blue-800 font-semibold rounded-full px-3 py-0.5",
+    order: 1,
+  },
+  {
+    label: "G2",
+    value: "G2",
+    color:
+      "bg-cyan-500/20 text-cyan-800 font-semibold rounded-full px-3 py-0.5",
+    order: 2,
+  },
+  {
+    label: "G3",
+    value: "G3",
+    color:
+      "bg-green-500/20 text-green-800 font-semibold rounded-full px-3 py-0.5",
+    order: 3,
+  },
+  {
+    label: "G4",
+    value: "G4",
+    color:
+      "bg-yellow-500/20 text-yellow-800 font-semibold rounded-full px-3 py-0.5",
+    order: 4,
+  },
+  {
+    label: "R1",
+    value: "R1",
+    color:
+      "bg-orange-500/20 text-orange-800 font-semibold rounded-full px-3 py-0.5",
+    order: 5,
+  },
+  {
+    label: "R2",
+    value: "R2",
+    color: "bg-red-500/20 text-red-800 font-semibold rounded-full px-3 py-0.5",
+    order: 6,
+  },
 ];
 
 // ===== TYPES DE CULTURES =====

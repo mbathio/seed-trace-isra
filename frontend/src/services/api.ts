@@ -17,62 +17,54 @@ const api: AxiosInstance = axios.create({
 });
 
 // Intercepteur de requête - Ajouter le token d'authentification
+// 🔐 Intercepteur de requête - Ajout automatique du token d'authentification
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("accessToken");
-    if (token) {
+
+    if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Log des requêtes en développement
+    // Log clair uniquement en mode développement
     if (import.meta.env.DEV) {
-      console.log(`🚀 ${config.method?.toUpperCase()} ${config.url}`, {
+      console.log(`🚀 [REQUEST] ${config.method?.toUpperCase()} ${config.url}`, {
         params: config.params,
         data: config.data,
-        headers: config.headers,
       });
     }
 
     return config;
   },
   (error) => {
-    console.error("Erreur de configuration de requête:", error);
+    console.error("❌ Erreur de configuration de requête:", error);
     return Promise.reject(error);
   }
 );
 
-// Intercepteur de réponse
+// ⚙️ Intercepteur de réponse - Gestion automatique du refresh token
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Log des réponses en développement
     if (import.meta.env.DEV) {
-      console.log(
-        `✅ ${response.config.method?.toUpperCase()} ${response.config.url}`,
-        {
-          status: response.status,
-          data: response.data,
-        }
-      );
+      console.log(`✅ [RESPONSE] ${response.config.url}`, {
+        status: response.status,
+        data: response.data,
+      });
     }
-
     return response;
   },
+
   async (error) => {
     const originalRequest = error.config;
 
-    // Log des erreurs en développement
     if (import.meta.env.DEV) {
-      console.error(
-        `❌ ${error.config?.method?.toUpperCase()} ${error.config?.url}`,
-        {
-          status: error.response?.status,
-          message: error.response?.data?.message,
-          data: error.response?.data,
-        }
-      );
+      console.error(`❌ [ERROR] ${error.config?.url}`, {
+        status: error.response?.status,
+        message: error.response?.data?.message,
+      });
     }
 
-    // Gestion de l'expiration du token (401)
+    // ✅ Si le token a expiré → tenter un refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -88,37 +80,36 @@ api.interceptors.response.use(
           const { accessToken, refreshToken: newRefreshToken } =
             response.data.data;
 
+          // Mise à jour des tokens dans le localStorage
           localStorage.setItem("accessToken", accessToken);
           localStorage.setItem("refreshToken", newRefreshToken);
 
-          // Refaire la requête originale avec le nouveau token
+          // Rejouer la requête initiale avec le nouveau token
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return api(originalRequest);
         }
       } catch (refreshError) {
-        console.error("Échec du renouvellement du token:", refreshError);
+        console.error("🔒 Échec du renouvellement du token:", refreshError);
 
-        // Déconnexion forcée
+        // Nettoyage et redirection
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("user");
 
         toast.error("Session expirée. Veuillez vous reconnecter.");
         window.location.href = "/auth/login";
-
         return Promise.reject(refreshError);
       }
     }
 
-    // Gestion des autres erreurs
+    // ✅ Gestion propre des autres erreurs
     const errorMessage =
       error.response?.data?.message || getErrorMessage(error.response?.status);
 
-    // Ne pas afficher de toast pour certaines routes ou erreurs
     const shouldShowToast =
-      !originalRequest.silent &&
+      !originalRequest?.silent &&
       error.response?.status !== 404 &&
-      !originalRequest.url?.includes("/auth/me");
+      !originalRequest?.url?.includes("/auth/me");
 
     if (shouldShowToast) {
       toast.error(errorMessage);
@@ -127,6 +118,7 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 
 // Fonction utilitaire pour obtenir un message d'erreur approprié
 function getErrorMessage(status?: number): string {
