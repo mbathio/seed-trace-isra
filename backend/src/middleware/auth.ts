@@ -36,11 +36,20 @@ function setCachedUser(userId: number, user: any) {
   }
 }
 
-export async function authMiddleware(
+interface AuthenticateOptions {
+  silent?: boolean;
+}
+
+async function authenticateRequest(
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
-): Promise<Response | void> {
+  options: AuthenticateOptions = {}
+): Promise<boolean> {
+  // Si l'utilisateur est déjà attaché (par un middleware précédent), inutile de recalculer
+  if (req.user) {
+    return true;
+  }
+
   try {
     // ✅ CORRECTION: Vérification améliorée de l'en-tête d'autorisation
     const authHeader = req.headers.authorization;
@@ -51,7 +60,10 @@ export async function authMiddleware(
         userAgent: req.get("User-Agent"),
         url: req.originalUrl,
       });
-      return ResponseHandler.unauthorized(res, "Token d'accès requis");
+      if (!options.silent) {
+        ResponseHandler.unauthorized(res, "Token d'accès requis");
+      }
+      return false;
     }
 
     // ✅ CORRECTION: Validation du format Bearer plus stricte
@@ -63,14 +75,20 @@ export async function authMiddleware(
         authHeader: authHeader.substring(0, 20) + "...", // Log partiel pour sécurité
         ip: req.ip,
       });
-      return ResponseHandler.unauthorized(res, "Format de token invalide");
+      if (!options.silent) {
+        ResponseHandler.unauthorized(res, "Format de token invalide");
+      }
+      return false;
     }
 
     const token = match[1];
 
     if (!token || token.trim() === "") {
       logger.warn("Token vide après extraction", { ip: req.ip });
-      return ResponseHandler.unauthorized(res, "Token d'accès requis");
+      if (!options.silent) {
+        ResponseHandler.unauthorized(res, "Token d'accès requis");
+      }
+      return false;
     }
 
     try {
@@ -84,7 +102,10 @@ export async function authMiddleware(
             : null,
           ip: req.ip,
         });
-        return ResponseHandler.unauthorized(res, "Token invalide");
+        if (!options.silent) {
+          ResponseHandler.unauthorized(res, "Token invalide");
+        }
+        return false;
       }
 
       // ✅ CORRECTION: Vérifier le cache utilisateur d'abord
@@ -109,10 +130,13 @@ export async function authMiddleware(
             userId: decoded.userId,
             ip: req.ip,
           });
-          return ResponseHandler.unauthorized(
-            res,
-            "Utilisateur non trouvé ou désactivé"
-          );
+          if (!options.silent) {
+            ResponseHandler.unauthorized(
+              res,
+              "Utilisateur non trouvé ou désactivé"
+            );
+          }
+          return false;
         }
 
         // Mettre en cache l'utilisateur
@@ -126,7 +150,10 @@ export async function authMiddleware(
           email: user.email,
           ip: req.ip,
         });
-        return ResponseHandler.unauthorized(res, "Compte désactivé");
+        if (!options.silent) {
+          ResponseHandler.unauthorized(res, "Compte désactivé");
+        }
+        return false;
       }
 
       // ✅ CORRECTION: Attacher les informations utilisateur complètes à la requête
@@ -145,7 +172,7 @@ export async function authMiddleware(
         ip: req.ip,
       });
 
-      next();
+      return true;
     } catch (jwtError: any) {
       // ✅ CORRECTION: Gestion détaillée des erreurs JWT avec ResponseHandler correct
       logger.warn("Erreur de vérification JWT", {
@@ -155,53 +182,66 @@ export async function authMiddleware(
         tokenPreview: token.substring(0, 20) + "...", // Log partiel pour debug
       });
 
-      if (jwtError.name === "TokenExpiredError") {
-        return ResponseHandler.unauthorized(res, "Token expiré");
-      } else if (jwtError.name === "JsonWebTokenError") {
-        return ResponseHandler.unauthorized(res, "Token invalide");
-      } else if (jwtError.name === "NotBeforeError") {
-        return ResponseHandler.unauthorized(res, "Token pas encore valide");
-      } else {
-        return ResponseHandler.unauthorized(
-          res,
-          "Erreur de vérification du token"
-        );
+      if (!options.silent) {
+        if (jwtError.name === "TokenExpiredError") {
+          ResponseHandler.unauthorized(res, "Token expiré");
+        } else if (jwtError.name === "JsonWebTokenError") {
+          ResponseHandler.unauthorized(res, "Token invalide");
+        } else if (jwtError.name === "NotBeforeError") {
+          ResponseHandler.unauthorized(res, "Token pas encore valide");
+        } else {
+          ResponseHandler.unauthorized(
+            res,
+            "Erreur de vérification du token"
+          );
+        }
       }
+
+      return false;
     }
   } catch (error: any) {
     // ✅ CORRECTION: Gestion d'erreur globale améliorée
-    logger.error("Erreur critique dans authMiddleware", {
+    logger.error("Erreur critique lors de l'authentification", {
       error: error.message,
       stack: error.stack,
       ip: req.ip,
       url: req.originalUrl,
     });
 
-    return ResponseHandler.serverError(
-      res,
-      "Erreur interne d'authentification"
-    );
+    if (!options.silent) {
+      ResponseHandler.serverError(res, "Erreur interne d'authentification");
+    }
+    return false;
   }
+}
+
+export async function authMiddleware(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<Response | void> {
+  const isAuthenticated = await authenticateRequest(req, res);
+
+  if (!isAuthenticated) {
+    return;
+  }
+
+  next();
 }
 
 // ✅ CORRECTION: Middleware pour les rôles avec validation améliorée
 export function requireRole(...allowedRoles: string[]) {
-  return (
+  return async (
     req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
-  ): Response | void => {
-    // ✅ CORRECTION: Validation que l'utilisateur est authentifié
+  ): Promise<Response | void> => {
+    // ✅ CORRECTION: S'assurer que la requête est authentifiée avant de vérifier les rôles
     if (!req.user) {
-      logger.warn(
-        "Tentative d'accès avec autorisation de rôle sans authentification",
-        {
-          ip: req.ip,
-          url: req.originalUrl,
-          method: req.method,
-        }
-      );
-      return ResponseHandler.unauthorized(res, "Authentification requise");
+      const isAuthenticated = await authenticateRequest(req, res);
+      if (!isAuthenticated) {
+        return;
+      }
     }
 
     // ✅ CORRECTION: Validation que les rôles sont fournis
@@ -277,22 +317,32 @@ export function optionalAuth(
   }
 
   // Tenter l'authentification sans bloquer si elle échoue
-  authMiddleware(req, res, (error?: any) => {
-    if (error) {
-      // Ignorer l'erreur et continuer sans authentification
+  authenticateRequest(req, res, { silent: true })
+    .then((isAuthenticated) => {
+      if (!isAuthenticated) {
+        logger.debug(
+          "Authentification optionnelle échouée, continuation sans authentification",
+          {
+            url: req.originalUrl,
+            method: req.method,
+          }
+        );
+        delete (req as any).user;
+      }
+      next();
+    })
+    .catch((error: any) => {
       logger.debug(
-        "Authentification optionnelle échouée, continuation sans authentification",
+        "Authentification optionnelle - erreur inattendue, continuation",
         {
-          error: error.message,
+          error: error?.message,
           url: req.originalUrl,
           method: req.method,
         }
       );
-      // S'assurer que req.user n'est pas défini en cas d'échec
       delete (req as any).user;
-    }
-    next();
-  });
+      next();
+    });
 }
 
 // ✅ CORRECTION: Middleware pour vérifier la propriété des ressources

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { MultiplierController } from "../controllers/MultiplierController";
 import { validateRequest } from "../middleware/validation";
-import { requireRole } from "../middleware/auth";
+import { requireRole, authMiddleware } from "../middleware/auth";
 import { fullTransformation } from "../middleware/transformationMiddleware";
 import { z } from "zod";
 
@@ -45,24 +45,28 @@ router.get("/", MultiplierController.getMultipliers);
 router.get("/:id", MultiplierController.getMultiplierById);
 router.post(
   "/",
+  authMiddleware,
   requireRole("MANAGER", "ADMIN"),
   validateRequest({ body: createMultiplierSchema }),
   MultiplierController.createMultiplier
 );
 router.put(
   "/:id",
+  authMiddleware,
   requireRole("MANAGER", "ADMIN"),
   validateRequest({ body: updateMultiplierSchema }),
   MultiplierController.updateMultiplier
 );
 router.delete(
   "/:id",
+  authMiddleware,
   requireRole("ADMIN"),
   MultiplierController.deleteMultiplier
 );
 router.get("/:id/contracts", MultiplierController.getContracts);
 router.post(
   "/:id/contracts",
+  authMiddleware,
   requireRole("MANAGER", "ADMIN"),
   validateRequest({ body: contractSchema }),
   MultiplierController.createContract
