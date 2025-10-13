@@ -257,40 +257,42 @@ export function transformEnum(
   enumType: keyof typeof ENUM_MAPPINGS,
   direction: "UI_TO_DB" | "DB_TO_UI"
 ): string {
-  // Validation des paramètres
   if (!value || typeof value !== "string") {
     return value || "";
   }
 
-  // Obtenir le mapping approprié
   const enumMapping = ENUM_MAPPINGS[enumType];
   if (!enumMapping) {
     console.warn(`Enum type not found: ${enumType}`);
     return value;
   }
 
-  const directionalMapping = enumMapping[direction];
-  if (!directionalMapping) {
-    console.warn(`Direction not found: ${direction} for ${enumType}`);
-    return value;
-  }
+  const directionalMapping = enumMapping[
+    direction
+  ] as unknown as Record<string, string>;
 
-  // Effectuer la transformation
-  const normalizedValue =
+  const normalizedKey =
     direction === "UI_TO_DB"
       ? value.toLowerCase()
       : value.toUpperCase();
 
-  const transformedValue =
-    directionalMapping[
-      normalizedValue as keyof typeof directionalMapping
-    ] ?? directionalMapping[value as keyof typeof directionalMapping];
+  const directMatch =
+    directionalMapping[normalizedKey] ?? directionalMapping[value];
 
-  if (transformedValue) {
-    return transformedValue;
+  if (directMatch) {
+    return directMatch;
   }
 
-  // Si pas de mapping trouvé, logger et retourner la valeur originale
+  const fallbackEntry = Object.entries(directionalMapping).find(([key]) => {
+    const comparableKey =
+      direction === "UI_TO_DB" ? key.toLowerCase() : key.toUpperCase();
+    return comparableKey === normalizedKey;
+  });
+
+  if (fallbackEntry) {
+    return fallbackEntry[1];
+  }
+
   console.warn(`No mapping found for "${value}" in ${enumType}.${direction}`);
   return value;
 }
