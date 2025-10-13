@@ -276,8 +276,15 @@ export function transformEnum(
   }
 
   // Effectuer la transformation
+  const normalizedValue =
+    direction === "UI_TO_DB"
+      ? value.toLowerCase()
+      : value.toUpperCase();
+
   const transformedValue =
-    directionalMapping[value as keyof typeof directionalMapping];
+    directionalMapping[
+      normalizedValue as keyof typeof directionalMapping
+    ] ?? directionalMapping[value as keyof typeof directionalMapping];
 
   if (transformedValue) {
     return transformedValue;
