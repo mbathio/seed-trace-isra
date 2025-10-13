@@ -128,19 +128,15 @@ function transformRequestData(data: any): any {
       } else {
         // Essayer chaque type d'enum jusqu'à trouver une correspondance
         for (const enumType of enumTypes) {
-         if (
-  typeof transformed[field] === "string" &&
-  ENUM_MAPPINGS[enumType]?.UI_TO_DB?.[transformed[field].toLowerCase()]
-) {
-  const mappedValue = transformEnum(
-    transformed[field],
-    enumType as keyof typeof ENUM_MAPPINGS,
-    "UI_TO_DB"
-  );
-  transformed[field] = mappedValue;
-  break;
-}
-
+          const mappedValue = transformEnum(
+            transformed[field],
+            enumType as keyof typeof ENUM_MAPPINGS,
+            "UI_TO_DB"
+          );
+          if (mappedValue !== transformed[field]) {
+            transformed[field] = mappedValue;
+            break;
+          }
         }
       }
     }
@@ -203,19 +199,15 @@ function transformResponseData(data: any): any {
       } else {
         // Essayer chaque type d'enum jusqu'à trouver une correspondance
         for (const enumType of enumTypes) {
-          if (
-  typeof transformed[field] === "string" &&
-  ENUM_MAPPINGS[enumType]?.DB_TO_UI?.[transformed[field].toUpperCase()]
-) {
-  const mappedValue = transformEnum(
-    transformed[field],
-    enumType as keyof typeof ENUM_MAPPINGS,
-    "DB_TO_UI"
-  );
-  transformed[field] = mappedValue;
-  break;
-}
-
+          const mappedValue = transformEnum(
+            transformed[field],
+            enumType as keyof typeof ENUM_MAPPINGS,
+            "DB_TO_UI"
+          );
+          if (mappedValue !== transformed[field]) {
+            transformed[field] = mappedValue;
+            break;
+          }
         }
       }
     }

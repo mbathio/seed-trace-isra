@@ -175,22 +175,31 @@ const SeedLotDetail: React.FC = () => {
     },
   });
 
-  const handleDelete = () => setShowDeleteDialog(true);
-  const confirmDelete = () => deleteMutation.mutate();
-  const handleStatusChange = (newStatus: string) =>
+  const handleDelete = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    deleteMutation.mutate();
+  };
+
+  const handleStatusChange = (newStatus: string) => {
     updateStatusMutation.mutate(newStatus);
+  };
 
   const handleExportCertificate = async () => {
     if (!id) return;
     try {
       await seedLotService.generateReport(id, "certificate");
       toast.success("Certificat téléchargé avec succès");
-    } catch {
+    } catch (error) {
       toast.error("Erreur lors du téléchargement du certificat");
     }
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    window.print();
+  };
 
   const getStatusBadge = (status: string) => {
     const config = getStatusConfig(status, LOT_STATUSES);
@@ -224,46 +233,67 @@ const SeedLotDetail: React.FC = () => {
     const expiry = new Date(expiryDate);
     const today = new Date();
     const diffTime = expiry.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   };
 
   const getExpiryStatus = (daysUntilExpiry: number | null) => {
     if (daysUntilExpiry === null) return null;
-    if (daysUntilExpiry < 0)
+    if (daysUntilExpiry < 0) {
       return { color: "text-red-600", icon: XCircle, text: "Expiré" };
-    if (daysUntilExpiry <= 30)
+    } else if (daysUntilExpiry <= 30) {
       return {
         color: "text-orange-600",
         icon: AlertTriangle,
         text: `Expire dans ${daysUntilExpiry} jours`,
       };
-    if (daysUntilExpiry <= 90)
+    } else if (daysUntilExpiry <= 90) {
       return {
         color: "text-yellow-600",
         icon: Clock,
         text: `Expire dans ${daysUntilExpiry} jours`,
       };
-    return {
-      color: "text-green-600",
-      icon: CheckCircle,
-      text: `Valide (${daysUntilExpiry} jours)`,
-    };
+    } else {
+      return {
+        color: "text-green-600",
+        icon: CheckCircle,
+        text: `Valide (${daysUntilExpiry} jours)`,
+      };
+    }
   };
 
-  if (isLoading)
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[600px]">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">
+            Chargement du lot de semences...
+          </p>
+        </div>
       </div>
     );
+  }
 
-  if (error || !seedLot)
+  if (error || !seedLot) {
     return (
-      <div className="text-center py-10">
-        <AlertTriangle className="h-10 w-10 text-red-500 mx-auto mb-4" />
-        <p>Erreur de chargement du lot</p>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Erreur de chargement</h2>
+          <p className="text-muted-foreground mb-4">
+            Impossible de charger les informations du lot de semences
+          </p>
+          <Button
+            onClick={() => navigate("/dashboard/seed-lots")}
+            variant="outline"
+          >
+            Retour à la liste
+          </Button>
+        </div>
       </div>
     );
+  }
 
   const daysUntilExpiry = calculateDaysUntilExpiry(seedLot.expiryDate);
   const expiryStatus = getExpiryStatus(daysUntilExpiry);
@@ -279,6 +309,7 @@ const SeedLotDetail: React.FC = () => {
           <Button
             variant="ghost"
             onClick={() => navigate("/dashboard/seed-lots")}
+            className="flex items-center"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour
@@ -288,28 +319,55 @@ const SeedLotDetail: React.FC = () => {
               <Package className="h-8 w-8 mr-3 text-green-600" />
               {seedLot.id}
             </h1>
+            <div className="flex items-center gap-3 mt-1">
+              {getLevelBadge(seedLot.level)}
+              {getStatusBadge(seedLot.status)}
+              <span className="text-muted-foreground">•</span>
+              <span className="font-medium">
+                {formatNumber(seedLot.quantity)} kg
+              </span>
+              {seedLot.batchNumber && (
+                <>
+                  <span className="text-muted-foreground">•</span>
+                  <span className="text-sm text-muted-foreground">
+                    Lot #{seedLot.batchNumber}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="flex items-center space-x-2">
-          {/* ✅ Bouton corrigé : Créer un lot enfant */}
-          <Button
-            variant="default"
-            className="flex items-center"
-            onClick={() =>
-              navigate("/dashboard/seed-lots/create", {
-                state: { parentLot: seedLot },
-              })
-            }
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Créer un lot enfant
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowQRModal(true)}
+                >
+                  <QrCode className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Générer QR Code</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
-          <Button variant="outline" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" />
-            Imprimer
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={handlePrint}>
+                  <Printer className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Imprimer</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           <Button variant="outline" onClick={handleExportCertificate}>
             <Download className="h-4 w-4 mr-2" />
@@ -557,14 +615,6 @@ const SeedLotDetail: React.FC = () => {
                 <Separator />
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Variété
-                    </label>
-                    <p className="font-medium">
-                      {seedLot.variety?.name || "Non spécifiée"}
-                    </p>
-                  </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">
                       Date de production

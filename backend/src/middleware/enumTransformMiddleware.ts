@@ -203,34 +203,13 @@ function transformRequestData(data: any): any {
             transformed[field] = valueToTransform.toUpperCase();
           } else {
             // Transformation normale
-            // Transformation normale avec détection du format
-if (typeof valueToTransform === "string") {
-  const lower = valueToTransform.toLowerCase();
-  const upper = valueToTransform.toUpperCase();
-  const mapping = ENUM_MAPPINGS[config.enumType];
-
-  if (mapping?.UI_TO_DB?.[lower]) {
-    // ✅ Format UI -> on convertit vers DB
-    if (process.env.NODE_ENV === "development") {
-      debugTransformation(valueToTransform, config.enumType, "UI_TO_DB");
-    }
-    transformed[field] = transformEnum(
-      valueToTransform,
-      config.enumType,
-      "UI_TO_DB"
-    );
-  } else if (mapping?.DB_TO_UI?.[upper]) {
-    // ✅ Déjà en format DB -> on garde tel quel
-    transformed[field] = valueToTransform;
-  } else {
-    // ❗ Aucun mapping trouvé -> log et conserver la valeur brute
-    console.warn(
-      `No mapping found for "${valueToTransform}" in ${config.enumType}.UI_TO_DB`
-    );
-    transformed[field] = valueToTransform;
-  }
-}
-
+            if (process.env.NODE_ENV === "development") {
+              debugTransformation(
+                valueToTransform,
+                config.enumType,
+                "UI_TO_DB"
+              );
+            }
 
             transformed[field] = transformEnum(
               valueToTransform,
