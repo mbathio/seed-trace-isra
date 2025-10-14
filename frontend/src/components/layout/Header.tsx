@@ -38,7 +38,7 @@ const Header: React.FC = () => {
       "seed-lots": "Lots de semences",
       seeds: "Lots de semences",
       varieties: "Variétés",
-      multipliers: "Multiplicateurs",
+      multipliers: "Stations",
       "quality-controls": "Contrôles qualité",
       quality: "Contrôles qualité",
       productions: "Productions",

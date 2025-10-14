@@ -1,4 +1,5 @@
-// frontend/src/pages/seeds/CreateSeedLot.tsx - VERSION FINALE STABLE ET INTELLIGENTE
+// frontend/src/pages/seeds/CreateSeedLot.tsx — VERSION CORRIGÉE ET STABLE ✅
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
@@ -41,7 +42,7 @@ interface CreateSeedLotForm {
   notes?: string;
   batchNumber?: string;
   multiplierId?: number;
-  parentLotId?: string;
+  parentLotId?: string; // ✅ string attendu par le backend
 }
 
 const CreateSeedLot: React.FC = () => {
@@ -56,9 +57,15 @@ const CreateSeedLot: React.FC = () => {
   } = useForm<CreateSeedLotForm>({
     resolver: yupResolver(seedLotValidationSchema),
     defaultValues: {
-      quantity: 0,
+      varietyId: 0,
       level: "G1",
+      quantity: 1,
       productionDate: new Date().toISOString().split("T")[0],
+      expiryDate: "",
+      notes: "",
+      batchNumber: "",
+      multiplierId: undefined,
+      parentLotId: "",
     },
   });
 
@@ -66,7 +73,7 @@ const CreateSeedLot: React.FC = () => {
   const selectedVariety = watch("varietyId");
 
   // 🔹 Charger les variétés disponibles
-  const { data: varietiesResponse, isLoading: varietiesLoading } = useQuery<
+  const { data: varietiesResponse, isLoading: loadingVarieties } = useQuery<
     ApiResponse<Variety[]>
   >({
     queryKey: ["varieties-for-seed-lot"],
@@ -82,26 +89,20 @@ const CreateSeedLot: React.FC = () => {
 
   // 🔹 Déterminer le niveau parent selon le niveau choisi
   const getParentLevel = (level: string): string | null => {
-    switch (level) {
-      case "G1":
-        return "GO";
-      case "G2":
-        return "G1";
-      case "G3":
-        return "G2";
-      case "G4":
-        return "G3";
-      case "R1":
-        return "G4";
-      case "R2":
-        return "R1";
-      default:
-        return null;
-    }
+    const map: Record<string, string | null> = {
+      G1: "GO",
+      G2: "G1",
+      G3: "G2",
+      G4: "G3",
+      R1: "G4",
+      R2: "R1",
+      GO: null,
+    };
+    return map[level] ?? null;
   };
 
   // 🔹 Charger les lots parents disponibles
-  const { data: lotsResponse, isLoading: lotsLoading } = useQuery<
+  const { data: lotsResponse, isLoading: loadingLots } = useQuery<
     ApiResponse<SeedLot[]>
   >({
     queryKey: ["parent-lots", selectedLevel, selectedVariety],
@@ -124,14 +125,28 @@ const CreateSeedLot: React.FC = () => {
 
   const parentLots = lotsResponse?.data || [];
 
-  // 🔹 Mutation pour la création du lot
+  // 🔹 Mutation de création du lot
   const createMutation = useMutation({
     mutationFn: async (data: CreateSeedLotForm) => {
-      // Convert parentLotId to number if present
       const payload = {
-        ...data,
-        parentLotId: data.parentLotId ? Number(data.parentLotId) : undefined,
+        varietyId: Number(data.varietyId),
+        level: data.level.toUpperCase(),
+        quantity: Number(data.quantity),
+        productionDate: new Date(data.productionDate).toISOString(),
+        expiryDate: data.expiryDate
+          ? new Date(data.expiryDate).toISOString()
+          : undefined,
+        status: "PENDING", // ✅ valeur par défaut reconnue par le backend
+        notes: data.notes?.trim() || undefined,
+        batchNumber: data.batchNumber?.trim() || undefined,
+        multiplierId: data.multiplierId ? Number(data.multiplierId) : undefined,
+        parentLotId:
+          data.parentLotId && data.parentLotId !== ""
+            ? String(data.parentLotId)
+            : undefined,
       };
+
+      console.log("🚀 [CreateSeedLot] Payload envoyé :", payload);
       const response = await seedLotService.create(payload);
       return response.data;
     },
@@ -157,7 +172,7 @@ const CreateSeedLot: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* En-tête */}
+      {/* === En-tête === */}
       <div className="flex items-center space-x-4">
         <Button
           variant="ghost"
@@ -173,12 +188,12 @@ const CreateSeedLot: React.FC = () => {
             Nouveau lot de semences
           </h1>
           <p className="text-muted-foreground">
-            Créer un nouveau lot pour le suivi et la traçabilité
+            Créez un nouveau lot pour le suivi et la traçabilité.
           </p>
         </div>
       </div>
 
-      {/* Formulaire */}
+      {/* === Formulaire === */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid gap-6 lg:grid-cols-2">
           {/* === Carte 1 : Informations de base === */}
@@ -186,7 +201,7 @@ const CreateSeedLot: React.FC = () => {
             <CardHeader>
               <CardTitle>Informations de base</CardTitle>
               <CardDescription>
-                Détails essentiels du lot de semences
+                Détails essentiels du lot de semences.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -198,9 +213,9 @@ const CreateSeedLot: React.FC = () => {
                   control={control}
                   render={({ field }) => (
                     <Select
-                      value={field.value?.toString() ?? undefined}
+                      value={field.value ? field.value.toString() : ""}
                       onValueChange={(v) => field.onChange(parseInt(v))}
-                      disabled={varietiesLoading}
+                      disabled={loadingVarieties}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner une variété" />
@@ -252,7 +267,14 @@ const CreateSeedLot: React.FC = () => {
                   name="quantity"
                   control={control}
                   render={({ field }) => (
-                    <Input type="number" step="0.1" min="0" {...field} />
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      {...field}
+                      value={field.value ?? 0}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                    />
                   )}
                 />
               </div>
@@ -266,9 +288,9 @@ const CreateSeedLot: React.FC = () => {
                     control={control}
                     render={({ field }) => (
                       <Select
-                        value={field.value?.toString() ?? undefined}
+                        value={field.value || ""}
                         onValueChange={field.onChange}
-                        disabled={lotsLoading || !selectedVariety}
+                        disabled={loadingLots || !selectedVariety}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner un lot parent" />
@@ -303,33 +325,33 @@ const CreateSeedLot: React.FC = () => {
             <CardHeader>
               <CardTitle>Informations complémentaires</CardTitle>
               <CardDescription>
-                Dates, notes et informations additionnelles
+                Dates, notes et informations additionnelles.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Date de production */}
-              <div className="space-y-2">
-                <Label>Date de production *</Label>
-                <Controller
-                  name="productionDate"
-                  control={control}
-                  render={({ field }) => <Input type="date" {...field} />}
-                />
-              </div>
-
-              {/* Date d’expiration */}
-              <div className="space-y-2">
-                <Label>Date d’expiration</Label>
-                <Controller
-                  name="expiryDate"
-                  control={control}
-                  render={({ field }) => <Input type="date" {...field} />}
-                />
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Date de production *</Label>
+                  <Controller
+                    name="productionDate"
+                    control={control}
+                    render={({ field }) => <Input type="date" {...field} />}
+                  />
+                </div>
+                <div>
+                  <Label>Date d’expiration</Label>
+                  <Controller
+                    name="expiryDate"
+                    control={control}
+                    render={({ field }) => <Input type="date" {...field} />}
+                  />
+                </div>
               </div>
 
               {/* Numéro de lot */}
               <div className="space-y-2">
-                <Label>Numéro de lot (généré automatiquement si vide)</Label>
+                <Label>Numéro de lot (auto si vide)</Label>
                 <Controller
                   name="batchNumber"
                   control={control}
@@ -337,6 +359,7 @@ const CreateSeedLot: React.FC = () => {
                     <Input
                       placeholder="Laissez vide pour génération automatique"
                       {...field}
+                      value={field.value ?? ""}
                     />
                   )}
                 />
@@ -350,8 +373,9 @@ const CreateSeedLot: React.FC = () => {
                   control={control}
                   render={({ field }) => (
                     <Textarea
-                      placeholder="Observations ou remarques supplémentaires..."
+                      placeholder="Observations ou remarques..."
                       {...field}
+                      value={field.value ?? ""}
                     />
                   )}
                 />
@@ -360,12 +384,12 @@ const CreateSeedLot: React.FC = () => {
           </Card>
         </div>
 
-        {/* Bouton d’enregistrement */}
+        {/* === Bouton d’enregistrement === */}
         <div className="flex justify-end">
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Enregistrement...
               </>
             ) : (

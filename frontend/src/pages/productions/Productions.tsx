@@ -97,7 +97,8 @@ const Productions: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [productionToDelete, setProductionToDelete] = useState<Production | null>(null);
+  const [productionToDelete, setProductionToDelete] =
+    useState<Production | null>(null);
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -144,7 +145,8 @@ const Productions: React.FC = () => {
       setProductionToDelete(null);
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || "Erreur lors de la suppression";
+      const message =
+        error?.response?.data?.message || "Erreur lors de la suppression";
       toast.error(message);
     },
   });
@@ -363,7 +365,7 @@ const Productions: React.FC = () => {
                   <TableRow>
                     <TableHead>ID</TableHead>
                     <TableHead>Lot</TableHead>
-                    <TableHead>Multiplicateur</TableHead>
+                    <TableHead>Station</TableHead>
                     <TableHead>Parcelle</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Début</TableHead>
@@ -506,7 +508,8 @@ const Productions: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Confirmer la suppression</DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer cette production ? Cette action est irréversible.
+              Êtes-vous sûr de vouloir supprimer cette production ? Cette action
+              est irréversible.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -89,7 +89,7 @@ const useDashboardTrends = () => {
   return useQuery({
     queryKey: ["dashboard-trends"],
     queryFn: async () => {
-      const response = await api.get("/statistics/trends?months=6");
+      const response = await api.get("/statistics/trends?months=12");
       return response.data.data.production as TrendPoint[];
     },
   });
@@ -242,7 +242,7 @@ export default function DashboardPage() {
             <CardTitle className="flex items-center">
               <BarChart3 className="h-5 w-5 mr-2" /> Évolution des productions
             </CardTitle>
-            <CardDescription>6 derniers mois</CardDescription>
+            <CardDescription>12 derniers mois</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>

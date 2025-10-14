@@ -322,7 +322,7 @@ const ParcelDetail: React.FC = () => {
                 {parcel.multiplier && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">
-                      Multiplicateur responsable
+                      Station de production
                     </label>
                     <div className="flex items-center space-x-2 mt-1">
                       <User className="h-4 w-4 text-green-600" />

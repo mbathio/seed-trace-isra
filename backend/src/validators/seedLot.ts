@@ -4,7 +4,7 @@ import { z } from "zod";
 
 // Schémas de base réutilisables
 const positiveIntSchema = z.number().int().positive();
-const notesSchema = z.string().max(1000).optional();
+const notesSchema = z.string().max(1000).optional().nullable();
 
 // ✅ CORRECTION CRITIQUE: Enums avec valeurs UI exactes
 const SeedLevelEnum = z.enum(["GO", "G1", "G2", "G3", "G4", "R1", "R2"], {
@@ -90,9 +90,10 @@ export const createSeedLotSchema = z
       .string()
       .refine((date) => !isNaN(Date.parse(date)), "Date de production invalide")
       .refine(
-        (date) => new Date(date) <= new Date(),
-        "La date de production ne peut pas être dans le futur"
+        (date) => new Date(date) <= new Date(Date.now() + 24 * 60 * 60 * 1000),
+        "La date de production ne peut pas être trop éloignée dans le futur"
       ),
+
     expiryDate: z
       .string()
       .optional()
@@ -125,11 +126,11 @@ export const createSeedLotSchema = z
 export const updateSeedLotSchema = z.object({
   quantity: z.number().positive().optional(),
   status: LotStatusEnum.optional(),
-  notes: notesSchema,
+  notes: notesSchema, // maintenant nullable
   multiplierId: positiveIntSchema.optional().nullable(),
   parcelId: positiveIntSchema.optional().nullable(),
   expiryDate: z.string().optional().nullable(),
-  batchNumber: z.string().max(50).optional(),
+  batchNumber: z.string().max(50).optional().nullable(),
 });
 
 // ✅ CORRECTION CRITIQUE: Schéma de requête avec validation très permissive

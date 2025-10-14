@@ -134,7 +134,7 @@ const LandingPage: React.FC = () => {
                 <Users className="h-8 w-8 text-blue-600" />
               </div>
               <div className="text-3xl font-bold text-blue-600 mb-2">50+</div>
-              <p className="text-gray-600">Multiplicateurs</p>
+              <p className="text-gray-600">Stations</p>
             </div>
 
             <div className="text-center">

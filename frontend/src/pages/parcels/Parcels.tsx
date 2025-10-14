@@ -370,7 +370,7 @@ const Parcels: React.FC = () => {
                         <TableHead>Identification</TableHead>
                         <TableHead>Localisation</TableHead>
                         <TableHead>Surface</TableHead>
-                        <TableHead>Multiplicateur</TableHead>
+                        <TableHead>Station</TableHead>
                         <TableHead>Caractéristiques</TableHead>
                         <TableHead>Statut</TableHead>
                         <TableHead className="text-right">Actions</TableHead>

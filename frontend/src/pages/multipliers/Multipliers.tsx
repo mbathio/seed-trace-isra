@@ -162,9 +162,9 @@ const Multipliers: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Multiplicateurs</h1>
+          <h1 className="text-3xl font-bold">Stations</h1>
           <p className="text-muted-foreground">
-            Gérez les multiplicateurs de semences
+            Gérez les station de production de semences
           </p>
         </div>
         <div className="flex space-x-2">
@@ -175,7 +175,7 @@ const Multipliers: React.FC = () => {
           <Button asChild>
             <Link to="/dashboard/multipliers/create">
               <Plus className="h-4 w-4 mr-2" />
-              Nouveau multiplicateur
+              Nouvells station
             </Link>
           </Button>
         </div>
@@ -242,7 +242,7 @@ const Multipliers: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center">
             <Users className="h-5 w-5 mr-2" />
-            {data?.meta?.totalCount || 0} multiplicateur(s) trouvé(s)
+            {data?.meta?.totalCount || 0} station trouvée
           </CardTitle>
         </CardHeader>
         <CardContent>

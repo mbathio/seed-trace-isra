@@ -478,7 +478,7 @@ const ProductionDetail: React.FC = () => {
               <Activity className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-2xl font-bold">
-                  {production._count?.activities || 0}
+                  {production._count?.activities}
                 </p>
                 <p className="text-xs text-muted-foreground">Activités</p>
               </div>
@@ -498,12 +498,8 @@ const ProductionDetail: React.FC = () => {
       <Tabs defaultValue="details" className="space-y-4">
         <TabsList>
           <TabsTrigger value="details">Informations</TabsTrigger>
-          <TabsTrigger value="activities">
-            Activités ({production._count?.activities || 0})
-          </TabsTrigger>
-          <TabsTrigger value="issues">
-            Problèmes ({production._count?.issues || 0})
-          </TabsTrigger>
+          <TabsTrigger value="activities">Activités</TabsTrigger>
+          <TabsTrigger value="issues">Problèmes</TabsTrigger>
           <TabsTrigger value="weather">Météo</TabsTrigger>
         </TabsList>
 
@@ -599,7 +595,7 @@ const ProductionDetail: React.FC = () => {
                 {production.multiplier && (
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">
-                      Multiplicateur
+                      Station
                     </label>
                     <div className="flex items-center space-x-2 mt-1">
                       <User className="h-4 w-4 text-green-600" />

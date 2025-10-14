@@ -877,6 +877,55 @@ export class SeedLotService {
       throw error;
     }
   }
+
+  /**
+   * 🔄 Met à jour la quantité disponible d’un lot parent
+   */
+  static async updateAvailableQuantity(parentLotId: string): Promise<void> {
+    try {
+      // Récupérer le lot parent avec ses lots enfants actifs
+      const parentLot = await prisma.seedLot.findUnique({
+        where: { id: parentLotId },
+        include: { childLots: { where: { isActive: true } } },
+      });
+
+      if (!parentLot) {
+        logger.warn(`Lot parent introuvable: ${parentLotId}`);
+        return;
+      }
+
+      // Calcul de la quantité utilisée pour créer les lots enfants
+      const childQuantity = (parentLot.childLots ?? []).reduce(
+        (sum: number, lot: { quantity: number }) => sum + (lot.quantity || 0),
+        0
+      );
+
+      // Calcul du disponible
+      const newAvailable = Math.max(parentLot.quantity - childQuantity, 0);
+
+      // ✅ Vérifie si un champ "quantityAvailable" existe
+      const schemaFields = Object.keys(parentLot);
+      const availableField = schemaFields.includes("quantityAvailable")
+        ? "quantityAvailable"
+        : "quantity";
+
+      // Met à jour la valeur dans la base
+      await prisma.seedLot.update({
+        where: { id: parentLotId },
+        data: { [availableField]: newAvailable } as any,
+      });
+
+      logger.info(
+        `🔁 Quantité disponible mise à jour pour ${parentLotId}: ${newAvailable} kg`
+      );
+    } catch (error) {
+      logger.error("Erreur lors de la mise à jour de la quantité disponible", {
+        parentLotId,
+        error,
+      });
+    }
+  }
+
   // Ajouter ces méthodes dans backend/src/services/SeedLotService.ts
 
   /**
@@ -898,13 +947,15 @@ export class SeedLotService {
             },
           },
         },
-      })) as (SeedLotWithCertificate & {
-        _count: {
-          childLots: number;
-          qualityControls: number;
-          productions: number;
-        };
-      }) | null;
+      })) as
+        | (SeedLotWithCertificate & {
+            _count: {
+              childLots: number;
+              qualityControls: number;
+              productions: number;
+            };
+          })
+        | null;
 
       if (!seedLot) {
         throw new Error(`Lot non trouvé: ${id}`);
@@ -1402,13 +1453,13 @@ export class SeedLotService {
       return {
         url: certificateUrl,
         path: updatedLot.officialCertificatePath,
-        filename:
-          updatedLot.officialCertificateFilename ?? file.originalname,
+        filename: updatedLot.officialCertificateFilename ?? file.originalname,
         mimeType:
           updatedLot.officialCertificateMimeType ?? file.mimetype ?? undefined,
         size: updatedLot.officialCertificateSize ?? file.size ?? undefined,
         uploadedAt:
-          updatedLot.officialCertificateUploadedAt ?? updatePayload.officialCertificateUploadedAt,
+          updatedLot.officialCertificateUploadedAt ??
+          updatePayload.officialCertificateUploadedAt,
       };
     } catch (error) {
       logger.error("Erreur lors du téléversement du certificat officiel", {
@@ -1654,7 +1705,9 @@ export class SeedLotService {
     return path.resolve(BACKEND_ROOT, normalized);
   }
 
-  private static buildPublicCertificateUrl(relativePath: string | null): string | null {
+  private static buildPublicCertificateUrl(
+    relativePath: string | null
+  ): string | null {
     if (!relativePath) {
       return null;
     }

@@ -302,7 +302,7 @@ const MultiplierDetail: React.FC = () => {
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Informations personnelles</CardTitle>
+                <CardTitle>Informations Station</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -364,7 +364,9 @@ const MultiplierDetail: React.FC = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Contact et spécialisations</CardTitle>
+                <CardTitle>
+                  Contact Chef de Station et spécialisations
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">

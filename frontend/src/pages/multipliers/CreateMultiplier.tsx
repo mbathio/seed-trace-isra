@@ -1,4 +1,4 @@
-// frontend/src/pages/multipliers/CreateMultiplier.tsx - VERSION CORRIGÉE
+// frontend/src/pages/multipliers/CreateMultiplier.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller, SubmitHandler } from "react-hook-form";
@@ -13,6 +13,8 @@ import {
 } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
+import { Checkbox } from "../../components/ui/checkbox";
+import { Label } from "../../components/ui/label";
 import {
   Select,
   SelectContent,
@@ -20,226 +22,152 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
-import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
-import { Checkbox } from "../../components/ui/checkbox";
 import { toast } from "react-toastify";
-import { api } from "../../services/api";
+import { MultiplierService } from "../../services/MultiplierService";
 import {
   MULTIPLIER_STATUSES,
   CERTIFICATION_LEVELS,
   CROP_TYPES,
   SENEGAL_BOUNDS,
 } from "../../constants";
-import {
-  CROP_TYPE_ICONS,
-  CERTIFICATION_EXPERIENCE,
-} from "../../constants/icons";
+import { CROP_TYPE_ICONS } from "../../constants/icons";
+import type { Multiplier } from "../../types/entities";
 
-interface CreateMultiplierForm {
-  name: string;
-  status: "active" | "inactive";
-  address: string;
-  latitude: number;
-  longitude: number;
-  yearsExperience: number;
-  certificationLevel: "beginner" | "intermediate" | "expert";
-  specialization: string[];
-  phone?: string;
-  email?: string;
-}
+interface CreateMultiplierForm
+  extends Omit<Multiplier, "id" | "createdAt" | "updatedAt"> {}
 
 const CreateMultiplier: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // ✅ CORRIGÉ: Variables supprimées car non utilisées
 
   const {
     control,
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
     setError,
     clearErrors,
+    formState: { errors },
   } = useForm<CreateMultiplierForm>({
     defaultValues: {
+      name: "",
       status: "active",
-      certificationLevel: "beginner",
-      yearsExperience: 0,
-      specialization: [],
+      address: "",
       latitude: SENEGAL_BOUNDS.CENTER.lat,
       longitude: SENEGAL_BOUNDS.CENTER.lng,
-      name: "",
-      address: "",
+      phone: "",
+      email: "",
+      yearsExperience: 0,
+      certificationLevel: "beginner",
+      specialization: [],
     },
   });
 
   const specialization = watch("specialization") || [];
 
-  const createMutation = useMutation({
-    mutationFn: async (data: CreateMultiplierForm) => {
-      // Le backend s'occupe de la transformation
-      const response = await api.post("/multipliers", data);
-      return response.data;
-    },
+  // 🧭 Géolocalisation automatique simulée
+  const handleAddressChange = (address: string) => {
+    const lower = address.toLowerCase();
+    if (lower.includes("dakar")) {
+      setValue("latitude", 14.7167);
+      setValue("longitude", -17.4677);
+    } else if (lower.includes("saint-louis")) {
+      setValue("latitude", 16.0469);
+      setValue("longitude", -16.4626);
+    } else if (lower.includes("thiès") || lower.includes("thies")) {
+      setValue("latitude", 14.7886);
+      setValue("longitude", -16.9352);
+    } else if (lower.includes("kaolack")) {
+      setValue("latitude", 14.1465);
+      setValue("longitude", -16.0726);
+    } else if (lower.includes("ziguinchor")) {
+      setValue("latitude", 12.5833);
+      setValue("longitude", -16.2667);
+    } else {
+      setValue("latitude", SENEGAL_BOUNDS.CENTER.lat);
+      setValue("longitude", SENEGAL_BOUNDS.CENTER.lng);
+    }
+  };
+
+  // 🔍 Validation stricte (évite les 422)
+  const validateForm = (data: CreateMultiplierForm): boolean => {
+    let valid = true;
+    if (!data.name || data.name.trim().length < 2) {
+      setError("name", { message: "Le nom est requis" });
+      valid = false;
+    }
+    if (!data.address || data.address.trim().length < 5) {
+      setError("address", { message: "Adresse invalide" });
+      valid = false;
+    }
+    if (data.yearsExperience < 0 || data.yearsExperience > 60) {
+      setError("yearsExperience", {
+        message: "Expérience invalide (0-60 ans)",
+      });
+      valid = false;
+    }
+    if (!data.specialization.length) {
+      setError("specialization", {
+        message: "Sélectionnez au moins une spécialisation",
+      });
+      valid = false;
+    }
+    return valid;
+  };
+
+  // 🚀 Envoi vers l’API
+  const mutation = useMutation({
+    mutationFn: async (data: CreateMultiplierForm) =>
+      await MultiplierService.createMultiplier(data),
     onSuccess: (data) => {
       toast.success("Multiplicateur créé avec succès !");
-      navigate(`/dashboard/multipliers/${data.data.id}`);
+      navigate(`/dashboard/multipliers/${data.id}`);
     },
     onError: (error: any) => {
-      const errorMessage =
+      const msg =
         error?.response?.data?.message ||
-        "Erreur lors de la création du multiplicateur";
-      toast.error(errorMessage);
+        "Erreur lors de la création du multiplicateur.";
+      toast.error(msg);
     },
   });
 
-  // Validation manuelle pour éviter les conflits Yup/TypeScript
-  const validateForm = (data: CreateMultiplierForm): boolean => {
-    let isValid = true;
-
-    // Validation du nom
-    if (!data.name || data.name.trim().length < 2) {
-      setError("name", {
-        message: "Le nom doit contenir au moins 2 caractères",
-      });
-      isValid = false;
-    } else {
-      clearErrors("name");
-    }
-
-    // Validation de l'adresse
-    if (!data.address || data.address.trim().length < 5) {
-      setError("address", {
-        message: "L'adresse doit contenir au moins 5 caractères",
-      });
-      isValid = false;
-    } else {
-      clearErrors("address");
-    }
-
-    // Validation des coordonnées
-    if (
-      data.latitude < SENEGAL_BOUNDS.LAT_MIN ||
-      data.latitude > SENEGAL_BOUNDS.LAT_MAX
-    ) {
-      setError("latitude", {
-        message: `Latitude doit être entre ${SENEGAL_BOUNDS.LAT_MIN} et ${SENEGAL_BOUNDS.LAT_MAX}`,
-      });
-      isValid = false;
-    } else {
-      clearErrors("latitude");
-    }
-
-    if (
-      data.longitude < SENEGAL_BOUNDS.LNG_MIN ||
-      data.longitude > SENEGAL_BOUNDS.LNG_MAX
-    ) {
-      setError("longitude", {
-        message: `Longitude doit être entre ${SENEGAL_BOUNDS.LNG_MIN} et ${SENEGAL_BOUNDS.LNG_MAX}`,
-      });
-      isValid = false;
-    } else {
-      clearErrors("longitude");
-    }
-
-    // Validation des années d'expérience
-    if (data.yearsExperience < 0 || data.yearsExperience > 50) {
-      setError("yearsExperience", {
-        message: "L'expérience doit être entre 0 et 50 ans",
-      });
-      isValid = false;
-    } else {
-      clearErrors("yearsExperience");
-    }
-
-    // Validation des spécialisations
-    if (!data.specialization || data.specialization.length === 0) {
-      setError("specialization", {
-        message: "Au moins une spécialisation est requise",
-      });
-      isValid = false;
-    } else {
-      clearErrors("specialization");
-    }
-
-    // Validation du téléphone (optionnel)
-    if (data.phone && !/^[+]?[0-9\s-()]+$/.test(data.phone)) {
-      setError("phone", { message: "Format de téléphone invalide" });
-      isValid = false;
-    } else {
-      clearErrors("phone");
-    }
-
-    // Validation de l'email (optionnel)
-    if (
-      data.email &&
-      !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(data.email)
-    ) {
-      setError("email", { message: "Format d'email invalide" });
-      isValid = false;
-    } else {
-      clearErrors("email");
-    }
-
-    return isValid;
-  };
-
   const onSubmit: SubmitHandler<CreateMultiplierForm> = async (data) => {
-    if (!validateForm(data)) {
-      return;
-    }
-
+    if (!validateForm(data)) return;
     setIsSubmitting(true);
+
+    // 🔧 Correction des enums avant envoi (plus de conversion en uppercase)
+    const payload = {
+      ...data,
+    };
+
     try {
-      await createMutation.mutateAsync(data);
+      await mutation.mutateAsync(payload);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleSpecializationChange = (cropType: string, checked: boolean) => {
-    const currentSpecialization = specialization;
+    const current = specialization;
     if (checked) {
-      setValue("specialization", [...currentSpecialization, cropType]);
+      setValue("specialization", [...current, cropType]);
     } else {
       setValue(
         "specialization",
-        currentSpecialization.filter((spec) => spec !== cropType)
+        current.filter((s) => s !== cropType)
       );
     }
-    // Effacer l'erreur si au moins une spécialisation est sélectionnée
-    if (checked || currentSpecialization.length > 1) {
-      clearErrors("specialization");
-    }
-  };
-
-  // Fonction pour obtenir les coordonnées approximatives d'une adresse (simulation)
-  const handleAddressChange = (address: string) => {
-    // Dans un vrai projet, vous utiliseriez une API de géocodage
-    // Ici on simule avec des coordonnées aléatoires dans les limites du Sénégal
-    if (address.toLowerCase().includes("dakar")) {
-      setValue("latitude", 14.7167);
-      setValue("longitude", -17.4677);
-    } else if (address.toLowerCase().includes("saint-louis")) {
-      setValue("latitude", 16.0469);
-      setValue("longitude", -16.4626);
-    } else if (address.toLowerCase().includes("thiès")) {
-      setValue("latitude", 14.7886);
-      setValue("longitude", -16.9352);
-    }
-    // Sinon garder les coordonnées par défaut
+    if (checked || current.length > 1) clearErrors("specialization");
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* HEADER */}
       <div className="flex items-center space-x-4">
         <Button
           variant="ghost"
           onClick={() => navigate("/dashboard/multipliers")}
-          className="flex items-center"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Retour
@@ -255,24 +183,24 @@ const CreateMultiplier: React.FC = () => {
         </div>
       </div>
 
+      {/* FORMULAIRE */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Informations personnelles */}
           <Card>
             <CardHeader>
               <CardTitle>Informations personnelles</CardTitle>
-              <CardDescription>
-                Détails d'identification du multiplicateur
-              </CardDescription>
+              <CardDescription>Détails du multiplicateur</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Nom */}
               <div className="space-y-2">
-                <Label htmlFor="name">Nom complet *</Label>
+                <Label>Nom *</Label>
                 <Controller
                   name="name"
                   control={control}
                   render={({ field }) => (
-                    <Input placeholder="ex: Amadou Diallo" {...field} />
+                    <Input placeholder="Nom du multiplicateur" {...field} />
                   )}
                 />
                 {errors.name && (
@@ -280,8 +208,9 @@ const CreateMultiplier: React.FC = () => {
                 )}
               </div>
 
+              {/* Statut */}
               <div className="space-y-2">
-                <Label htmlFor="status">Statut *</Label>
+                <Label>Statut *</Label>
                 <Controller
                   name="status"
                   control={control}
@@ -291,25 +220,21 @@ const CreateMultiplier: React.FC = () => {
                         <SelectValue placeholder="Sélectionner un statut" />
                       </SelectTrigger>
                       <SelectContent>
-                        {MULTIPLIER_STATUSES.map((status) => (
-                          <SelectItem key={status.value} value={status.value}>
-                            {status.label}
+                        {MULTIPLIER_STATUSES.map((s) => (
+                          <SelectItem key={s.value} value={s.value}>
+                            {s.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   )}
                 />
-                {errors.status && (
-                  <p className="text-sm text-red-500">
-                    {errors.status.message}
-                  </p>
-                )}
               </div>
 
+              {/* Contact */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Téléphone</Label>
+                  <Label>Téléphone</Label>
                   <Controller
                     name="phone"
                     control={control}
@@ -321,56 +246,40 @@ const CreateMultiplier: React.FC = () => {
                       />
                     )}
                   />
-                  {errors.phone && (
-                    <p className="text-sm text-red-500">
-                      {errors.phone.message}
-                    </p>
-                  )}
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label>Email</Label>
                   <Controller
                     name="email"
                     control={control}
                     render={({ field }) => (
                       <Input
                         type="email"
-                        placeholder="amadou@example.com"
+                        placeholder="email@example.com"
                         {...field}
                       />
                     )}
                   />
-                  {errors.email && (
-                    <p className="text-sm text-red-500">
-                      {errors.email.message}
-                    </p>
-                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Qualification et expérience */}
+          {/* Qualification */}
           <Card>
             <CardHeader>
               <CardTitle>Qualification et expérience</CardTitle>
-              <CardDescription>
-                Niveau de certification et années d'expérience
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="yearsExperience">Années d'expérience *</Label>
+                <Label>Années d’expérience *</Label>
                 <Controller
                   name="yearsExperience"
                   control={control}
                   render={({ field }) => (
                     <Input
                       type="number"
-                      min="0"
-                      max="50"
-                      placeholder="5"
+                      placeholder="Ex: 10"
                       {...field}
                       onChange={(e) =>
                         field.onChange(parseInt(e.target.value) || 0)
@@ -378,17 +287,10 @@ const CreateMultiplier: React.FC = () => {
                     />
                   )}
                 />
-                {errors.yearsExperience && (
-                  <p className="text-sm text-red-500">
-                    {errors.yearsExperience.message}
-                  </p>
-                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="certificationLevel">
-                  Niveau de certification *
-                </Label>
+                <Label>Certification *</Label>
                 <Controller
                   name="certificationLevel"
                   control={control}
@@ -402,9 +304,6 @@ const CreateMultiplier: React.FC = () => {
                           <SelectItem key={level.value} value={level.value}>
                             <div className="flex items-center space-x-2">
                               <span>{level.label}</span>
-                              <span className="text-xs text-muted-foreground">
-                                ({CERTIFICATION_EXPERIENCE[level.value]})
-                              </span>
                               <div className="flex">
                                 {Array.from({
                                   length:
@@ -427,11 +326,6 @@ const CreateMultiplier: React.FC = () => {
                     </Select>
                   )}
                 />
-                {errors.certificationLevel && (
-                  <p className="text-sm text-red-500">
-                    {errors.certificationLevel.message}
-                  </p>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -446,86 +340,48 @@ const CreateMultiplier: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="address">Adresse *</Label>
+                <Label>Adresse *</Label>
                 <Controller
                   name="address"
                   control={control}
                   render={({ field }) => (
                     <Input
                       placeholder="Quartier, Ville, Région"
-                      {...field}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        handleAddressChange(e.target.value);
-                      }}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(Number(e.target.value) || 0)
+                      }
                     />
                   )}
                 />
-                {errors.address && (
-                  <p className="text-sm text-red-500">
-                    {errors.address.message}
-                  </p>
-                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="latitude">Latitude *</Label>
+                  <Label>Latitude *</Label>
                   <Controller
                     name="latitude"
                     control={control}
                     render={({ field }) => (
-                      <Input
-                        type="number"
-                        step="any"
-                        min={SENEGAL_BOUNDS.LAT_MIN}
-                        max={SENEGAL_BOUNDS.LAT_MAX}
-                        placeholder="14.7167"
-                        {...field}
-                        onChange={(e) =>
-                          field.onChange(parseFloat(e.target.value) || 0)
-                        }
-                      />
+                      <Input type="number" step="any" {...field} />
                     )}
                   />
-                  {errors.latitude && (
-                    <p className="text-sm text-red-500">
-                      {errors.latitude.message}
-                    </p>
-                  )}
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="longitude">Longitude *</Label>
+                  <Label>Longitude *</Label>
                   <Controller
                     name="longitude"
                     control={control}
                     render={({ field }) => (
-                      <Input
-                        type="number"
-                        step="any"
-                        min={SENEGAL_BOUNDS.LNG_MIN}
-                        max={SENEGAL_BOUNDS.LNG_MAX}
-                        placeholder="-17.4677"
-                        {...field}
-                        onChange={(e) =>
-                          field.onChange(parseFloat(e.target.value) || 0)
-                        }
-                      />
+                      <Input type="number" step="any" {...field} />
                     )}
                   />
-                  {errors.longitude && (
-                    <p className="text-sm text-red-500">
-                      {errors.longitude.message}
-                    </p>
-                  )}
                 </div>
               </div>
 
               <div className="text-xs text-muted-foreground">
                 <MapPin className="h-3 w-3 inline mr-1" />
-                Les coordonnées peuvent être automatiquement remplies selon
-                l'adresse
+                Les coordonnées sont automatiquement ajustées selon l’adresse.
               </div>
             </CardContent>
           </Card>
@@ -534,55 +390,41 @@ const CreateMultiplier: React.FC = () => {
           <Card>
             <CardHeader>
               <CardTitle>Spécialisations</CardTitle>
-              <CardDescription>
-                Types de cultures maîtrisées par le multiplicateur
-              </CardDescription>
+              <CardDescription>Types de cultures maîtrisées</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-3">
-                {CROP_TYPES.map((crop) => (
-                  <div key={crop.value} className="flex items-center space-x-3">
-                    <Checkbox
-                      id={crop.value}
-                      checked={specialization.includes(crop.value)}
-                      onCheckedChange={(checked) =>
-                        handleSpecializationChange(
-                          crop.value,
-                          checked as boolean
-                        )
-                      }
-                    />
-                    <Label
-                      htmlFor={crop.value}
-                      className="flex items-center space-x-2 cursor-pointer"
-                    >
-                      <span className="text-lg">
-                        {CROP_TYPE_ICONS[crop.value]}
-                      </span>
-                      <span>{crop.label}</span>
-                    </Label>
-                  </div>
-                ))}
-              </div>
-
-              {errors.specialization && (
-                <p className="text-sm text-red-500">
-                  {errors.specialization.message}
-                </p>
-              )}
+              {CROP_TYPES.map((crop) => (
+                <div key={crop.value} className="flex items-center space-x-3">
+                  <Checkbox
+                    id={crop.value}
+                    checked={specialization.includes(crop.value)}
+                    onCheckedChange={(checked) =>
+                      handleSpecializationChange(crop.value, checked as boolean)
+                    }
+                  />
+                  <Label
+                    htmlFor={crop.value}
+                    className="cursor-pointer flex items-center space-x-2"
+                  >
+                    <span className="text-lg">
+                      {CROP_TYPE_ICONS[crop.value]}
+                    </span>
+                    <span>{crop.label}</span>
+                  </Label>
+                </div>
+              ))}
 
               {specialization.length > 0 && (
-                <div className="mt-4">
-                  <Label className="text-sm font-medium text-muted-foreground">
-                    Spécialisations sélectionnées:
+                <div className="mt-3">
+                  <Label className="text-sm text-muted-foreground">
+                    Spécialisations sélectionnées :
                   </Label>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {specialization.map((spec) => {
                       const crop = CROP_TYPES.find((c) => c.value === spec);
                       return (
                         <Badge key={spec} variant="outline">
-                          <span className="mr-1">{CROP_TYPE_ICONS[spec]}</span>
-                          {crop?.label}
+                          {CROP_TYPE_ICONS[spec]} {crop?.label}
                         </Badge>
                       );
                     })}
@@ -596,7 +438,6 @@ const CreateMultiplier: React.FC = () => {
         {/* Actions */}
         <div className="flex justify-end space-x-4">
           <Button
-            type="button"
             variant="outline"
             onClick={() => navigate("/dashboard/multipliers")}
           >
@@ -604,8 +445,7 @@ const CreateMultiplier: React.FC = () => {
           </Button>
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Save className="mr-2 h-4 w-4" />
-            Créer le multiplicateur
+            <Save className="mr-2 h-4 w-4" /> Enregistrer
           </Button>
         </div>
       </form>

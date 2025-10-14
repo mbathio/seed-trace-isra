@@ -568,7 +568,7 @@ const SeedLotDetail: React.FC = () => {
       >
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="details">Informations</TabsTrigger>
-          <TabsTrigger value="genealogy">Généalogie</TabsTrigger>
+          <TabsTrigger value="genealogy">Généation</TabsTrigger>
           <TabsTrigger value="quality">Contrôles Qualité</TabsTrigger>
           <TabsTrigger value="productions">Productions</TabsTrigger>
           <TabsTrigger value="history">Historique</TabsTrigger>
@@ -684,7 +684,7 @@ const SeedLotDetail: React.FC = () => {
                 {seedLot.multiplier && (
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">
-                      Multiplicateur
+                      Station
                     </label>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -784,7 +784,7 @@ const SeedLotDetail: React.FC = () => {
                       {formatNumber(stats.quantityInChildren || 0)} kg
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Dans les lots enfants
+                      Dans les lots dérivés
                     </p>
                   </div>
                   <div className="text-center p-4 bg-muted rounded-lg">
@@ -807,7 +807,7 @@ const SeedLotDetail: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <GitBranch className="h-5 w-5 mr-2" />
-                Généalogie du lot
+                Génération du lot
               </CardTitle>
               <CardDescription>
                 Relations parent-enfant et traçabilité complète

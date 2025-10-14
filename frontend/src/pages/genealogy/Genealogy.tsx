@@ -283,7 +283,7 @@ export default function Genealogy() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <GitBranch className="h-8 w-8 text-primary" />
-          Généalogie des Semences
+          Génération des Semences
         </h1>
         {genealogyData && (
           <div className="flex gap-2">
@@ -328,7 +328,7 @@ export default function Genealogy() {
 
             <Select value={selectedLot} onValueChange={setSelectedLot}>
               <SelectTrigger className="w-[400px]">
-                <SelectValue placeholder="Sélectionner un lot pour visualiser sa généalogie" />
+                <SelectValue placeholder="Sélectionner un lot " />
               </SelectTrigger>
               <SelectContent>
                 {filteredLots.map((lot: SeedLot) => (
@@ -357,7 +357,7 @@ export default function Genealogy() {
           <CardHeader>
             <CardTitle className="flex items-center">
               <GitBranch className="h-5 w-5 mr-2 text-green-600" />
-              Arbre Généalogique
+              Traçabilité des niveaux de production
             </CardTitle>
           </CardHeader>
           <CardContent>

@@ -75,7 +75,7 @@ const navigationItems: NavigationItem[] = [
         icon: Leaf,
       },
       {
-        title: "Multiplicateurs",
+        title: "Stations",
         url: "/dashboard/multipliers",
         icon: Users,
       },
@@ -107,7 +107,7 @@ const navigationItems: NavigationItem[] = [
     icon: GitBranch,
     items: [
       {
-        title: "Généalogie",
+        title: "Génération",
         url: "/dashboard/genealogy",
         icon: GitBranch,
       },
