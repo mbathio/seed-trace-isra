@@ -6,6 +6,7 @@ import { validateRequest } from "../middleware/validation";
 import { requireRole, authMiddleware } from "../middleware/auth";
 import { parseQueryParams } from "../middleware/queryParser";
 import { fullTransformation } from "../middleware/transformationMiddleware";
+import { upload } from "../utils/fileUpload";
 import {
   createSeedLotSchema,
   updateSeedLotSchema,
@@ -120,6 +121,23 @@ router.get("/:id/stats", SeedLotController.getSeedLotStats);
 
 // GET /api/seed-lots/:id/history
 router.get("/:id/history", SeedLotController.getSeedLotHistory);
+
+// POST /api/seed-lots/:id/certificate
+router.post(
+  "/:id/certificate",
+  authMiddleware,
+  requireRole("INSPECTOR", "MANAGER", "ADMIN"),
+  upload.single("file"),
+  SeedLotController.uploadOfficialCertificate
+);
+
+// GET /api/seed-lots/:id/certificate
+router.get(
+  "/:id/certificate",
+  authMiddleware,
+  requireRole("TECHNICIAN", "INSPECTOR", "RESEARCHER", "MANAGER", "ADMIN"),
+  SeedLotController.downloadOfficialCertificate
+);
 
 // POST /api/seed-lots/:id/child-lots
 router.post(

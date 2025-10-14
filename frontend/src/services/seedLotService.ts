@@ -313,4 +313,77 @@ export const seedLotService = {
       throw error;
     }
   },
+
+  // 🔹 Téléverser un certificat officiel pour un lot
+  async uploadOfficialCertificate(
+    id: string,
+    file: File,
+    onProgress?: (progress: number) => void
+  ): Promise<ApiResponse<any>> {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await api.post<ApiResponse<any>>(
+        `/seed-lots/${id}/certificate`,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+          onUploadProgress: (event) => {
+            if (onProgress && event.total) {
+              const progress = Math.round((event.loaded * 100) / event.total);
+              onProgress(progress);
+            }
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      toast.error("Erreur lors du téléversement du certificat officiel");
+      throw error;
+    }
+  },
+
+  // 🔹 Télécharger le certificat officiel d'un lot
+  async downloadOfficialCertificate(id: string): Promise<void> {
+    try {
+      const response = await api.get(`/seed-lots/${id}/certificate`, {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data]);
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      const disposition = response.headers["content-disposition"] as
+        | string
+        | undefined;
+      const contentType = response.headers["content-type"] as
+        | string
+        | undefined;
+      let filename = `certificat_officiel_${id}`;
+
+      if (disposition) {
+        const match = disposition.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      } else if (contentType) {
+        const extension = contentType.split("/").pop()?.split(";")[0];
+        if (extension) {
+          filename = `${filename}.${extension}`;
+        }
+      }
+
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      toast.error("Erreur lors du téléchargement du certificat officiel");
+      throw error;
+    }
+  },
 };

@@ -6,6 +6,7 @@ import { ResponseHandler } from "../utils/response";
 import { logger, LoggerUtils } from "../utils/logger";
 import { AuthenticatedRequest } from "../middleware/auth";
 import QRCode from "qrcode";
+import path from "path";
 
 export class SeedLotController {
   /**
@@ -361,6 +362,82 @@ export class SeedLotController {
 
       res.setHeader("Content-Type", "image/png");
       res.send(buffer);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/seed-lots/:id/certificate - Téléverser un certificat officiel
+   */
+  static async uploadOfficialCertificate(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      if (!req.file) {
+        return ResponseHandler.badRequest(
+          res,
+          "Aucun fichier n'a été téléchargé"
+        );
+      }
+
+      const { id } = req.params;
+
+      const certificate = await SeedLotService.uploadOfficialCertificate(
+        id,
+        req.file
+      );
+
+      logger.info("Certificat officiel téléversé", {
+        seedLotId: id,
+        userId: req.user?.userId,
+        filename: certificate.filename,
+      });
+
+      return ResponseHandler.success(
+        res,
+        certificate,
+        "Certificat officiel enregistré avec succès"
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/seed-lots/:id/certificate - Télécharger le certificat officiel
+   */
+  static async downloadOfficialCertificate(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<Response | void> {
+    try {
+      const { id } = req.params;
+
+      const certificate = await SeedLotService.getOfficialCertificateMetadata(
+        id
+      );
+
+      if (!certificate) {
+        return ResponseHandler.notFound(
+          res,
+          "Certificat officiel non disponible pour ce lot"
+        );
+      }
+
+      const downloadName =
+        certificate.filename || path.basename(certificate.absolutePath);
+
+      res.setHeader("Content-Type", certificate.mimeType);
+
+      return res.download(certificate.absolutePath, downloadName, (error) => {
+        if (error) {
+          next(error);
+        }
+      });
     } catch (error) {
       next(error);
     }

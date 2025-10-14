@@ -322,6 +322,9 @@ export class DataTransformer {
       childLots: lot.childLots,
       qualityControls: lot.qualityControls,
       productions: lot.productions,
+      officialCertificate: lot.officialCertificate ?? null,
+      officialCertificateUrl:
+        lot.officialCertificateUrl ?? lot.officialCertificate?.url ?? null,
       // Ajouter la quantité disponible si elle n'est pas fournie
       availableQuantity: lot.availableQuantity ?? lot.quantity,
     };

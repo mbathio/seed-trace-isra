@@ -290,15 +290,48 @@ const config: ConfigType = {
     }),
   },
 
-  upload: {
-    maxFileSize: getEnvNumber("MAX_FILE_SIZE", 10 * 1024 * 1024),
-    uploadDir: getEnvVar("UPLOAD_PATH", "./uploads"),
-    allowedTypes: getEnvVar(
+  upload: (() => {
+    const allowedTypes = getEnvVar(
       "ALLOWED_FILE_TYPES",
       "image/jpeg,image/png,image/gif,application/pdf"
-    ).split(","),
-    allowedFormats: ["jpg", "jpeg", "png", "gif", "pdf"], // ✅ AJOUT pour fileUpload.ts
-  },
+    )
+      .split(",")
+      .map((type) => type.trim())
+      .filter((type) => type.length > 0);
+
+    const allowedFormats = Array.from(
+      new Set(
+        allowedTypes.flatMap((type) => {
+          const subtype = type.split("/").pop()?.toLowerCase().trim();
+          if (!subtype) {
+            return [];
+          }
+
+          const cleanedSubtype = subtype.split("+")[0];
+          const segments = cleanedSubtype.split(".");
+          const lastSegment = segments[segments.length - 1];
+
+          if (lastSegment === "jpeg") {
+            return ["jpeg", "jpg"];
+          }
+
+          return [lastSegment];
+        })
+      )
+    );
+
+    const effectiveFormats =
+      allowedFormats.length > 0
+        ? allowedFormats
+        : ["jpg", "jpeg", "png", "gif", "pdf"];
+
+    return {
+      maxFileSize: getEnvNumber("MAX_FILE_SIZE", 10 * 1024 * 1024),
+      uploadDir: getEnvVar("UPLOAD_PATH", "./uploads"),
+      allowedTypes,
+      allowedFormats: effectiveFormats,
+    } satisfies UploadConfig;
+  })(),
 
   logging: {
     level: getEnvVar("LOG_LEVEL", "info"),

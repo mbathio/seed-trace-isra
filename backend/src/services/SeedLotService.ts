@@ -1,6 +1,8 @@
 // backend/src/services/SeedLotService.ts - VERSION CORRIGÉE COMPLÈTE
 
 import { PrismaClient, Prisma, SeedLevel, LotStatus } from "@prisma/client";
+import path from "path";
+import fs from "fs/promises";
 import {
   generateLotId,
   getNextLevel,
@@ -13,8 +15,19 @@ import { NotificationService } from "./NotificationService";
 import { ValidationService } from "./ValidationService";
 import { GenealogyService } from "./GenealogyService";
 import DataTransformer from "../utils/transformers";
+import { config } from "../config/environment";
 
 const prisma = new PrismaClient();
+
+const BACKEND_ROOT = path.resolve(__dirname, "../../");
+
+type SeedLotWithCertificate = Prisma.SeedLotGetPayload<{}> & {
+  officialCertificatePath?: string | null;
+  officialCertificateFilename?: string | null;
+  officialCertificateMimeType?: string | null;
+  officialCertificateSize?: number | null;
+  officialCertificateUploadedAt?: Date | null;
+};
 
 // ✅ CORRECTION: Types d'interface mis à jour
 interface CreateSeedLotData {
@@ -874,7 +887,7 @@ export class SeedLotService {
       logger.info(`${hardDelete ? "Hard" : "Soft"} deleting seed lot: ${id}`);
 
       // 1. Vérifier l'existence et les dépendances
-      const seedLot = await prisma.seedLot.findUnique({
+      const seedLot = (await prisma.seedLot.findUnique({
         where: { id },
         include: {
           _count: {
@@ -885,11 +898,21 @@ export class SeedLotService {
             },
           },
         },
-      });
+      })) as (SeedLotWithCertificate & {
+        _count: {
+          childLots: number;
+          qualityControls: number;
+          productions: number;
+        };
+      }) | null;
 
       if (!seedLot) {
         throw new Error(`Lot non trouvé: ${id}`);
       }
+
+      const certificateAbsolutePath = seedLot.officialCertificatePath
+        ? this.resolveAbsoluteCertificatePath(seedLot.officialCertificatePath)
+        : null;
 
       // 2. Vérifier les dépendances
       if (seedLot._count.childLots > 0) {
@@ -934,6 +957,10 @@ export class SeedLotService {
       await CacheService.invalidate(`seedlot:${id}:*`);
       await CacheService.invalidate("seedlots:*");
       await CacheService.invalidate("stats:*");
+
+      if (hardDelete && certificateAbsolutePath) {
+        await this.safeDeleteFile(certificateAbsolutePath);
+      }
 
       logger.info(`Seed lot deleted successfully: ${id}`);
       return { success: true, message: `Lot ${id} supprimé avec succès` };
@@ -1299,6 +1326,151 @@ export class SeedLotService {
     }
   }
 
+  /**
+   * Téléverser un certificat officiel pour un lot de semences
+   */
+  static async uploadOfficialCertificate(
+    lotId: string,
+    file: Express.Multer.File
+  ) {
+    if (!file) {
+      throw new Error("Aucun fichier fourni");
+    }
+
+    const uploadDir = this.getUploadDirectory();
+    const absoluteUploadedPath = path.isAbsolute(file.path)
+      ? file.path
+      : path.join(uploadDir, file.filename);
+    const relativePath = this.normalizeRelativePath(
+      path.relative(BACKEND_ROOT, absoluteUploadedPath)
+    );
+
+    let updateCompleted = false;
+
+    try {
+      const existingLot = (await prisma.seedLot.findUnique({
+        where: { id: lotId, isActive: true },
+        select: {
+          id: true,
+          officialCertificatePath: true,
+        },
+      })) as SeedLotWithCertificate | null;
+
+      if (!existingLot) {
+        throw new Error(`Lot non trouvé: ${lotId}`);
+      }
+
+      const updatePayload = {
+        officialCertificatePath: relativePath,
+        officialCertificateFilename: file.originalname,
+        officialCertificateMimeType: file.mimetype,
+        officialCertificateSize: file.size,
+        officialCertificateUploadedAt: new Date(),
+      };
+
+      const updatedLot = (await prisma.seedLot.update({
+        where: { id: lotId },
+        data: updatePayload,
+        select: {
+          officialCertificatePath: true,
+          officialCertificateFilename: true,
+          officialCertificateMimeType: true,
+          officialCertificateSize: true,
+          officialCertificateUploadedAt: true,
+        },
+      })) as SeedLotWithCertificate;
+
+      updateCompleted = true;
+
+      if (
+        existingLot.officialCertificatePath &&
+        existingLot.officialCertificatePath !== relativePath
+      ) {
+        const previousAbsolutePath = this.resolveAbsoluteCertificatePath(
+          existingLot.officialCertificatePath
+        );
+        await this.safeDeleteFile(previousAbsolutePath);
+      }
+
+      await CacheService.invalidate(`seedlot:${lotId}:*`);
+      await CacheService.invalidate("seedlots:*");
+
+      const certificateUrl = this.buildPublicCertificateUrl(
+        updatedLot.officialCertificatePath ?? null
+      );
+
+      return {
+        url: certificateUrl,
+        path: updatedLot.officialCertificatePath,
+        filename:
+          updatedLot.officialCertificateFilename ?? file.originalname,
+        mimeType:
+          updatedLot.officialCertificateMimeType ?? file.mimetype ?? undefined,
+        size: updatedLot.officialCertificateSize ?? file.size ?? undefined,
+        uploadedAt:
+          updatedLot.officialCertificateUploadedAt ?? updatePayload.officialCertificateUploadedAt,
+      };
+    } catch (error) {
+      logger.error("Erreur lors du téléversement du certificat officiel", {
+        error,
+        lotId,
+      });
+
+      if (!updateCompleted) {
+        await this.safeDeleteFile(absoluteUploadedPath);
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Récupérer les métadonnées d'un certificat officiel
+   */
+  static async getOfficialCertificateMetadata(lotId: string) {
+    const seedLot = (await prisma.seedLot.findUnique({
+      where: { id: lotId, isActive: true },
+      select: {
+        officialCertificatePath: true,
+        officialCertificateFilename: true,
+        officialCertificateMimeType: true,
+        officialCertificateSize: true,
+        officialCertificateUploadedAt: true,
+      },
+    })) as SeedLotWithCertificate | null;
+
+    if (!seedLot || !seedLot.officialCertificatePath) {
+      return null;
+    }
+
+    const absolutePath = this.resolveAbsoluteCertificatePath(
+      seedLot.officialCertificatePath
+    );
+
+    try {
+      await fs.access(absolutePath);
+    } catch (error) {
+      logger.warn("Certificat officiel introuvable sur le disque", {
+        lotId,
+        path: absolutePath,
+      });
+      return null;
+    }
+
+    return {
+      absolutePath,
+      relativePath: this.normalizeRelativePath(seedLot.officialCertificatePath),
+      url: this.buildPublicCertificateUrl(seedLot.officialCertificatePath),
+      filename:
+        seedLot.officialCertificateFilename ??
+        path.basename(seedLot.officialCertificatePath),
+      mimeType:
+        seedLot.officialCertificateMimeType ?? "application/octet-stream",
+      size: seedLot.officialCertificateSize ?? undefined,
+      uploadedAt: seedLot.officialCertificateUploadedAt ?? undefined,
+    };
+  }
+
   // Autres méthodes avec transformations similaires...
   private static async calculateLotStatistics(lot: any) {
     const stats = {
@@ -1450,5 +1622,61 @@ export class SeedLotService {
   private static formatAsExcel(lots: any[]): any {
     logger.warn("Excel format not implemented, returning CSV");
     return this.formatAsCSV(lots);
+  }
+
+  private static getUploadDirectory(): string {
+    return path.isAbsolute(config.upload.uploadDir)
+      ? config.upload.uploadDir
+      : path.resolve(__dirname, "../../", config.upload.uploadDir);
+  }
+
+  private static normalizeRelativePath(relativePath: string): string {
+    const cleaned = relativePath.replace(/\\/g, "/");
+    if (cleaned.startsWith("./")) {
+      return cleaned.substring(2);
+    }
+    if (cleaned.startsWith("/")) {
+      return cleaned.substring(1);
+    }
+    return cleaned;
+  }
+
+  private static resolveAbsoluteCertificatePath(relativePath: string): string {
+    if (!relativePath) {
+      return relativePath;
+    }
+
+    if (path.isAbsolute(relativePath)) {
+      return relativePath;
+    }
+
+    const normalized = this.normalizeRelativePath(relativePath);
+    return path.resolve(BACKEND_ROOT, normalized);
+  }
+
+  private static buildPublicCertificateUrl(relativePath: string | null): string | null {
+    if (!relativePath) {
+      return null;
+    }
+
+    const normalized = this.normalizeRelativePath(relativePath);
+    return normalized.startsWith("/") ? normalized : `/${normalized}`;
+  }
+
+  private static async safeDeleteFile(filePath: string | null | undefined) {
+    if (!filePath) {
+      return;
+    }
+
+    try {
+      await fs.unlink(filePath);
+    } catch (error: any) {
+      if (error?.code !== "ENOENT") {
+        logger.warn("Impossible de supprimer le fichier de certificat", {
+          filePath,
+          error,
+        });
+      }
+    }
   }
 }

@@ -111,11 +111,22 @@ export interface SeedLot {
   multiplier?: Multiplier;
   parcel?: Parcel;
   qualityControls?: QualityControl[];
+  officialCertificate?: SeedLotCertificate | null;
+  officialCertificateUrl?: string | null;
   _count?: {
     childLots: number;
     qualityControls: number;
     productions: number;
   };
+}
+
+export interface SeedLotCertificate {
+  url: string | null;
+  path?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  size?: number | null;
+  uploadedAt?: string | null;
 }
 
 export interface Multiplier {

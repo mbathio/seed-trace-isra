@@ -40,11 +40,28 @@ prisma.$on("error", (e) => {
 });
 
 export async function connectDatabase() {
+  logger.info("🧠 Tentative de connexion à la base de données PostgreSQL...");
+
+  const timeout = new Promise((_, reject) =>
+    setTimeout(
+      () =>
+        reject(
+          new Error(
+            "⏳ Timeout: impossible de se connecter à la base après 10 secondes"
+          )
+        ),
+      10000
+    )
+  );
+
   try {
-    await prisma.$connect();
-    logger.info("✅ Connexion à la base de données établie");
-  } catch (error) {
-    logger.error("❌ Erreur de connexion à la base de données:", error);
+    await Promise.race([prisma.$connect(), timeout]);
+    logger.info("✅ Connexion à la base de données établie avec succès");
+  } catch (error: any) {
+    logger.error("❌ Erreur de connexion à la base de données:", {
+      message: error.message,
+      stack: error.stack,
+    });
     throw error;
   }
 }

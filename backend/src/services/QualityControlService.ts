@@ -36,7 +36,7 @@ export class QualityControlService {
           controlDate: new Date(data.controlDate),
           germinationRate: data.germinationRate,
           varietyPurity: data.varietyPurity,
-          moistureContent: data.moistureContent,
+          moistureContent: data.moistureContent ?? 0,
           seedHealth: data.seedHealth,
           result,
           observations: data.observations,

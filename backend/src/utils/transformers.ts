@@ -30,6 +30,14 @@ export default class DataTransformer {
   static transformSeedLot(seedLot: any): any {
     if (!seedLot) return null;
 
+    const certificatePath = seedLot.officialCertificatePath
+      ? seedLot.officialCertificatePath.replace(/\\/g, "/")
+      : null;
+    const certificateUrl = certificatePath
+      ? certificatePath.startsWith("/")
+        ? certificatePath
+        : `/${certificatePath}`
+      : null;
 
     return {
       id: seedLot.id,
@@ -51,6 +59,17 @@ export default class DataTransformer {
       isActive: seedLot.isActive,
       createdAt: seedLot.createdAt,
       updatedAt: seedLot.updatedAt,
+      officialCertificate: certificatePath
+        ? {
+            url: certificateUrl,
+            path: certificatePath,
+            filename: seedLot.officialCertificateFilename,
+            mimeType: seedLot.officialCertificateMimeType,
+            size: seedLot.officialCertificateSize,
+            uploadedAt: seedLot.officialCertificateUploadedAt,
+          }
+        : null,
+      officialCertificateUrl: certificateUrl,
       // Relations transformées
       qualityControls: seedLot.qualityControls?.map((qc: any) =>
         this.transformQualityControl(qc)

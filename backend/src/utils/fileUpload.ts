@@ -1,11 +1,20 @@
 // backend/src/utils/fileUpload.ts
 import multer from "multer";
 import path from "path";
+import fs from "fs";
 import { config } from "../config/environment";
+
+const resolvedUploadDir = path.isAbsolute(config.upload.uploadDir)
+  ? config.upload.uploadDir
+  : path.resolve(__dirname, "../../", config.upload.uploadDir);
+
+if (!fs.existsSync(resolvedUploadDir)) {
+  fs.mkdirSync(resolvedUploadDir, { recursive: true });
+}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/");
+    cb(null, resolvedUploadDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);

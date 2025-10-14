@@ -195,29 +195,34 @@ model ProductionHistory {
 }
 
 model SeedLot {
-  id              String           @id
-  quantity        Int
-  productionDate  DateTime         @db.Date
-  expiryDate      DateTime?        @db.Date
-  multiplierId    Int?
-  parcelId        Int?
-  batchNumber     String?
-  parentLotId     String?
-  notes           String?
-  qrCode          String?
-  isActive        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  varietyId       Int
-  level           SeedLevel
-  status          LotStatus        @default(PENDING)
-  productions     Production[]
-  qualityControls QualityControl[]
-  multiplier      Multiplier?      @relation(fields: [multiplierId], references: [id])
-  parcel          Parcel?          @relation(fields: [parcelId], references: [id])
-  parentLot       SeedLot?         @relation("SeedLotGenealogy", fields: [parentLotId], references: [id])
-  childLots       SeedLot[]        @relation("SeedLotGenealogy")
-  variety         Variety          @relation(fields: [varietyId], references: [id])
+  id                            String           @id
+  quantity                      Int
+  productionDate                DateTime         @db.Date
+  expiryDate                    DateTime?        @db.Date
+  multiplierId                  Int?
+  parcelId                      Int?
+  batchNumber                   String?
+  parentLotId                   String?
+  notes                         String?
+  qrCode                        String?
+  isActive                      Boolean          @default(true)
+  createdAt                     DateTime         @default(now())
+  updatedAt                     DateTime         @updatedAt
+  varietyId                     Int
+  level                         SeedLevel
+  status                        LotStatus        @default(PENDING)
+  officialCertificatePath       String?
+  officialCertificateFilename   String?
+  officialCertificateMimeType   String?
+  officialCertificateSize       Int?
+  officialCertificateUploadedAt DateTime?
+  productions                   Production[]
+  qualityControls               QualityControl[]
+  multiplier                    Multiplier?      @relation(fields: [multiplierId], references: [id])
+  parcel                        Parcel?          @relation(fields: [parcelId], references: [id])
+  parentLot                     SeedLot?         @relation("SeedLotGenealogy", fields: [parentLotId], references: [id])
+  childLots                     SeedLot[]        @relation("SeedLotGenealogy")
+  variety                       Variety          @relation(fields: [varietyId], references: [id])
 
   @@index([varietyId], map: "idx_seed_lots_variety")
   @@index([multiplierId], map: "idx_seed_lots_multiplier")
