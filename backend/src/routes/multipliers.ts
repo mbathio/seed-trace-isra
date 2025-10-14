@@ -5,6 +5,26 @@ import { requireRole, authMiddleware } from "../middleware/auth";
 import { fullTransformation } from "../middleware/transformationMiddleware";
 import { z } from "zod";
 
+const toUpperCaseEnum = (values: readonly string[]) =>
+  z
+    .string()
+    .min(1)
+    .transform((val) => val.trim())
+    .transform((val) => val.toUpperCase())
+    .refine((val) => values.includes(val), {
+      message: `Valeur invalide. Options autorisées: ${values.join(", ")}`,
+    });
+
+const toLowerCaseEnum = (values: readonly string[]) =>
+  z
+    .string()
+    .min(1)
+    .transform((val) => val.trim())
+    .transform((val) => val.toLowerCase())
+    .refine((val) => values.includes(val), {
+      message: `Valeur invalide. Options autorisées: ${values.join(", ")}`,
+    });
+
 const router = Router();
 
 // ✅ Appliquer le middleware de transformation
@@ -17,13 +37,21 @@ const createMultiplierSchema = z.object({
   latitude: z.number(),
   longitude: z.number(),
   yearsExperience: z.number().min(0),
-  certificationLevel: z.enum(["beginner", "intermediate", "expert"]), // Valeurs UI
+  certificationLevel: toUpperCaseEnum(["BEGINNER", "INTERMEDIATE", "EXPERT"]),
   specialization: z.array(
-    z.enum(["rice", "maize", "peanut", "sorghum", "cowpea", "millet", "wheat"])
-  ), // Valeurs UI
+    toLowerCaseEnum([
+      "rice",
+      "maize",
+      "peanut",
+      "sorghum",
+      "cowpea",
+      "millet",
+      "wheat",
+    ])
+  ),
   phone: z.string().optional(),
   email: z.string().email().optional(),
-  status: z.enum(["active", "inactive"]).optional(), // Valeurs UI
+  status: toUpperCaseEnum(["ACTIVE", "INACTIVE"]).optional(),
 });
 
 const updateMultiplierSchema = createMultiplierSchema.partial();
