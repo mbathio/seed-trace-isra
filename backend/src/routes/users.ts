@@ -1,16 +1,18 @@
-// ===== 7. backend/src/routes/users.ts - AVEC TRANSFORMATION =====
+// backend/src/routes/users.ts
 import { Router } from "express";
 import { UserController } from "../controllers/UserController";
 import { validateRequest } from "../middleware/validation";
-import { requireRole } from "../middleware/auth";
+import { authMiddleware, requireRole } from "../middleware/auth";
 import { fullTransformation } from "../middleware/transformationMiddleware";
 import { z } from "zod";
 
 const router = Router();
 
-// ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
+// ✅ Ordre important : transformation AVANT validation
 router.use(fullTransformation);
+router.use(authMiddleware);
 
+// ✅ Accepter les valeurs en MAJUSCULES (après transformation)
 const createUserSchema = z.object({
   name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
   email: z.string().email("Email invalide"),
@@ -18,14 +20,14 @@ const createUserSchema = z.object({
     .string()
     .min(6, "Le mot de passe doit contenir au moins 6 caractères"),
   role: z.enum([
-    "admin",
-    "manager",
-    "inspector",
-    "multiplier",
-    "guest",
-    "technician",
-    "researcher",
-  ]), // ✅ VALEURS UI
+    "ADMIN",
+    "MANAGER",
+    "INSPECTOR",
+    "MULTIPLIER",
+    "GUEST",
+    "TECHNICIAN",
+    "RESEARCHER",
+  ]), // ✅ EN MAJUSCULES
   avatar: z.string().optional(),
   isActive: z.boolean().optional(),
 });
@@ -35,15 +37,15 @@ const updateUserSchema = z.object({
   email: z.string().email().optional(),
   role: z
     .enum([
-      "admin",
-      "manager",
-      "inspector",
-      "multiplier",
-      "guest",
-      "technician",
-      "researcher",
+      "ADMIN",
+      "MANAGER",
+      "INSPECTOR",
+      "MULTIPLIER",
+      "GUEST",
+      "TECHNICIAN",
+      "RESEARCHER",
     ])
-    .optional(), // ✅ VALEURS UI
+    .optional(), // ✅ EN MAJUSCULES
   avatar: z.string().optional(),
   isActive: z.boolean().optional(),
 });
@@ -55,7 +57,7 @@ const updatePasswordSchema = z.object({
     .min(6, "Le nouveau mot de passe doit contenir au moins 6 caractères"),
 });
 
-// Routes...
+// Routes
 router.get("/", requireRole("MANAGER", "ADMIN"), UserController.getUsers);
 router.get("/:id", UserController.getUserById);
 router.post(
