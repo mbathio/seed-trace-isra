@@ -348,9 +348,11 @@ const CreateMultiplier: React.FC = () => {
                     <Input
                       placeholder="Quartier, Ville, Région"
                       value={field.value ?? ""}
-                      onChange={(e) =>
-                        field.onChange(Number(e.target.value) || 0)
-                      }
+                      onChange={(e) => {
+                        field.onChange(e.target.value);
+                        handleAddressChange(e.target.value); // maj auto latitude/longitude
+                      }}
+                      onBlur={(e) => handleAddressChange(e.target.value)}
                     />
                   )}
                 />

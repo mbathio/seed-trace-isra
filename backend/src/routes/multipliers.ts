@@ -8,22 +8,30 @@ import { z } from "zod";
 const router = Router();
 
 // ✅ Appliquer le middleware de transformation
-router.use(fullTransformation);
 
 // Schémas de validation avec valeurs UI
 const createMultiplierSchema = z.object({
-  name: z.string().min(1),
-  address: z.string().min(1),
+  name: z.string().min(1, "Le nom est requis"),
+  address: z.string().min(1, "L'adresse est requise"),
   latitude: z.number(),
   longitude: z.number(),
-  yearsExperience: z.number().min(0),
-  certificationLevel: z.enum(["beginner", "intermediate", "expert"]), // Valeurs UI
+  yearsExperience: z.number().min(0, "Expérience invalide"),
+  certificationLevel: z.enum([
+    "beginner",
+    "intermediate",
+    "expert",
+    "BEGINNER",
+    "INTERMEDIATE",
+    "EXPERT",
+  ]), // ✅ accepte les deux formats
   specialization: z.array(
     z.enum(["rice", "maize", "peanut", "sorghum", "cowpea", "millet", "wheat"])
-  ), // Valeurs UI
+  ),
   phone: z.string().optional(),
   email: z.string().email().optional(),
-  status: z.enum(["active", "inactive"]).optional(), // Valeurs UI
+  status: z
+    .enum(["active", "inactive", "ACTIVE", "INACTIVE"])
+    .default("active"), // ✅ accepte aussi les deux
 });
 
 const updateMultiplierSchema = createMultiplierSchema.partial();
@@ -47,6 +55,7 @@ router.post(
   "/",
   authMiddleware,
   requireRole("MANAGER", "ADMIN"),
+  fullTransformation,
   validateRequest({ body: createMultiplierSchema }),
   MultiplierController.createMultiplier
 );
@@ -54,6 +63,7 @@ router.put(
   "/:id",
   authMiddleware,
   requireRole("MANAGER", "ADMIN"),
+  fullTransformation,
   validateRequest({ body: updateMultiplierSchema }),
   MultiplierController.updateMultiplier
 );

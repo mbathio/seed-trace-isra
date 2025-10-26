@@ -10,6 +10,7 @@ import {
 import { Button } from "../../components/ui/button";
 import { Leaf, Layers, Eye, Package, Plus, Trash2 } from "lucide-react";
 import { DeleteVarietyDialog } from "../../components/varieties/DeleteVarietyDialog";
+import { apiService } from "../../services/api";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:3001/api";
@@ -83,13 +84,15 @@ const Varieties: React.FC = () => {
   };
 
   // Charger les lots pour une variété
+  // ✅ Nouvelle version sécurisée avec token JWT
   const loadSeedLots = async (varietyId: number) => {
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/seed-lots?varietyId=${varietyId}`
-      );
-      const data = await res.json();
-      setSeedLots((prev) => ({ ...prev, [varietyId]: data.data }));
+      // 👇 On précise le type de la réponse ici :
+      const res = await apiService.get<{ data: any[] }>(`/seed-lots`, {
+        params: { varietyId },
+      });
+
+      setSeedLots((prev) => ({ ...prev, [varietyId]: res.data }));
       setExpandedVariety(expandedVariety === varietyId ? null : varietyId);
     } catch (err) {
       console.error("Erreur chargement lots:", err);
