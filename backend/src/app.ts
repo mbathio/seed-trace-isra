@@ -20,6 +20,7 @@ import qualityControlRoutes from "./routes/quality-controls";
 import reportRoutes from "./routes/reports";
 import statisticsRoutes from "./routes/statistics";
 import exportRoutes from "./routes/export";
+import { authMiddleware } from "./middleware/auth"; // ← ton fichier auth.ts
 
 // ✅ Import de la nouvelle route publique pour le QR code
 import traceRoutes from "./routes/traceRoutes";
@@ -99,10 +100,16 @@ app.get("/api/health", (req: Request, res: Response) => {
 });
 
 // Routes API principales
-app.use("/api/auth", authRoutes);
+// ====================== ROUTES PUBLIQUES ======================
+app.use("/api/auth", authRoutes); // 🔓 publique (connexion, inscription, refresh token)
+app.use("/trace", traceRoutes); // 🔓 publique (accès QR code sans authentification)
+app.use("/api/varieties", varietyRoutes);
+
+// ====================== ROUTES PROTÉGÉES ======================
+app.use("/api", authMiddleware); // 🔐 protège toutes les routes ci-dessous
+
 app.use("/api/users", userRoutes);
 app.use("/api/seed-lots", seedLotRoutes);
-app.use("/api/varieties", varietyRoutes);
 app.use("/api/multipliers", multiplierRoutes);
 app.use("/api/parcels", parcelRoutes);
 app.use("/api/productions", productionRoutes);
@@ -110,10 +117,6 @@ app.use("/api/quality-controls", qualityControlRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/statistics", statisticsRoutes);
 app.use("/api/export", exportRoutes);
-
-// ✅ Nouvelle route publique pour affichage via QR code
-// Cette route redirige vers le frontend (React)
-app.use("/trace", traceRoutes);
 
 // ====================== ROUTES SUPPLÉMENTAIRES ======================
 

@@ -329,7 +329,7 @@ export class SeedLotController {
   };
 
   /**
-   * ✅ GET /api/seed-lots/:id/qr-code - Générer un QR code qui renvoie vers le front
+   * ✅ GET /api/seed-lots/:id/qr-code - Génère un QR code qui ouvre directement la page publique /trace/:id
    */
   static async getQRCode(
     req: Request,
@@ -341,28 +341,26 @@ export class SeedLotController {
       const size = parseInt(req.query.size as string) || 300;
 
       const seedLot = await SeedLotService.getSeedLotById(id, false);
-
       if (!seedLot) {
-        return ResponseHandler.notFound(res, "Lot non trouvé");
+        return res
+          .status(404)
+          .json({ success: false, message: "Lot non trouvé" });
       }
 
-      // ✅ Lien direct vers la page React
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-      const traceUrl = `${frontendUrl}/trace/${seedLot.id}`;
+      // ✅ On encode uniquement l’URL vers la page publique /trace/:id
+      const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
+      const traceUrl = `${serverUrl}/trace/${seedLot.id}`;
 
-      // ✅ On encode SEULEMENT l’URL dans le QR Code, pas le JSON
-      const buffer = await QRCode.toBuffer(traceUrl, {
+      const qrBuffer = await QRCode.toBuffer(traceUrl, {
         width: size,
         margin: 2,
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF",
-        },
+        color: { dark: "#000000", light: "#FFFFFF" },
       });
 
       res.setHeader("Content-Type", "image/png");
-      res.send(buffer);
+      return res.send(qrBuffer);
     } catch (error) {
+      console.error("Erreur QR Code:", error);
       next(error);
     }
   }

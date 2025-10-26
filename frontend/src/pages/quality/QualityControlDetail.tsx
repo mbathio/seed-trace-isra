@@ -27,6 +27,9 @@ import { api } from "../../services/api";
 import type { QualityControl } from "../../types/entities";
 import { formatDate, formatNumber } from "../../utils/formatters";
 import { QUALITY_TEST_RESULTS, getStatusConfig } from "../../constants";
+import { toast } from "react-toastify"; // pour message utilisateur
+
+const fileInputRef = React.createRef<HTMLInputElement>();
 
 const QualityControlDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -74,6 +77,62 @@ const QualityControlDetail: React.FC = () => {
         R2: { germination: 80, purity: 95.0 },
       };
     return thresholds[level] || thresholds.R2;
+  };
+  // ✅ Fonction de gestion du clic sur le bouton Certificat
+  const handleCertificateClick = () => {
+    if (qualityControl?.certificateUrl) {
+      const link = document.createElement("a");
+      link.href = `${import.meta.env.VITE_API_URL.replace("/api", "")}${
+        qualityControl.certificateUrl
+      }`;
+
+      link.download = `certificat-${qualityControl.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
+  // ✅ Upload du fichier PDF
+  const handleCertificateUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("certificate", file);
+
+    try {
+      // ✅ Récupère le bon token JWT stocké
+      const token = localStorage.getItem("accessToken");
+
+      // ✅ Construction des headers
+      const headers: Record<string, string> = {
+        "Content-Type": "multipart/form-data",
+      };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      // ✅ Appel API avec authentification
+      await api.post(
+        `/quality-controls/${qualityControl?.id}/certificate`,
+        formData,
+        {
+          headers,
+          withCredentials: true,
+        }
+      );
+
+      toast.success("✅ Certificat uploadé avec succès !");
+      window.location.reload();
+    } catch (error) {
+      toast.error("❌ Erreur lors de l’upload du certificat");
+      console.error(error);
+    }
   };
 
   if (isLoading) {
@@ -130,10 +189,19 @@ const QualityControlDetail: React.FC = () => {
           </div>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleCertificateClick}>
             <Download className="h-4 w-4 mr-2" />
-            Certificat
+            {qualityControl.certificateUrl
+              ? "Télécharger certificat"
+              : "Uploader certificat"}
           </Button>
+          <input
+            type="file"
+            accept="application/pdf"
+            ref={fileInputRef}
+            onChange={handleCertificateUpload}
+            style={{ display: "none" }}
+          />
           <Button>
             <Edit className="h-4 w-4 mr-2" />
             Modifier
@@ -440,7 +508,12 @@ const QualityControlDetail: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    window.open(qualityControl.certificateUrl, "_blank")
+                    window.open(
+                      `${import.meta.env.VITE_API_URL.replace("/api", "")}${
+                        qualityControl.certificateUrl
+                      }`,
+                      "_blank"
+                    )
                   }
                 >
                   <Download className="h-4 w-4 mr-2" />

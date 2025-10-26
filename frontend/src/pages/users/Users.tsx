@@ -75,7 +75,7 @@ const Users: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  
+
   // États pour les dialogs
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -95,11 +95,11 @@ const Users: React.FC = () => {
       if (roleFilter !== "all") params.role = roleFilter;
       if (statusFilter !== "all") params.isActive = statusFilter === "active";
 
-      const response = await apiService.users.getAll(params) as {
+      const response = (await apiService.users.getAll(params)) as {
         data: User[];
         meta?: { totalPages?: number; totalCount?: number };
       };
-      
+
       setUsers(response.data || []);
       setTotalPages(response.meta?.totalPages || 1);
       setTotalCount(response.meta?.totalCount || 0);
@@ -119,7 +119,7 @@ const Users: React.FC = () => {
   const handleSubmit = async (data: CreateUserData | UpdateUserData) => {
     try {
       setIsSubmitting(true);
-      
+
       if (selectedUser) {
         await apiService.users.update(selectedUser.id, data);
         toast.success("Utilisateur mis à jour avec succès");
@@ -132,7 +132,8 @@ const Users: React.FC = () => {
       setDialogOpen(false);
       setSelectedUser(null);
     } catch (error: any) {
-      const message = error.response?.data?.message || "Une erreur est survenue";
+      const message =
+        error.response?.data?.message || "Une erreur est survenue";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -222,7 +223,7 @@ const Users: React.FC = () => {
                 />
               </div>
             </div>
-            
+
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="h-4 w-4 mr-2" />
@@ -264,9 +265,7 @@ const Users: React.FC = () => {
             </div>
           ) : users.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">
-                Aucun utilisateur trouvé
-              </p>
+              <p className="text-muted-foreground">Aucun utilisateur trouvé</p>
             </div>
           ) : (
             <>
@@ -379,7 +378,9 @@ const Users: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      onClick={() =>
+                        setPage((p) => Math.min(totalPages, p + 1))
+                      }
                       disabled={page === totalPages}
                     >
                       Suivant

@@ -27,6 +27,8 @@ import { seedLotService } from "@/services/seedLotService";
 import { SeedLot } from "@/types/entities";
 import { formatDate } from "@/utils/formatters";
 import { toast } from "react-toastify";
+import { QrCode } from "lucide-react"; // pour l'icône
+import { Link } from "react-router-dom"; // pour le lien vers /scan
 
 // Définition de l'interface GenealogyNode
 interface GenealogyNode {
@@ -285,28 +287,40 @@ export default function Genealogy() {
           <GitBranch className="h-8 w-8 text-primary" />
           Génération des Semences
         </h1>
-        {genealogyData && (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportGenealogy}
-              className="flex items-center gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Exporter
+
+        <div className="flex gap-2">
+          {/* ✅ Nouveau bouton pour scanner un QR Code */}
+          <Link to="/scan">
+            <Button className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2">
+              <QrCode className="h-4 w-4" />
+              Scanner un QR Code
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePrintGenealogy}
-              className="flex items-center gap-2"
-            >
-              <Printer className="h-4 w-4" />
-              Imprimer
-            </Button>
-          </div>
-        )}
+          </Link>
+
+          {/* ✅ Garde le reste de tes boutons existants */}
+          {genealogyData && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportGenealogy}
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Exporter
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrintGenealogy}
+                className="flex items-center gap-2"
+              >
+                <Printer className="h-4 w-4" />
+                Imprimer
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Carte de sélection */}

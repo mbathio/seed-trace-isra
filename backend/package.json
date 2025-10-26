@@ -24,7 +24,8 @@
     "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.11.1",
+    "@hookform/resolvers": "^5.2.2",
+    "@prisma/client": "^6.18.0",
     "archiver": "^7.0.1",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
@@ -48,7 +49,7 @@
     "uuid": "^11.1.0",
     "winston": "^3.11.0",
     "yup": "^1.3.3",
-    "zod": "^3.22.4"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/archiver": "^6.0.3",

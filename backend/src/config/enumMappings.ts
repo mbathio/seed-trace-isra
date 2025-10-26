@@ -257,12 +257,8 @@ export function transformEnum(
   enumType: keyof typeof ENUM_MAPPINGS,
   direction: "UI_TO_DB" | "DB_TO_UI"
 ): string {
-  // Validation des paramètres
-  if (!value || typeof value !== "string") {
-    return value || "";
-  }
+  if (!value || typeof value !== "string") return value || "";
 
-  // Obtenir le mapping approprié
   const enumMapping = ENUM_MAPPINGS[enumType];
   if (!enumMapping) {
     console.warn(`Enum type not found: ${enumType}`);
@@ -275,18 +271,23 @@ export function transformEnum(
     return value;
   }
 
-  // Effectuer la transformation
-  const transformedValue =
-    directionalMapping[value as keyof typeof directionalMapping];
+  // ✅ Normalisation (ignore la casse et les tirets)
+  const normalizedValue = value.toUpperCase().replace(/-/g, "_");
 
-  if (transformedValue) {
-    return transformedValue;
+  for (const [key, mappedValue] of Object.entries(directionalMapping)) {
+    if (
+      key.toUpperCase().replace(/-/g, "_") === normalizedValue ||
+      String(mappedValue).toUpperCase().replace(/-/g, "_") === normalizedValue
+    ) {
+      return mappedValue as string;
+    }
   }
 
-  // Si pas de mapping trouvé, logger et retourner la valeur originale
   console.warn(`No mapping found for "${value}" in ${enumType}.${direction}`);
   return value;
 }
+
+// Effectuer la transformation
 
 /**
  * ✅ FONCTIONS DE TRANSFORMATION SPÉCIFIQUES - CORRIGÉES

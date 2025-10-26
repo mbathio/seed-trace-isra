@@ -58,7 +58,8 @@ import Users from "./pages/users/Users";
 import Reports from "./pages/reports/Reports";
 
 // Trace Page (nouvelle page pour affichage après scan du QR Code)
-import TracePage from "./pages/TracePage";
+import TracePage from "./pages/trace/TracePage"; // ✅ nouveau composant
+import ScanPage from "./pages/Scan"; // ✅ nouvel import
 
 // Protected Route Component
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -84,6 +85,7 @@ function App() {
 
             {/* ✅ Route publique pour affichage des informations d’un lot après scan du QR code */}
             <Route path="/trace/:id" element={<TracePage />} />
+            <Route path="/scan" element={<ScanPage />} />
 
             {/* Auth Routes */}
             <Route path="/auth" element={<AuthLayout />}>
