@@ -3,7 +3,6 @@
 import React from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { yupResolver } from "@hookform/resolvers/yup";
 import {
   Dialog,
   DialogContent,
@@ -75,7 +74,6 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
     reset,
     formState: { errors },
   } = useForm<AddActivityForm>({
-    resolver: yupResolver(productionActivityValidationSchema) as any,
     defaultValues: {
       activityDate: new Date().toISOString().split("T")[0],
       personnel: [""],

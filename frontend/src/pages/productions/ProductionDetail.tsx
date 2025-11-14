@@ -882,30 +882,48 @@ const ProductionDetail: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {production.weatherConditions ? (
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-blue-900 mb-2">
-                    Conditions générales
-                  </h4>
-                  <p className="text-blue-700">
-                    {production.weatherConditions}
-                  </p>
+              <p className="text-sm">
+                {production.weatherConditions || "Non renseigné"}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* 🌧️ Nouvelle carte : données météo détaillées */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Données météorologiques</CardTitle>
+              <CardDescription>
+                Historique des relevés météo associés à cette production
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {production.weatherData && production.weatherData.length > 0 ? (
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="grid grid-cols-5 gap-2 px-4 py-2 text-xs font-semibold bg-muted">
+                    <span>Date</span>
+                    <span>Temp. (°C)</span>
+                    <span>Pluie (mm)</span>
+                    <span>Humidité (%)</span>
+                    <span>Source</span>
+                  </div>
+                  {production.weatherData.map((w: any) => (
+                    <div
+                      key={w.id}
+                      className="grid grid-cols-5 gap-2 px-4 py-2 text-xs border-t"
+                    >
+                      <span>{formatDate(w.recordDate)}</span>
+                      <span>{w.temperature}</span>
+                      <span>{w.rainfall}</span>
+                      <span>{w.humidity}</span>
+                      <span>{w.source || "-"}</span>
+                    </div>
+                  ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Cloud className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">
-                    Aucune donnée météo
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    Les données météorologiques n'ont pas encore été
-                    enregistrées.
-                  </p>
-                  <Button onClick={() => setShowWeatherModal(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Ajouter données météo
-                  </Button>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Aucune donnée météorologique enregistrée pour cette
+                  production.
+                </p>
               )}
             </CardContent>
           </Card>

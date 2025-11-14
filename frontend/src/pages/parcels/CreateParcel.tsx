@@ -1,5 +1,5 @@
 // frontend/src/pages/parcels/CreateParcel.tsx - VERSION COMPLÈTE AVEC CARTE
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller, SubmitHandler } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -51,10 +51,7 @@ interface CreateParcelForm {
 const CreateParcel: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [localisationMethod, setLocalisationMethod] = useState<
-    "map" | "manual"
-  >("map");
-
+  const [geoMessage, setGeoMessage] = useState<string | null>(null);
   const {
     control,
     handleSubmit,
@@ -64,12 +61,47 @@ const CreateParcel: React.FC = () => {
   } = useForm<CreateParcelForm>({
     resolver: yupResolver(parcelValidationSchema),
     defaultValues: {
-      status: "available",
+      name: "", // <—
       area: 0,
-      latitude: SENEGAL_BOUNDS.CENTER.lat,
-      longitude: SENEGAL_BOUNDS.CENTER.lng,
+      status: "available",
+      soilType: "none", // <—
+      irrigationSystem: "none", // <—
+      address: "", // <—
+      multiplierId: undefined,
+      latitude: null as any, // <— garde null/'' tant que tu n’as pas de GPS
+      longitude: null as any,
     },
   });
+
+  // ✅ Détection automatique de la position GPS
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude, accuracy } = position.coords;
+          setValue("latitude", latitude);
+          setValue("longitude", longitude);
+          setGeoMessage(
+            `📍 Position détectée automatiquement (±${Math.round(accuracy)} m)`
+          );
+        },
+        (error) => {
+          console.warn("Erreur de géolocalisation:", error);
+          setGeoMessage("⚠️ Impossible d’obtenir votre position actuelle");
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 20000, // laisse plus de temps pour le GPS
+          maximumAge: 0, // interdit les positions mises en cache
+        }
+      );
+    } else {
+      setGeoMessage("⚠️ Géolocalisation non supportée par ce navigateur");
+    }
+  }, [setValue]);
+  const [localisationMethod, setLocalisationMethod] = useState<
+    "map" | "manual"
+  >("map");
 
   // Surveiller les valeurs actuelles
   const watchedLatitude = watch("latitude");
@@ -107,16 +139,91 @@ const CreateParcel: React.FC = () => {
 
   const onSubmit: SubmitHandler<CreateParcelForm> = async (data) => {
     setIsSubmitting(true);
+
+    // 1) Normalisation & coercition forte des types attendus par l’API
+    const cleanedData: CreateParcelForm = {
+      ...data,
+      area: Number(data.area ?? 0),
+      latitude:
+        data.latitude === null || data.latitude === ("" as any)
+          ? 0
+          : Number(data.latitude),
+      longitude:
+        data.longitude === null || data.longitude === ("" as any)
+          ? 0
+          : Number(data.longitude),
+      multiplierId:
+        data.multiplierId === undefined || data.multiplierId === null
+          ? undefined
+          : Number(data.multiplierId),
+      soilType: data.soilType === "none" ? undefined : data.soilType,
+      irrigationSystem:
+        data.irrigationSystem === "none" ? undefined : data.irrigationSystem,
+      name: data.name?.trim() || undefined,
+      address: data.address?.trim() || undefined,
+    };
+
+    // 2) Garde-fous UX (facultatifs mais utiles)
+    if (!cleanedData.area || cleanedData.area <= 0) {
+      toast.error("La superficie doit être un nombre positif.");
+      setIsSubmitting(false);
+      return;
+    }
+    if (
+      typeof cleanedData.latitude !== "number" ||
+      typeof cleanedData.longitude !== "number" ||
+      Number.isNaN(cleanedData.latitude) ||
+      Number.isNaN(cleanedData.longitude)
+    ) {
+      toast.error("Coordonnées GPS invalides.");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      // Remove undefined/null values before submission
-      const cleanedData = {
-        ...data,
-        multiplierId: data.multiplierId || undefined,
-        soilType: data.soilType === "none" ? undefined : data.soilType,
-        irrigationSystem:
-          data.irrigationSystem === "none" ? undefined : data.irrigationSystem,
-      };
+      // 3) Appel mutation (déjà déclarée plus haut)
       await createMutation.mutateAsync(cleanedData);
+    } catch (err: any) {
+      // 4) Gestion d’erreurs backend, avec focus sur 422
+      const status = err?.response?.status;
+      if (status === 422) {
+        // Plusieurs API renvoient { message, errors } où errors = array|object
+        const apiMsg =
+          err?.response?.data?.message ||
+          "Données invalides. Veuillez corriger le formulaire.";
+        const apiErrors = err?.response?.data?.errors;
+
+        // Construit un message lisible si on a des détails champ->erreur
+        let details = "";
+        if (Array.isArray(apiErrors)) {
+          details = apiErrors
+            .map((e: any) =>
+              typeof e === "string"
+                ? `• ${e}`
+                : e?.path && e?.message
+                ? `• ${e.path}: ${e.message}`
+                : null
+            )
+            .filter(Boolean)
+            .join("\n");
+        } else if (apiErrors && typeof apiErrors === "object") {
+          details = Object.entries(apiErrors)
+            .map(([k, v]: [string, any]) => {
+              const msg = Array.isArray(v) ? v.join(", ") : String(v);
+              return `• ${k}: ${msg}`;
+            })
+            .join("\n");
+        }
+
+        toast.error(details ? `${apiMsg}\n${details}` : apiMsg);
+      } else {
+        const fallback =
+          err?.response?.data?.message ||
+          err?.message ||
+          "Erreur lors de la création de la parcelle";
+        toast.error(fallback);
+      }
+      console.error("POST /parcels failed:", err);
     } finally {
       setIsSubmitting(false);
     }
@@ -400,11 +507,13 @@ const CreateParcel: React.FC = () => {
                   render={({ field }) => (
                     <Input
                       placeholder="Village, Commune, Région"
-                      {...field}
+                      value={field.value ?? ""} // <—
                       onChange={(e) => {
-                        field.onChange(e);
+                        // <—
+                        const val = e.target.value;
+                        field.onChange(val); // <— string, pas event
                         if (localisationMethod === "manual") {
-                          handleAddressChange(e.target.value);
+                          handleAddressChange(val);
                         }
                       }}
                     />
@@ -433,144 +542,93 @@ const CreateParcel: React.FC = () => {
             <CardHeader>
               <CardTitle>Localisation géographique</CardTitle>
               <CardDescription>
-                Définissez l'emplacement précis de la parcelle
+                La position sera détectée automatiquement, mais vous pouvez
+                aussi ajuster manuellement sur la carte.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs
-                value={localisationMethod}
-                onValueChange={(value) =>
-                  setLocalisationMethod(value as "map" | "manual")
-                }
-              >
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="map" className="flex items-center gap-2">
-                    <Map className="h-4 w-4" />
-                    Carte interactive
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="manual"
-                    className="flex items-center gap-2"
-                  >
-                    <List className="h-4 w-4" />
-                    Saisie manuelle
-                  </TabsTrigger>
-                </TabsList>
+              {/* ✅ Détection automatique de la position */}
+              {geoMessage && (
+                <p className="text-sm mb-2 text-blue-600">{geoMessage}</p>
+              )}
 
-                <TabsContent value="map" className="mt-4">
+              {/* ✅ Champs de coordonnées préremplis */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <Label htmlFor="latitude">Latitude</Label>
                   <Controller
                     name="latitude"
                     control={control}
-                    render={({ field: latField }) => (
-                      <Controller
-                        name="longitude"
-                        control={control}
-                        render={({ field: lngField }) => (
-                          <LocationPicker
-                            latitude={latField.value}
-                            longitude={lngField.value}
-                            onChange={({ latitude, longitude }) => {
-                              latField.onChange(latitude);
-                              lngField.onChange(longitude);
-                            }}
-                          />
-                        )}
+                    render={({ field }) => (
+                      <Input
+                        id="latitude"
+                        type="number"
+                        step="any"
+                        value={field.value ?? ""} // <— pas de toFixed ici
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(v === "" ? null : parseFloat(v)); // <— reste contrôlé
+                        }}
                       />
                     )}
                   />
-                  {(errors.latitude || errors.longitude) && (
-                    <p className="text-sm text-red-500 mt-2">
-                      {errors.latitude?.message || errors.longitude?.message}
-                    </p>
-                  )}
-                </TabsContent>
+                </div>
 
-                <TabsContent value="manual" className="mt-4 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="latitude">Latitude *</Label>
-                      <Controller
-                        name="latitude"
-                        control={control}
-                        render={({ field }) => (
-                          <Input
-                            type="number"
-                            step="any"
-                            min={SENEGAL_BOUNDS.LAT_MIN}
-                            max={SENEGAL_BOUNDS.LAT_MAX}
-                            placeholder="14.7167"
-                            {...field}
-                            onChange={(e) =>
-                              field.onChange(parseFloat(e.target.value) || 0)
-                            }
-                          />
-                        )}
+                <div>
+                  <Label htmlFor="longitude">Longitude</Label>
+                  <Controller
+                    name="longitude"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        id="longitude"
+                        type="number"
+                        step="any"
+                        value={field.value ?? ""} // <—
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(v === "" ? null : parseFloat(v)); // <—
+                        }}
                       />
-                      {errors.latitude && (
-                        <p className="text-sm text-red-500">
-                          {errors.latitude.message}
-                        </p>
-                      )}
-                    </div>
+                    )}
+                  />
+                </div>
+              </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="longitude">Longitude *</Label>
-                      <Controller
-                        name="longitude"
-                        control={control}
-                        render={({ field }) => (
-                          <Input
-                            type="number"
-                            step="any"
-                            min={SENEGAL_BOUNDS.LNG_MIN}
-                            max={SENEGAL_BOUNDS.LNG_MAX}
-                            placeholder="-17.4677"
-                            {...field}
-                            onChange={(e) =>
-                              field.onChange(parseFloat(e.target.value) || 0)
-                            }
-                          />
-                        )}
-                      />
-                      {errors.longitude && (
-                        <p className="text-sm text-red-500">
-                          {errors.longitude.message}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+              {/* ✅ Carte Mapbox liée */}
+              {watchedLatitude && watchedLongitude ? (
+                <LocationPicker
+                  latitude={watchedLatitude}
+                  longitude={watchedLongitude}
+                  onChange={({ latitude, longitude }) => {
+                    setValue("latitude", latitude);
+                    setValue("longitude", longitude);
+                  }}
+                />
+              ) : (
+                <p className="text-sm text-gray-500">
+                  📡 Détection de la position en cours...
+                </p>
+              )}
+              {/* ✅ Affichage lisible des coordonnées */}
+              <p className="text-sm text-green-700 mt-2">
+                Latitude :{" "}
+                {watchedLatitude != null
+                  ? Number(watchedLatitude).toFixed(6)
+                  : "—"}{" "}
+                | Longitude :{" "}
+                {watchedLongitude != null
+                  ? Number(watchedLongitude).toFixed(6)
+                  : "—"}
+              </p>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-muted-foreground">
-                    <div className="p-3 bg-gray-50 rounded">
-                      <strong>Limites Sénégal:</strong>
-                      <br />
-                      Lat: {SENEGAL_BOUNDS.LAT_MIN} à {SENEGAL_BOUNDS.LAT_MAX}
-                      <br />
-                      Lng: {SENEGAL_BOUNDS.LNG_MIN} à {SENEGAL_BOUNDS.LNG_MAX}
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded">
-                      <strong>Astuce:</strong>
-                      <br />
-                      Tapez le nom d'une ville dans l'adresse pour une
-                      approximation automatique des coordonnées
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded">
-                      <strong>Aide:</strong>
-                      <br />
-                      Utilisez Google Maps ou GPS pour obtenir les coordonnées
-                      précises
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-
-              {/* Affichage des coordonnées actuelles */}
+              {/* ✅ Affichage des coordonnées */}
               <div className="mt-4 p-3 bg-green-50 rounded-lg">
                 <p className="text-sm text-green-800 font-medium">
-                  Position actuelle:
+                  Position actuelle :
                 </p>
                 <p className="text-sm text-green-700">
-                  Latitude: {watchedLatitude?.toFixed(6)} | Longitude:{" "}
+                  Latitude : {watchedLatitude?.toFixed(6)} | Longitude :{" "}
                   {watchedLongitude?.toFixed(6)}
                 </p>
               </div>

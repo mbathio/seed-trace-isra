@@ -224,6 +224,7 @@ export interface Production {
   updatedAt: string;
   activities?: ProductionActivity[];
   issues?: ProductionIssue[];
+  weatherData?: WeatherData[];
   _count?: {
     activities: number;
     issues: number;
@@ -243,6 +244,18 @@ export interface SoilAnalysis {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+}
+export interface WeatherData {
+  id: number;
+  productionId: number;
+  recordDate: string;
+  temperature: number;
+  rainfall: number;
+  humidity: number;
+  windSpeed?: number;
+  notes?: string;
+  source?: string;
+  createdAt: string;
 }
 
 export interface ProductionActivity {

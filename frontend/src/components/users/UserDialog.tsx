@@ -22,14 +22,30 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Switch } from "../ui/switch";
-import { User, CreateUserData, UpdateUserData, ROLE_LABELS } from "../../types/user";
+import {
+  User,
+  CreateUserData,
+  UpdateUserData,
+  ROLE_LABELS,
+} from "../../types/user";
 
 // Schéma de validation
 const userSchema = z.object({
   name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
   email: z.string().email("Email invalide"),
-  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères").optional(),
-  role: z.enum(["admin", "manager", "inspector", "multiplier", "guest", "technician", "researcher"]),
+  password: z
+    .string()
+    .min(6, "Le mot de passe doit contenir au moins 6 caractères")
+    .optional(),
+  role: z.enum([
+    "admin",
+    "manager",
+    "inspector",
+    "multiplier",
+    "guest",
+    "technician",
+    "researcher",
+  ]),
   isActive: z.boolean().optional(),
 });
 
@@ -62,9 +78,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({
     formState: { errors },
   } = useForm<UserFormData>({
     resolver: zodResolver(
-      isEditing 
-        ? userSchema.omit({ password: true }) 
-        : userSchema
+      isEditing ? userSchema.omit({ password: true }) : userSchema
     ),
     defaultValues: user
       ? {
@@ -135,7 +149,7 @@ export const UserDialog: React.FC<UserDialogProps> = ({
             <Input
               id="name"
               {...register("name")}
-              placeholder="Ex: Jean Dupont"
+              placeholder="Ex: Mbathio Shuu"
               disabled={isLoading}
             />
             {errors.name && (
@@ -189,12 +203,16 @@ export const UserDialog: React.FC<UserDialogProps> = ({
                     <Eye className="h-4 w-4 text-muted-foreground" />
                   )}
                   <span className="sr-only">
-                    {showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                    {showPassword
+                      ? "Masquer le mot de passe"
+                      : "Afficher le mot de passe"}
                   </span>
                 </Button>
               </div>
               {errors.password && (
-                <p className="text-sm text-red-500">{errors.password.message}</p>
+                <p className="text-sm text-red-500">
+                  {errors.password.message}
+                </p>
               )}
             </div>
           )}

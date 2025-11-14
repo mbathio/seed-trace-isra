@@ -1,4 +1,4 @@
-// backend/src/validators/common.ts - VERSION CORRIGÉE AVEC DEBUG
+// backend/src/validators/common.ts
 import { z } from "zod";
 
 // ✅ CORRECTION CRITIQUE: Enums avec validation stricte - VALEURS UI (format frontend)
@@ -102,7 +102,7 @@ export const CertificationLevelEnum = z.enum(
   }
 );
 
-export const ParcelStatusEnum = z.enum(["available", "in-use", "resting"], {
+export const ParcelStatusEnum = z.enum(["AVAILABLE", "IN_USE", "RESTING"], {
   errorMap: (issue, _ctx) => {
     if (issue.code === "invalid_enum_value") {
       return {

@@ -5,25 +5,12 @@ import { validateRequest } from "../middleware/validation";
 import { requireRole } from "../middleware/auth";
 import { fullTransformation } from "../middleware/transformationMiddleware";
 import { z } from "zod";
+import { createParcelSchema, updateParcelSchema } from "../validators/parcels";
 
 const router = Router();
 
 // ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
 router.use(fullTransformation);
-
-const createParcelSchema = z.object({
-  name: z.string().optional(),
-  area: z.number().positive(),
-  latitude: z.number(),
-  longitude: z.number(),
-  status: z.enum(["available", "in-use", "resting"]).optional(),
-  soilType: z.string().optional(),
-  irrigationSystem: z.string().optional(),
-  address: z.string().optional(),
-  multiplierId: z.number().optional(),
-});
-
-const updateParcelSchema = createParcelSchema.partial();
 
 const soilAnalysisSchema = z.object({
   analysisDate: z.string().refine((date: string) => !isNaN(Date.parse(date))),

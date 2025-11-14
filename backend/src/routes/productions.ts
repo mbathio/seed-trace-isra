@@ -40,15 +40,16 @@ const updateProductionSchema = createProductionSchema.partial().omit({
 });
 
 const activitySchema = z.object({
+  // ⚠️ MAINTENANT : valeurs ENUM côté DB (après transformation middleware)
   type: z.enum([
-    "soil-preparation", // ✅ VALEURS UI (kebab-case)
-    "sowing",
-    "fertilization",
-    "irrigation",
-    "weeding",
-    "pest-control",
-    "harvest",
-    "other",
+    "SOIL_PREPARATION",
+    "SOWING",
+    "FERTILIZATION",
+    "IRRIGATION",
+    "WEEDING",
+    "PEST_CONTROL",
+    "HARVEST",
+    "OTHER",
   ]),
   activityDate: z.string().refine((date) => !isNaN(Date.parse(date))),
   description: z.string().min(1),
@@ -68,11 +69,15 @@ const activitySchema = z.object({
 
 const issueSchema = z.object({
   issueDate: z.string().refine((date) => !isNaN(Date.parse(date))),
-  type: z.enum(["disease", "pest", "weather", "management", "other"]), // ✅ VALEURS UI
+  // ✅ On passe aux valeurs ENUM côté DB (après transformation middleware)
+  type: z.enum(["DISEASE", "PEST", "WEATHER", "MANAGEMENT", "OTHER"]),
   description: z.string().min(1),
-  severity: z.enum(["low", "medium", "high"]), // ✅ VALEURS UI
+  severity: z.enum(["LOW", "MEDIUM", "HIGH"]),
   actions: z.string().min(1),
   cost: z.number().optional(),
+  // (optionnel) tu peux aussi accepter ce que tu envoies déjà côté front :
+  resolved: z.boolean().optional(),
+  resolvedDate: z.string().optional(),
 });
 
 const weatherDataSchema = z.object({
