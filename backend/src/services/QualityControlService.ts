@@ -43,6 +43,7 @@ export class QualityControlService {
           testMethod: data.testMethod,
           laboratoryRef: data.laboratoryRef,
           inspectorId: data.inspectorId,
+          // ⚠️ on ne met plus certificateUrl automatiquement ici
         },
         include: {
           seedLot: {
@@ -64,16 +65,6 @@ export class QualityControlService {
           where: { id: data.lotId },
           data: { status: LotStatus.CERTIFIED },
         });
-
-        // Générer automatiquement un certificat si nécessaire
-        const certificateUrl = await this.generateCertificate(
-          qualityControl.id
-        );
-        const updatedQualityControl = await prisma.qualityControl.update({
-          where: { id: qualityControl.id },
-          data: { certificateUrl },
-        });
-        qualityControl.certificateUrl = certificateUrl;
       } else {
         await prisma.seedLot.update({
           where: { id: data.lotId },
@@ -93,7 +84,6 @@ export class QualityControlService {
       throw error;
     }
   }
-
   /**
    * Déterminer le résultat basé sur les seuils par niveau
    */

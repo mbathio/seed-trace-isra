@@ -193,3 +193,24 @@ export function calculateMultiplicationRate(
   if (parentQuantity === 0) return 0;
   return Math.round((childQuantity / parentQuantity) * 100) / 100;
 }
+
+/**
+ * Génère l'ID d'un lot enfant basé sur un lot parent
+ * Exemple: parent = SL-G3-2024-SAHEL117 → SL-G4-2025-SAHEL117
+ */
+export function generateChildLotId(
+  parentLotId: string,
+  nextLevel: string,
+  productionDate: Date
+): string {
+  // Exemple de parentLotId : SL-G3-2024-SAHEL117
+  const parts = parentLotId.split("-");
+
+  const prefix = parts[0] || "SL"; // SL
+  const varietalCode = parts[3] || parts[parts.length - 1]; // SAHEL117
+
+  // L'année vient de la date de production (date de récolte en général)
+  const year = productionDate.getFullYear();
+
+  return `${prefix}-${nextLevel}-${year}-${varietalCode}`;
+}

@@ -35,6 +35,7 @@ import VarietyDetail from "./pages/varieties/VarietyDetail";
 import Multipliers from "./pages/multipliers/Multipliers";
 import CreateMultiplier from "./pages/multipliers/CreateMultiplier";
 import MultiplierDetail from "./pages/multipliers/MultiplierDetail";
+import EditMultiplier from "./pages/multipliers/EditMultiplier";
 
 // Parcels Pages
 import Parcels from "./pages/parcels/Parcels";
@@ -46,7 +47,7 @@ import EditParcel from "./pages/parcels/EditParcel";
 import Productions from "./pages/productions/Productions";
 import CreateProduction from "./pages/productions/CreateProduction";
 import ProductionDetail from "./pages/productions/ProductionDetail";
-
+import EditProduction from "./pages/productions/EditProduction";
 // Quality Controls Pages
 import QualityControls from "./pages/quality/QualityControls";
 import CreateQualityControl from "./pages/quality/CreateQualityControl";
@@ -126,6 +127,7 @@ function App() {
                 <Route index element={<Multipliers />} />
                 <Route path="create" element={<CreateMultiplier />} />
                 <Route path=":id" element={<MultiplierDetail />} />
+                <Route path=":id/edit" element={<EditMultiplier />} />
               </Route>
 
               {/* Parcels Routes */}
@@ -141,6 +143,10 @@ function App() {
                 <Route index element={<Productions />} />
                 <Route path="create" element={<CreateProduction />} />
                 <Route path=":id" element={<ProductionDetail />} />
+                <Route
+                  path="/dashboard/productions/:id/edit"
+                  element={<EditProduction />}
+                />
               </Route>
 
               {/* Quality Controls Routes */}

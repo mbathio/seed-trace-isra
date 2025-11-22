@@ -222,7 +222,7 @@ const MultiplierDetail: React.FC = () => {
             </p>
           </div>
         </div>
-        <Button>
+        <Button onClick={() => navigate(`/dashboard/multipliers/${id}/edit`)}>
           <Edit className="h-4 w-4 mr-2" />
           Modifier
         </Button>

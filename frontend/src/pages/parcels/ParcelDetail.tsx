@@ -1,4 +1,5 @@
 // frontend/src/pages/parcels/ParcelDetail.tsx - PAGE DE DÉTAILS PARCELLE
+
 import React from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -68,17 +69,28 @@ const ParcelDetail: React.FC = () => {
     queryKey: ["parcel-soil-analyses", id],
     queryFn: async () => {
       const response = await api.get(`/parcels/${id}/soil-analyses`);
+      // backend renvoie { success, data: SoilAnalysis[] }
       return response.data.data;
     },
     enabled: !!id,
   });
 
-  // Données des productions
+  // Données des productions (filtrées par parcelle)
   const { data: productions } = useQuery({
     queryKey: ["parcel-productions", id],
     queryFn: async () => {
       const response = await api.get(`/productions?parcelId=${id}`);
-      return response.data.data.productions || [];
+      const raw = response.data?.data ?? response.data;
+
+      // on gère les deux formats possibles :
+      // { data: Production[] } ou { data: { productions: Production[] } }
+      if (Array.isArray(raw)) {
+        return raw;
+      }
+      if (Array.isArray(raw?.productions)) {
+        return raw.productions;
+      }
+      return [];
     },
     enabled: !!id,
   });
@@ -102,10 +114,13 @@ const ParcelDetail: React.FC = () => {
 
   const getLatestSoilAnalysis = () => {
     if (!soilAnalyses || soilAnalyses.length === 0) return null;
-    return soilAnalyses.sort(
-      (a: any, b: any) =>
-        new Date(b.analysisDate).getTime() - new Date(a.analysisDate).getTime()
-    )[0];
+    return soilAnalyses
+      .slice()
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.analysisDate).getTime() -
+          new Date(a.analysisDate).getTime()
+      )[0];
   };
 
   if (isLoading) {
@@ -131,6 +146,25 @@ const ParcelDetail: React.FC = () => {
   }
 
   const latestAnalysis = getLatestSoilAnalysis();
+
+  // 👉 Comptage des lots PRODUITS uniquement sur cette parcelle
+  const lotsProducedCount =
+    productions && productions.length > 0
+      ? new Set(
+          productions
+            .map(
+              (p: any) => p.lotId || p.seedLot?.code || p.seedLot?.id || p.id
+            )
+            .filter(Boolean)
+        ).size
+      : // fallback si un jour tu ajoutes seedLots directement sur parcel
+        (parcel as any).seedLots?.length ?? parcel._count?.seedLots ?? 0;
+
+  // 👉 Nombre de productions uniquement pour cette parcelle
+  const productionsCount =
+    productions && productions.length > 0
+      ? productions.length
+      : (parcel as any).productions?.length ?? parcel._count?.productions ?? 0;
 
   return (
     <div className="space-y-6">
@@ -161,14 +195,17 @@ const ParcelDetail: React.FC = () => {
             <Plus className="h-4 w-4 mr-2" />
             Nouvelle analyse
           </Button>
-          <Button>
+          {/* 👉 Bouton Modifier vers l’écran d’édition */}
+          <Button
+            onClick={() => navigate(`/dashboard/parcels/${parcel.id}/edit`)}
+          >
             <Edit className="h-4 w-4 mr-2" />
             Modifier
           </Button>
         </div>
       </div>
 
-      {/* Overview Cards */}
+      {/* Cartes de synthèse */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
@@ -189,9 +226,7 @@ const ParcelDetail: React.FC = () => {
             <div className="flex items-center space-x-2">
               <Package className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-2xl font-bold">
-                  {parcel._count?.seedLots || 0}
-                </p>
+                <p className="text-2xl font-bold">{lotsProducedCount}</p>
                 <p className="text-xs text-muted-foreground">Lots produits</p>
               </div>
             </div>
@@ -203,9 +238,7 @@ const ParcelDetail: React.FC = () => {
             <div className="flex items-center space-x-2">
               <Tractor className="h-4 w-4 text-muted-foreground" />
               <div>
-                <p className="text-2xl font-bold">
-                  {parcel._count?.productions || 0}
-                </p>
+                <p className="text-2xl font-bold">{productionsCount}</p>
                 <p className="text-xs text-muted-foreground">Productions</p>
               </div>
             </div>
@@ -227,7 +260,7 @@ const ParcelDetail: React.FC = () => {
         </Card>
       </div>
 
-      {/* Detailed Information */}
+      {/* Détails */}
       <Tabs defaultValue="details" className="space-y-4">
         <TabsList>
           <TabsTrigger value="details">Informations</TabsTrigger>
@@ -236,6 +269,7 @@ const ParcelDetail: React.FC = () => {
           <TabsTrigger value="history">Historique</TabsTrigger>
         </TabsList>
 
+        {/* Onglet Informations */}
         <TabsContent value="details">
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
@@ -361,6 +395,7 @@ const ParcelDetail: React.FC = () => {
           </div>
         </TabsContent>
 
+        {/* Onglet Analyses de sol */}
         <TabsContent value="soil">
           <Card>
             <CardHeader>
@@ -454,6 +489,7 @@ const ParcelDetail: React.FC = () => {
           </Card>
         </TabsContent>
 
+        {/* Onglet Productions – uniquement celles de cette parcelle */}
         <TabsContent value="productions">
           <Card>
             <CardHeader>
@@ -531,6 +567,7 @@ const ParcelDetail: React.FC = () => {
           </Card>
         </TabsContent>
 
+        {/* Onglet Historique – basé sur analyses + productions de CETTE parcelle */}
         <TabsContent value="history">
           <Card>
             <CardHeader>

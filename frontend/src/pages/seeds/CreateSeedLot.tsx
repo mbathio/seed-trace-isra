@@ -42,6 +42,7 @@ interface CreateSeedLotForm {
   notes?: string;
   batchNumber?: string;
   multiplierId?: number;
+  parcelId?: number;
   parentLotId?: string; // ✅ string attendu par le backend
 }
 
@@ -65,6 +66,7 @@ const CreateSeedLot: React.FC = () => {
       notes: "",
       batchNumber: "",
       multiplierId: undefined,
+      parcelId: undefined,
       parentLotId: "",
     },
   });
@@ -88,7 +90,9 @@ const CreateSeedLot: React.FC = () => {
   const varieties = varietiesResponse?.data || [];
 
   // 🔹 Déterminer le niveau parent selon le niveau choisi
-  const getParentLevel = (level: string): string | null => {
+  const getParentLevel = (
+    level: "GO" | "G1" | "G2" | "G3" | "G4" | "R1" | "R2"
+  ): string | null => {
     const map: Record<string, string | null> = {
       G1: "GO",
       G2: "G1",
@@ -125,6 +129,39 @@ const CreateSeedLot: React.FC = () => {
 
   const parentLots = lotsResponse?.data || [];
 
+  // 🔹 Charger les multiplicateurs (stations)
+  const { data: multipliersResponse, isLoading: loadingMultipliers } = useQuery<
+    ApiResponse<any[]>
+  >({
+    queryKey: ["multipliers-for-seed-lot"],
+    queryFn: async () => {
+      const response = await api.get("/multipliers", {
+        params: { status: "active", pageSize: 100 },
+      });
+      return response.data;
+    },
+  });
+
+  const multipliers = multipliersResponse?.data || [];
+
+  // 🔹 Charger les parcelles
+  const { data: parcelsResponse, isLoading: loadingParcels } = useQuery<
+    ApiResponse<any[]>
+  >({
+    queryKey: ["parcels-for-seed-lot"],
+    queryFn: async () => {
+      const response = await api.get("/parcels", {
+        params: {
+          pageSize: 100, // nombre max
+          includeRelations: true, // même logique que la liste des parcelles
+        },
+      });
+      return response.data;
+    },
+  });
+
+  const parcels = parcelsResponse?.data || [];
+
   // 🔹 Mutation de création du lot
   const createMutation = useMutation({
     mutationFn: async (data: CreateSeedLotForm) => {
@@ -136,10 +173,11 @@ const CreateSeedLot: React.FC = () => {
         expiryDate: data.expiryDate
           ? new Date(data.expiryDate).toISOString()
           : undefined,
-        status: "PENDING", // ✅ valeur par défaut reconnue par le backend
+        status: "PENDING", // ✅ Statut par défaut reconnue par le backend
         notes: data.notes?.trim() || undefined,
         batchNumber: data.batchNumber?.trim() || undefined,
         multiplierId: data.multiplierId ? Number(data.multiplierId) : undefined,
+        parcelId: data.parcelId ? Number(data.parcelId) : undefined,
         parentLotId:
           data.parentLotId && data.parentLotId !== ""
             ? String(data.parentLotId)
@@ -147,61 +185,168 @@ const CreateSeedLot: React.FC = () => {
       };
 
       console.log("🚀 [CreateSeedLot] Payload envoyé :", payload);
+
       const response = await seedLotService.create(payload);
       return response.data;
     },
-    onSuccess: (data) => {
-      toast.success("✅ Lot de semences créé avec succès !");
-      navigate(`/dashboard/seed-lots/${data.id}`);
+    onSuccess: (createdLot) => {
+      toast.success("Lot créé avec succès");
+      if (createdLot?.id) {
+        navigate(`/dashboard/seed-lots/${createdLot.id}`);
+      } else {
+        navigate("/dashboard/seed-lots");
+      }
     },
     onError: (error: any) => {
-      const msg =
-        error?.response?.data?.message || "Erreur lors de la création du lot";
-      toast.error(msg);
+      console.error("❌ Erreur lors de la création du lot :", error);
+
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Erreur lors de la création du lot";
+
+      toast.error(message);
+    },
+    onSettled: () => {
+      setIsSubmitting(false);
     },
   });
 
-  const onSubmit: SubmitHandler<CreateSeedLotForm> = async (data) => {
-    setIsSubmitting(true);
-    try {
-      await createMutation.mutateAsync(data);
-    } finally {
-      setIsSubmitting(false);
+  const onSubmit: SubmitHandler<CreateSeedLotForm> = (data) => {
+    if (!data.varietyId || data.varietyId === 0) {
+      toast.error("Veuillez sélectionner une variété");
+      return;
     }
+
+    setIsSubmitting(true);
+    createMutation.mutate(data);
+  };
+
+  const handleCancel = () => {
+    navigate(-1);
+  };
+
+  const getLevelLabel = (level: string): string => {
+    const found = SEED_LEVELS.find((l) => l.value === level);
+    return found ? found.label : level;
+  };
+
+  const renderLevelDescription = () => {
+    if (!selectedLevel) return null;
+    const selected = SEED_LEVELS.find((l) => l.value === selectedLevel);
+    if (!selected) return null;
+
+    const anySelected = selected as any; // 👈 cast pour TS
+    if (!anySelected.description) return null;
+
+    return (
+      <p className="text-sm text-muted-foreground mt-1">
+        {anySelected.description}
+      </p>
+    );
+  };
+
+  const renderParentLotField = () => {
+    if (selectedLevel === "GO") {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Le niveau G0 est le premier niveau de semences. Il n’a pas de lot
+          parent.
+        </p>
+      );
+    }
+
+    if (!selectedVariety) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Sélectionnez d’abord une variété pour voir les lots parents
+          disponibles.
+        </p>
+      );
+    }
+
+    if (loadingLots) {
+      return <p className="text-sm text-muted-foreground">Chargement…</p>;
+    }
+
+    if (!parentLots.length) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Aucun lot parent disponible pour ce niveau et cette variété.
+        </p>
+      );
+    }
+
+    const parentLevel = getParentLevel(selectedLevel);
+
+    return (
+      <div className="space-y-2">
+        <Label>
+          Lot parent ({parentLevel}){" "}
+          <span className="text-xs text-muted-foreground">
+            (optionnel mais recommandé)
+          </span>
+        </Label>
+        <Controller
+          name="parentLotId"
+          control={control}
+          render={({ field }) => (
+            <Select
+              value={field.value ?? ""}
+              onValueChange={(val) => field.onChange(val || "")}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un lot parent" />
+              </SelectTrigger>
+              <SelectContent>
+                {parentLots.map((lot) => (
+                  <SelectItem key={lot.id} value={String(lot.id)}>
+                    {lot.batchNumber
+                      ? `${lot.batchNumber} — ${lot.level} — ${lot.quantity} kg`
+                      : `Lot ${lot.id} — ${lot.level} — ${lot.quantity} kg`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
+      </div>
+    );
   };
 
   return (
-    <div className="space-y-6">
-      {/* === En-tête === */}
-      <div className="flex items-center space-x-4">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/dashboard/seed-lots")}
-          className="flex items-center"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Retour
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold flex items-center">
-            <Sprout className="h-8 w-8 mr-3 text-green-600" />
-            Nouveau lot de semences
-          </h1>
-          <p className="text-muted-foreground">
-            Créez un nouveau lot pour le suivi et la traçabilité.
-          </p>
+    <div className="space-y-6 p-4 md:p-6 lg:p-8">
+      {/* En-tête */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleCancel}
+            className="mr-2"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+              <Sprout className="h-6 w-6 text-green-600" />
+              Créer un nouveau lot de semences
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Renseignez les informations nécessaires pour créer un lot.
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* === Formulaire === */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* === Carte 1 : Informations de base === */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* === Carte 1 : Informations principales === */}
           <Card>
             <CardHeader>
-              <CardTitle>Informations de base</CardTitle>
+              <CardTitle>Informations principales</CardTitle>
               <CardDescription>
-                Détails essentiels du lot de semences.
+                Variété, niveau de semence, quantité et lot parent.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -213,17 +358,22 @@ const CreateSeedLot: React.FC = () => {
                   control={control}
                   render={({ field }) => (
                     <Select
-                      value={field.value ? field.value.toString() : ""}
-                      onValueChange={(v) => field.onChange(parseInt(v))}
+                      value={field.value ? String(field.value) : ""}
+                      onValueChange={(value) =>
+                        field.onChange(Number(value) || 0)
+                      }
                       disabled={loadingVarieties}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner une variété" />
                       </SelectTrigger>
                       <SelectContent>
-                        {varieties.map((v) => (
-                          <SelectItem key={v.id} value={v.id.toString()}>
-                            {v.name} ({v.code})
+                        {varieties.map((variety) => (
+                          <SelectItem
+                            key={variety.id}
+                            value={String(variety.id)}
+                          >
+                            {variety.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -231,20 +381,25 @@ const CreateSeedLot: React.FC = () => {
                   )}
                 />
                 {errors.varietyId && (
-                  <p className="text-sm text-red-500">
+                  <p className="text-sm text-destructive">
                     {errors.varietyId.message}
                   </p>
                 )}
               </div>
 
-              {/* Niveau */}
+              {/* Niveau de semence */}
               <div className="space-y-2">
-                <Label>Niveau *</Label>
+                <Label>Niveau de semence *</Label>
                 <Controller
                   name="level"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value}
+                      onValueChange={(value) =>
+                        field.onChange(value as CreateSeedLotForm["level"])
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un niveau" />
                       </SelectTrigger>
@@ -258,6 +413,7 @@ const CreateSeedLot: React.FC = () => {
                     </Select>
                   )}
                 />
+                {renderLevelDescription()}
               </div>
 
               {/* Quantité */}
@@ -273,50 +429,21 @@ const CreateSeedLot: React.FC = () => {
                       step="0.1"
                       {...field}
                       value={field.value ?? 0}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
+                      onChange={(e) =>
+                        field.onChange(Number(e.target.value) || 0)
+                      }
                     />
                   )}
                 />
+                {errors.quantity && (
+                  <p className="text-sm text-destructive">
+                    {errors.quantity.message}
+                  </p>
+                )}
               </div>
 
-              {/* Lot parent */}
-              {selectedLevel !== "GO" && (
-                <div className="space-y-2">
-                  <Label>Lot parent (même variété, certifié)</Label>
-                  <Controller
-                    name="parentLotId"
-                    control={control}
-                    render={({ field }) => (
-                      <Select
-                        value={field.value || ""}
-                        onValueChange={field.onChange}
-                        disabled={loadingLots || !selectedVariety}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner un lot parent" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {parentLots.length > 0 ? (
-                            parentLots.map((lot) => (
-                              <SelectItem
-                                key={lot.id}
-                                value={lot.id.toString()}
-                              >
-                                {lot.batchNumber || lot.id} — {lot.level} (
-                                {lot.variety?.name})
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <div className="px-3 py-2 text-sm text-muted-foreground">
-                              Aucun lot parent disponible
-                            </div>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
-              )}
+              {/* Lot parent (dépend du niveau + variété) */}
+              {renderParentLotField()}
             </CardContent>
           </Card>
 
@@ -349,6 +476,65 @@ const CreateSeedLot: React.FC = () => {
                 </div>
               </div>
 
+              {/* Station (multiplicateur) + Parcelle */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Station / multiplicateur */}
+                <div className="space-y-2">
+                  <Label>Station / multiplicateur</Label>
+                  <Controller
+                    name="multiplierId"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ? field.value.toString() : ""}
+                        onValueChange={(v) => field.onChange(parseInt(v))}
+                        disabled={loadingMultipliers}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner une station" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {multipliers.map((m: any) => (
+                            <SelectItem key={m.id} value={m.id.toString()}>
+                              {m.name ?? `Multiplicateur #${m.id}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+
+                {/* Parcelle */}
+                <div className="space-y-2">
+                  <Label>Parcelle</Label>
+                  <Controller
+                    name="parcelId"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ? field.value.toString() : ""}
+                        onValueChange={(v) =>
+                          field.onChange(v ? parseInt(v) : undefined)
+                        }
+                        disabled={loadingParcels}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner une parcelle" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {parcels.map((p: any) => (
+                            <SelectItem key={p.id} value={p.id.toString()}>
+                              {p.name ?? p.code ?? `Parcelle #${p.id}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </div>
+
               {/* Numéro de lot */}
               <div className="space-y-2">
                 <Label>Numéro de lot (auto si vide)</Label>
@@ -357,9 +543,8 @@ const CreateSeedLot: React.FC = () => {
                   control={control}
                   render={({ field }) => (
                     <Input
-                      placeholder="Laissez vide pour génération automatique"
+                      placeholder="Laisser vide pour générer automatiquement"
                       {...field}
-                      value={field.value ?? ""}
                     />
                   )}
                 />
@@ -373,9 +558,9 @@ const CreateSeedLot: React.FC = () => {
                   control={control}
                   render={({ field }) => (
                     <Textarea
-                      placeholder="Observations ou remarques..."
+                      rows={4}
+                      placeholder="Informations complémentaires, remarques..."
                       {...field}
-                      value={field.value ?? ""}
                     />
                   )}
                 />
@@ -384,10 +569,21 @@ const CreateSeedLot: React.FC = () => {
           </Card>
         </div>
 
-        {/* === Bouton d’enregistrement === */}
-        <div className="flex justify-end">
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? (
+        {/* Boutons d’action */}
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isSubmitting}
+          >
+            Annuler
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting || createMutation.isPending}
+          >
+            {isSubmitting || createMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Enregistrement...

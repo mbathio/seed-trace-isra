@@ -11,28 +11,42 @@ const router = Router();
 // ✅ APPLIQUER LE MIDDLEWARE DE TRANSFORMATION
 router.use(fullTransformation);
 
+// 🔧 Helper pour les dates optionnelles (acceptent aussi null)
+const dateField = z
+  .union([z.string().refine((date) => !isNaN(Date.parse(date))), z.null()])
+  .optional();
+
+// ✅ Schéma de création de production
 const createProductionSchema = z.object({
   lotId: z.string().min(1),
   multiplierId: z.number().positive(),
   parcelId: z.number().positive(),
+
+  // date de début obligatoire
   startDate: z.string().refine((date) => !isNaN(Date.parse(date))),
-  endDate: z
-    .string()
-    .refine((date) => !isNaN(Date.parse(date)))
+
+  // dates optionnelles (string ou null)
+  endDate: dateField,
+  sowingDate: dateField,
+  harvestDate: dateField,
+
+  // quantités optionnelles (nombre ou null)
+  plannedQuantity: z.number().positive().nullable().optional(),
+  actualYield: z.number().min(0).nullable().optional(),
+
+  // textes optionnels (string ou null)
+  notes: z.string().nullable().optional(),
+  weatherConditions: z.string().nullable().optional(),
+
+  // 🟢 statut côté DB (après transformation middleware)
+  // valeurs EXACTES de l'enum Prisma ProductionStatus
+  status: z
+    .enum(["PLANNED", "IN_PROGRESS", "COMPLETED", "CANCELLED"])
     .optional(),
-  sowingDate: z
-    .string()
-    .refine((date) => !isNaN(Date.parse(date)))
-    .optional(),
-  harvestDate: z
-    .string()
-    .refine((date) => !isNaN(Date.parse(date)))
-    .optional(),
-  plannedQuantity: z.number().positive().optional(),
-  notes: z.string().optional(),
-  weatherConditions: z.string().optional(),
 });
 
+// ✅ Schéma de mise à jour : tous les champs optionnels,
+// mais on NE permet pas de modifier lotId / multiplierId / parcelId
 const updateProductionSchema = createProductionSchema.partial().omit({
   lotId: true,
   multiplierId: true,
@@ -93,35 +107,41 @@ const weatherDataSchema = z.object({
 // Routes...
 router.get("/", ProductionController.getProductions);
 router.get("/:id", ProductionController.getProductionById);
+
 router.post(
   "/",
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: createProductionSchema }),
   ProductionController.createProduction
 );
+
 router.put(
   "/:id",
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: updateProductionSchema }),
   ProductionController.updateProduction
 );
+
 router.delete(
   "/:id",
   requireRole("ADMIN"),
   ProductionController.deleteProduction
 );
+
 router.post(
   "/:id/activities",
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: activitySchema }),
   ProductionController.addActivity
 );
+
 router.post(
   "/:id/issues",
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),
   validateRequest({ body: issueSchema }),
   ProductionController.addIssue
 );
+
 router.post(
   "/:id/weather-data",
   requireRole("TECHNICIAN", "MANAGER", "ADMIN"),

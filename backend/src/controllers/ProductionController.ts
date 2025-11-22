@@ -49,15 +49,19 @@ export class ProductionController {
   ): Promise<Response | void> {
     try {
       const filters = {
-        page: req.query.page ? parseInt(req.query.page as string) : 1,
+        page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
         pageSize: req.query.pageSize
-          ? parseInt(req.query.pageSize as string)
+          ? parseInt(req.query.pageSize as string, 10)
           : 10,
         search: req.query.search as string,
         status: req.query.status as string,
         multiplierId: req.query.multiplierId as string,
         sortBy: (req.query.sortBy as string) || "startDate",
         sortOrder: (req.query.sortOrder as "asc" | "desc") || "desc",
+        // ✅ NOUVEAU : filtre par parcelle
+        parcelId: req.query.parcelId
+          ? parseInt(req.query.parcelId as string, 10)
+          : undefined,
       };
 
       logger.info("Récupération des productions", { filters });

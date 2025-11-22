@@ -108,7 +108,10 @@ const EditSeedLot: React.FC = () => {
     queryKey: ["parcels-for-edit"],
     queryFn: async () => {
       const response = await api.get("/parcels", {
-        params: { pageSize: 100, status: "available" },
+        params: {
+          pageSize: 100,
+          includeRelations: true, // même logique que la liste des parcelles
+        },
       });
       return response.data;
     },

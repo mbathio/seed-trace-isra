@@ -15,20 +15,20 @@ export const parcelService = {
 
   // Récupérer une parcelle par ID
   async getById(id: number) {
-    const response = await api.get<Parcel>(`/parcels/${id}`);
-    return response.data;
+    const response = await api.get<ApiResponse<Parcel>>(`/parcels/${id}`);
+    return response.data.data;
   },
 
   // Créer une nouvelle parcelle
   async create(data: Partial<Parcel>) {
-    const response = await api.post<Parcel>("/parcels", data);
-    return response.data;
+    const response = await api.post<ApiResponse<Parcel>>("/parcels", data);
+    return response.data.data;
   },
 
   // Mettre à jour une parcelle
   async update(id: number, data: Partial<Parcel>) {
-    const response = await api.put<Parcel>(`/parcels/${id}`, data);
-    return response.data;
+    const response = await api.put<ApiResponse<Parcel>>(`/parcels/${id}`, data);
+    return response.data.data;
   },
 
   // Supprimer une parcelle

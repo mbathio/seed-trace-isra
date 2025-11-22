@@ -16,7 +16,8 @@ export interface CreateSeedLotData {
   notes?: string;
   batchNumber?: string;
   multiplierId?: number;
-  parentLotId?: number;
+  parcelId?: number;
+  parentLotId?: string;
 }
 
 export interface UpdateSeedLotData {

@@ -2,7 +2,37 @@
 import { prisma } from "../config/database";
 import { logger } from "../utils/logger";
 import { PaginationQuery } from "../types/api";
-import { ProductionStatus } from "@prisma/client";
+import {
+  ProductionStatus,
+  SeedLevel,
+  LotStatus,
+  ParcelStatus,
+} from "@prisma/client";
+import { SeedLotService } from "./SeedLotService"; // 🆕 pour créer le lot automatiquement
+import { getNextLevel } from "../utils/seedLotHelpers"; // 🆕 pour calculer le niveau enfant
+import { generateChildLotId } from "../utils/seedLotHelpers";
+
+const SEED_LEVEL_ORDER: SeedLevel[] = [
+  "GO",
+  "G1",
+  "G2",
+  "G3",
+  "G4",
+  "R1",
+  "R2",
+];
+
+function getNextSeedLevel(current: SeedLevel | null | undefined): SeedLevel {
+  if (!current) {
+    return "GO";
+  }
+  const idx = SEED_LEVEL_ORDER.indexOf(current);
+  if (idx === -1 || idx === SEED_LEVEL_ORDER.length - 1) {
+    // Si on ne trouve pas ou déjà au dernier niveau, on garde le niveau actuel
+    return current;
+  }
+  return SEED_LEVEL_ORDER[idx + 1];
+}
 
 export class ProductionService {
   static async createProduction(data: any): Promise<any> {
@@ -57,6 +87,7 @@ export class ProductionService {
         multiplierId,
         sortBy = "startDate",
         sortOrder = "desc",
+        parcelId,
       } = query;
 
       const skip = (page - 1) * pageSize;
@@ -65,7 +96,7 @@ export class ProductionService {
 
       if (search) {
         where.OR = [
-          { seedLot: { id: { contains: search, mode: "insensitive" } } },
+          { lotId: { contains: search, mode: "insensitive" } },
           { notes: { contains: search, mode: "insensitive" } },
         ];
       }
@@ -75,7 +106,11 @@ export class ProductionService {
       }
 
       if (multiplierId) {
-        where.multiplierId = parseInt(multiplierId);
+        where.multiplierId = parseInt(multiplierId, 10);
+      }
+
+      if (parcelId) {
+        where.parcelId = Number(parcelId);
       }
 
       const [productions, total] = await Promise.all([
@@ -174,52 +209,224 @@ export class ProductionService {
     }
   }
 
-  static async updateProduction(id: number, data: any): Promise<any> {
+  static async updateProduction(
+    id: number,
+    data: Partial<{
+      status: ProductionStatus;
+      startDate: Date | string | null;
+      endDate: Date | string | null;
+      sowingDate: Date | string | null;
+      harvestDate: Date | string | null;
+      plannedQuantity: number | null;
+      actualYield: number | null;
+      weatherConditions: string | null;
+      notes: string | null;
+      multiplierId: number | null;
+      parcelId: number | null;
+    }>
+  ) {
+    logger.info("]: Updating production |", { id, data });
+
     try {
-      const updateData: any = {};
+      // 🔒 Transaction pour garder tout cohérent
+      const updated = await prisma.$transaction(async (tx) => {
+        const existing = await tx.production.findUnique({
+          where: { id },
+        });
 
-      // Copier les champs simples
-      if (data.plannedQuantity !== undefined)
-        updateData.plannedQuantity = data.plannedQuantity;
-      if (data.actualYield !== undefined)
-        updateData.actualYield = data.actualYield;
-      if (data.notes !== undefined) updateData.notes = data.notes;
-      if (data.weatherConditions !== undefined)
-        updateData.weatherConditions = data.weatherConditions;
-      if (data.status !== undefined) updateData.status = data.status;
+        if (!existing) {
+          throw new Error("Production introuvable");
+        }
 
-      // Ajouter les dates seulement si elles existent
-      if (data.endDate) {
-        updateData.endDate = new Date(data.endDate);
+        const previousStatus = existing.status as ProductionStatus | null;
+        const nextStatus =
+          (data.status as ProductionStatus | undefined) ?? previousStatus;
+
+        const updateData: any = {};
+
+        if (data.status !== undefined) updateData.status = data.status;
+
+        if (data.startDate !== undefined)
+          updateData.startDate = data.startDate
+            ? new Date(data.startDate as any)
+            : null;
+        if (data.endDate !== undefined)
+          updateData.endDate = data.endDate
+            ? new Date(data.endDate as any)
+            : null;
+        if (data.sowingDate !== undefined)
+          updateData.sowingDate = data.sowingDate
+            ? new Date(data.sowingDate as any)
+            : null;
+        if (data.harvestDate !== undefined)
+          updateData.harvestDate = data.harvestDate
+            ? new Date(data.harvestDate as any)
+            : null;
+
+        if (data.plannedQuantity !== undefined)
+          updateData.plannedQuantity = data.plannedQuantity;
+        if (data.actualYield !== undefined)
+          updateData.actualYield = data.actualYield;
+
+        if (data.weatherConditions !== undefined)
+          updateData.weatherConditions = data.weatherConditions;
+        if (data.notes !== undefined) updateData.notes = data.notes;
+
+        if (data.multiplierId !== undefined)
+          updateData.multiplierId = data.multiplierId;
+        if (data.parcelId !== undefined) updateData.parcelId = data.parcelId;
+
+        const production = await tx.production.update({
+          where: { id },
+          data: updateData,
+        });
+
+        // ✅ Si le statut vient de passer à COMPLETED → création automatique du lot de semence
+        if (previousStatus !== "COMPLETED" && nextStatus === "COMPLETED") {
+          await ProductionService.createSeedLotFromCompletedProduction(
+            tx,
+            production
+          );
+
+          // ✅ Et on libère la parcelle (si elle existe)
+          if (production.parcelId) {
+            try {
+              await tx.parcel.update({
+                where: { id: production.parcelId },
+                data: {
+                  status: ParcelStatus.AVAILABLE, // "libre"
+                  updatedAt: new Date(),
+                },
+              });
+
+              logger.info("Parcelle libérée après fin de production", {
+                parcelId: production.parcelId,
+                productionId: production.id,
+                newStatus: ParcelStatus.AVAILABLE,
+              });
+            } catch (err) {
+              logger.error(
+                "Erreur lors de la libération de la parcelle après fin de production",
+                {
+                  parcelId: production.parcelId,
+                  productionId: production.id,
+                  error: err,
+                }
+              );
+              // On peut choisir de ne pas throw ici pour ne pas bloquer la mise à jour de la production,
+              // mais perso je te conseille de laisser remonter l'erreur si c'est critique.
+              throw err;
+            }
+          }
+        }
+
+        return production;
+      });
+
+      // On recharge la production complète (avec les compteurs) pour le front
+      const full = await ProductionService.getProductionById(id);
+      return full ?? updated;
+    } catch (error) {
+      logger.error("Erreur lors de la mise à jour de la production:", error);
+      throw error;
+    }
+  }
+
+  private static async createSeedLotFromCompletedProduction(
+    tx: any,
+    production: any
+  ) {
+    try {
+      if (!production.lotId) {
+        logger.warn(
+          "Production terminée sans lot source, aucun lot de semence créé",
+          { productionId: production.id }
+        );
+        return;
       }
 
-      if (data.sowingDate) {
-        updateData.sowingDate = new Date(data.sowingDate);
+      const parentLot = await tx.seedLot.findUnique({
+        where: { id: production.lotId },
+      });
+
+      if (!parentLot) {
+        logger.warn("Lot parent introuvable pour la production terminée", {
+          productionId: production.id,
+          lotId: production.lotId,
+        });
+        return;
       }
 
-      if (data.harvestDate) {
-        updateData.harvestDate = new Date(data.harvestDate);
+      // Rendement = quantité du nouveau lot
+      const quantity: number | null =
+        production.actualYield ?? production.plannedQuantity ?? null;
+
+      if (!quantity || quantity <= 0) {
+        logger.warn(
+          "Impossible de créer un lot de semence: rendement nul ou manquant",
+          {
+            productionId: production.id,
+            actualYield: production.actualYield,
+            plannedQuantity: production.plannedQuantity,
+          }
+        );
+        return;
       }
 
-      updateData.updatedAt = new Date();
+      const nextLevel = getNextSeedLevel(parentLot.level as SeedLevel | null);
+      const productionDate: Date =
+        production.harvestDate ||
+        production.endDate ||
+        production.startDate ||
+        new Date();
+      // Générer un ID enfant basé sur le lot parent
+      const newLotId = generateChildLotId(
+        parentLot.id,
+        nextLevel,
+        productionDate
+      );
 
-      const production = await prisma.production.update({
-        where: { id },
-        data: updateData,
-        include: {
-          seedLot: {
-            include: {
-              variety: true,
-            },
-          },
-          multiplier: true,
-          parcel: true,
+      const newLot = await tx.seedLot.create({
+        data: {
+          id: newLotId, // ← OBLIGATOIRE pour Prisma
+          varietyId: parentLot.varietyId,
+          level: nextLevel,
+          quantity,
+          productionDate,
+          expiryDate: parentLot.expiryDate ?? null,
+          status: LotStatus.IN_STOCK,
+          multiplierId:
+            production.multiplierId ?? parentLot.multiplierId ?? null,
+          parcelId: production.parcelId ?? parentLot.parcelId ?? null,
+          parentLotId: parentLot.id,
+          batchNumber: parentLot.batchNumber,
+          notes: `Lot créé automatiquement à partir de la production ${production.id}`,
         },
       });
 
-      return production;
+      // 🔄 On marque le lot parent comme "en utilisation"
+      await tx.seedLot.update({
+        where: { id: parentLot.id },
+        data: {
+          status: LotStatus.ACTIVE,
+        },
+      });
+
+      logger.info(
+        "Lot de semence créé automatiquement à partir d'une production terminée",
+        {
+          productionId: production.id,
+          parentLotId: parentLot.id,
+          newLotId: newLot.id,
+          quantity,
+          level: nextLevel,
+        }
+      );
     } catch (error) {
-      logger.error("Erreur lors de la mise à jour de la production:", error);
+      logger.error(
+        "Erreur lors de la création automatique du lot de semence à partir de la production:",
+        { productionId: production.id, error }
+      );
       throw error;
     }
   }

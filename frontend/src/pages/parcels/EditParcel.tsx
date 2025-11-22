@@ -28,10 +28,23 @@ import { PARCEL_STATUSES } from "../../constants";
 import { parcelValidationSchema } from "../../utils/validators";
 import { LocationPicker } from "../../components/map/LocationPicker";
 
+// Même shape que CreateParcelForm
+interface EditParcelForm {
+  name?: string;
+  area: number;
+  latitude: number;
+  longitude: number;
+  status: "available" | "in-use" | "resting";
+  soilType?: string;
+  irrigationSystem?: string;
+  address?: string;
+  multiplierId?: number;
+}
+
 const EditParcel: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const parcelId = parseInt(id!);
+  const parcelId = Number(id);
 
   const { data: parcel, isLoading } = useParcel(parcelId);
   const { data: multipliersData } = useMultipliers({ status: "active" });
@@ -43,42 +56,70 @@ const EditParcel: React.FC = () => {
     control,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isDirty },
-  } = useForm({
+  } = useForm<EditParcelForm>({
     resolver: yupResolver(parcelValidationSchema),
     defaultValues: {
       name: "",
       area: 0,
-      latitude: 0,
-      longitude: 0,
       status: "available",
       soilType: "",
       irrigationSystem: "",
       address: "",
       multiplierId: undefined,
+      latitude: null as any, // comme CreateParcel
+      longitude: null as any,
     },
   });
 
-  // Remplir le formulaire avec les données existantes
+  const watchedLatitude = watch("latitude");
+  const watchedLongitude = watch("longitude");
+
+  // Pré-remplir le formulaire avec les données de la parcelle
   useEffect(() => {
     if (parcel) {
       reset({
         name: parcel.name || "",
         area: parcel.area,
-        latitude: parcel.latitude,
-        longitude: parcel.longitude,
-        status: parcel.status,
+        status: parcel.status as EditParcelForm["status"],
         soilType: parcel.soilType || "",
         irrigationSystem: parcel.irrigationSystem || "",
         address: parcel.address || "",
-        multiplierId: parcel.multiplierId,
+        multiplierId: parcel.multiplierId ?? undefined,
+        latitude: (parcel.latitude as any) ?? (null as any),
+        longitude: (parcel.longitude as any) ?? (null as any),
       });
     }
   }, [parcel, reset]);
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: EditParcelForm) => {
+    const cleanedData: EditParcelForm = {
+      ...data,
+      area: Number(data.area ?? 0),
+      latitude: Number(
+        data.latitude === ("" as any) || data.latitude == null
+          ? 0
+          : data.latitude
+      ),
+      longitude: Number(
+        data.longitude === ("" as any) || data.longitude == null
+          ? 0
+          : data.longitude
+      ),
+      multiplierId:
+        data.multiplierId === undefined || data.multiplierId === null
+          ? undefined
+          : Number(data.multiplierId),
+      name: data.name?.trim() || undefined,
+      address: data.address?.trim() || undefined,
+      soilType: data.soilType?.trim() || undefined,
+      irrigationSystem: data.irrigationSystem?.trim() || undefined,
+    };
+
     try {
-      await updateMutation.mutateAsync({ id: parcelId, data });
+      await updateMutation.mutateAsync({ id: parcelId, data: cleanedData });
       navigate(`/dashboard/parcels/${parcelId}`);
     } catch (error) {
       console.error("Erreur lors de la mise à jour:", error);
@@ -119,7 +160,11 @@ const EditParcel: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold">Modifier la parcelle</h1>
           <p className="text-muted-foreground">
-            {parcel.name || `Parcelle ${parcel.code}`}
+            {parcel.name
+              ? parcel.name
+              : parcel.code
+              ? `Parcelle ${parcel.code}`
+              : `Parcelle #${parcel.id}`}
           </p>
         </div>
       </div>
@@ -131,7 +176,7 @@ const EditParcel: React.FC = () => {
             <CardHeader>
               <CardTitle>Informations de base</CardTitle>
               <CardDescription>
-                Détails d'identification de la parcelle
+                Détails d&apos;identification de la parcelle
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -148,7 +193,9 @@ const EditParcel: React.FC = () => {
                   )}
                 />
                 {errors.name && (
-                  <p className="text-sm text-red-500">{errors.name.message}</p>
+                  <p className="text-sm text-red-500">
+                    {errors.name.message as string}
+                  </p>
                 )}
               </div>
 
@@ -171,7 +218,9 @@ const EditParcel: React.FC = () => {
                   )}
                 />
                 {errors.area && (
-                  <p className="text-sm text-red-500">{errors.area.message}</p>
+                  <p className="text-sm text-red-500">
+                    {errors.area.message as string}
+                  </p>
                 )}
               </div>
 
@@ -181,7 +230,10 @@ const EditParcel: React.FC = () => {
                   name="status"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value || "available"}
+                      onValueChange={field.onChange}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un statut" />
                       </SelectTrigger>
@@ -195,6 +247,11 @@ const EditParcel: React.FC = () => {
                     </Select>
                   )}
                 />
+                {errors.status && (
+                  <p className="text-sm text-red-500">
+                    {errors.status.message as string}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -204,10 +261,14 @@ const EditParcel: React.FC = () => {
                   control={control}
                   render={({ field }) => (
                     <Select
-                      value={field.value?.toString() || "none"}
+                      value={
+                        field.value === undefined || field.value === null
+                          ? "none"
+                          : field.value.toString()
+                      }
                       onValueChange={(value) =>
                         field.onChange(
-                          value === "none" ? undefined : parseInt(value)
+                          value === "none" ? undefined : parseInt(value, 10)
                         )
                       }
                     >
@@ -239,7 +300,7 @@ const EditParcel: React.FC = () => {
             <CardHeader>
               <CardTitle>Caractéristiques du sol</CardTitle>
               <CardDescription>
-                Propriétés physiques et système d'irrigation
+                Propriétés physiques et système d&apos;irrigation
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -255,7 +316,9 @@ const EditParcel: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="irrigationSystem">Système d'irrigation</Label>
+                <Label htmlFor="irrigationSystem">
+                  Système d&apos;irrigation
+                </Label>
                 <Controller
                   name="irrigationSystem"
                   control={control}
@@ -285,26 +348,63 @@ const EditParcel: React.FC = () => {
               <CardDescription>Position GPS de la parcelle</CardDescription>
             </CardHeader>
             <CardContent>
-              <Controller
-                name="latitude"
-                control={control}
-                render={({ field: latField }) => (
+              {/* Champs de coordonnées */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <Label htmlFor="latitude">Latitude</Label>
                   <Controller
-                    name="longitude"
+                    name="latitude"
                     control={control}
-                    render={({ field: lngField }) => (
-                      <LocationPicker
-                        latitude={latField.value}
-                        longitude={lngField.value}
-                        onChange={({ latitude, longitude }) => {
-                          latField.onChange(latitude);
-                          lngField.onChange(longitude);
+                    render={({ field }) => (
+                      <Input
+                        id="latitude"
+                        type="number"
+                        step="any"
+                        value={field.value ?? ""} // "" si null
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(
+                            v === "" ? null : parseFloat(v as any)
+                          );
                         }}
                       />
                     )}
                   />
-                )}
-              />
+                </div>
+                <div>
+                  <Label htmlFor="longitude">Longitude</Label>
+                  <Controller
+                    name="longitude"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        id="longitude"
+                        type="number"
+                        step="any"
+                        value={field.value ?? ""} // "" si null
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(
+                            v === "" ? null : parseFloat(v as any)
+                          );
+                        }}
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Carte liée aux coordonnées */}
+              {watchedLatitude != null && watchedLongitude != null && (
+                <LocationPicker
+                  latitude={watchedLatitude as number}
+                  longitude={watchedLongitude as number}
+                  onChange={({ latitude, longitude }) => {
+                    setValue("latitude", latitude);
+                    setValue("longitude", longitude);
+                  }}
+                />
+              )}
             </CardContent>
           </Card>
         </div>

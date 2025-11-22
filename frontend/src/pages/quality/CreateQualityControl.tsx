@@ -1,7 +1,7 @@
 // frontend/src/pages/quality/CreateQualityControl.tsx - PAGE DE CRÉATION CONTRÔLE QUALITÉ
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm, Controller, SubmitHandler } from "react-hook-form";
+import { useForm, Controller, SubmitHandler, Resolver } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Save, Loader2, FlaskConical, Search } from "lucide-react";
 import {
@@ -36,7 +36,8 @@ interface CreateQualityControlForm {
   varietyPurity: number;
   moistureContent?: number;
   seedHealth?: number;
-  observations?: string;
+  // ⚠️ rendu obligatoire pour être aligné avec le backend (notesSchema)
+  observations: string;
   testMethod?: string;
   laboratoryRef?: string;
 }
@@ -52,11 +53,14 @@ const CreateQualityControl: React.FC = () => {
     watch,
     formState: { errors },
   } = useForm<CreateQualityControlForm>({
-    resolver: yupResolver(qualityControlValidationSchema),
+    resolver: yupResolver(
+      qualityControlValidationSchema
+    ) as unknown as Resolver<CreateQualityControlForm>,
     defaultValues: {
       controlDate: new Date().toISOString().split("T")[0],
       germinationRate: 0,
       varietyPurity: 0,
+      observations: "", // évite undefined + cohérent avec la validation
     },
   });
 
@@ -71,7 +75,7 @@ const CreateQualityControl: React.FC = () => {
       const response = await api.get("/seed-lots", {
         params: {
           search: lotSearch || undefined,
-          status: "active,in-stock",
+          status: "in-stock", // ✅ valeur unique, mappée par le middleware
           pageSize: 20,
         },
       });
@@ -94,6 +98,7 @@ const CreateQualityControl: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateQualityControlForm) => {
+      // ici les nombres sont déjà convertis (parseFloat dans les onChange)
       const response = await api.post("/quality-controls", data);
       return response.data;
     },
@@ -312,7 +317,9 @@ const CreateQualityControl: React.FC = () => {
                   render={({ field }) => (
                     <Select
                       value={field.value || ""}
-                      onValueChange={field.onChange}
+                      onValueChange={(value) =>
+                        field.onChange(value === "none" ? undefined : value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner une méthode" />
@@ -422,7 +429,9 @@ const CreateQualityControl: React.FC = () => {
                         {...field}
                         onChange={(e) =>
                           field.onChange(
-                            parseFloat(e.target.value) || undefined
+                            e.target.value === ""
+                              ? undefined
+                              : parseFloat(e.target.value)
                           )
                         }
                       />
@@ -445,7 +454,9 @@ const CreateQualityControl: React.FC = () => {
                         {...field}
                         onChange={(e) =>
                           field.onChange(
-                            parseFloat(e.target.value) || undefined
+                            e.target.value === ""
+                              ? undefined
+                              : parseFloat(e.target.value)
                           )
                         }
                       />
@@ -483,7 +494,7 @@ const CreateQualityControl: React.FC = () => {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="observations">Observations</Label>
+                <Label htmlFor="observations">Observations *</Label>
                 <Controller
                   name="observations"
                   control={control}

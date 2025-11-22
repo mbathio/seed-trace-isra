@@ -186,15 +186,28 @@ const Productions: React.FC = () => {
     setPage(1);
   };
 
+  // 🔁 Fonction utilitaire pour normaliser les statuts
+  const normalizeStatus = (status?: string | null): string => {
+    if (!status) return "";
+    return status.toString().toLowerCase().replace(/_/g, "-");
+  };
+
+  // ...
+
   const stats = {
-    total: meta?.totalCount || 0,
-    planned: productions.filter((p: Production) => p.status === "planned")
-      .length,
-    inProgress: productions.filter(
-      (p: Production) => p.status === "in-progress"
+    // total = nombre total renvoyé par l'API (toutes productions, paginées)
+    total: meta?.totalCount || productions.length,
+
+    // Comptes par statut sur les productions chargées
+    planned: productions.filter(
+      (p: Production) => normalizeStatus(p.status) === "planned"
     ).length,
-    completed: productions.filter((p: Production) => p.status === "completed")
-      .length,
+    inProgress: productions.filter(
+      (p: Production) => normalizeStatus(p.status) === "in-progress"
+    ).length,
+    completed: productions.filter(
+      (p: Production) => normalizeStatus(p.status) === "completed"
+    ).length,
   };
 
   if (error) {
